@@ -1,0 +1,24 @@
+#!/bin/sh
+# Root helper for SHARE FILES (sudo, from the app only).
+#   cz-share start   < config JSON on stdin: user, password_hash, include_paper, timeout_s
+#   cz-share stop
+set -eu
+case "${1:-}" in
+  start)
+    install -d -o root -g czshare -m 0750 /run/czshare
+    # at most 2 KB of JSON; the service validates the fields
+    head -c 2048 > /run/czshare/config.json.tmp
+    chown root:czshare /run/czshare/config.json.tmp
+    chmod 0640 /run/czshare/config.json.tmp
+    mv /run/czshare/config.json.tmp /run/czshare/config.json
+    systemctl restart czshare.service
+    ;;
+  stop)
+    systemctl stop czshare.service || true
+    rm -f /run/czshare/config.json /run/czshare/status.json
+    ;;
+  *)
+    echo "usage: cz-share start|stop" >&2
+    exit 2
+    ;;
+esac

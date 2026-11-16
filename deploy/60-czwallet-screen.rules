@@ -1,0 +1,4 @@
+# The trusted path: only the signer may draw on the panel or read the
+# keyboard. The framebuffer is normally group "video", which the app needs
+# for the camera, so it gets its own group here.
+SUBSYSTEM=="graphics", KERNEL=="fb[0-9]*", GROUP="czscreen", MODE="0660"

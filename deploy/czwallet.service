@@ -1,0 +1,32 @@
+[Unit]
+Description=Insert Coin wallet app (menus, watch-only wallet)
+Requires=czsigner.service cznet.service
+Wants=czscan.service czprint.service
+After=czsigner.service cznet.service czscan.service czwallet-vault.service
+
+[Service]
+User=czapp
+Group=czapp
+# No camera (czscan has it), no keyboard, no panel: keys and frames go
+# through the signer, QR texts come from czscan. dialout: fingerprint sensor.
+# spi: the Cap CC1101 & NFC (the app keeps the CC1101 asleep).
+# audio: the coin chime on the title screen (aplay, the 1 W speaker).
+SupplementaryGroups=czsigner cznet czscan czprint dialout spi audio
+WorkingDirectory=/opt/czwallet
+Environment=CZ_DATA=/var/lib/czwallet CZ_SIGNER_SOCK=/run/czwallet/signer.sock
+Environment=CZ_NET_SOCK=/run/cznet/net.sock CZ_SCREEN_SOCK=/run/czwallet/screen.sock CZ_SCAN_SOCK=/run/czscan/scan.sock
+ExecStart=/opt/czwallet-venv/bin/python app.py
+Restart=always
+ProtectSystem=strict
+ReadWritePaths=/var/lib/czwallet/app
+ProtectHome=yes
+PrivateTmp=yes
+
+# No IP networking at all: the internet is reached only through cznet.
+# (AF_UNIX for the signer, cznet and D-Bus/NetworkManager; AF_NETLINK for
+# sudo's audit and device events.)
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target

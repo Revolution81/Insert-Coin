@@ -1,0 +1,7 @@
+// Let the wallet app join Wi-Fi networks through NetworkManager.
+polkit.addRule(function(action, subject) {
+    if (subject.user == "czapp" &&
+        action.id.indexOf("org.freedesktop.NetworkManager.") == 0) {
+        return polkit.Result.YES;
+    }
+});

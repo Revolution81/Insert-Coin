@@ -1,0 +1,16 @@
+# The exact versions the wallet is tested with. On the device these are
+# installed from requirements.lock (same versions, plus the SHA-256 of
+# every file, checked by pip: see tools/lock.py). This file is the readable
+# list, and what you install on a PC for the simulator and tests.
+pillow==12.3.0
+qrcode==8.2
+embit==0.8.0
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
+cffi==2.1.1
+pycparser==3.0
+cryptography==50.0.1
+pyzbar==0.1.9            # QR decoding (needs libzbar0 from apt)
+shamir-mnemonic==0.3.0   # SLIP39 split backups (Trezor's reference code)
+# From apt on the device, not PyPI: python3-evdev (keyboard),
+# python3-picamera2 (camera). On a PC: pip install pygame (simulator).

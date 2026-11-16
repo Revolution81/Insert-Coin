@@ -1,0 +1,14 @@
+[Unit]
+Description=Insert Coin: start in Vault mode (radios off)
+DefaultDependencies=no
+After=NetworkManager.service
+Before=czwallet.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cz-radio vault
+# Grove port in UART mode (GPIO4 low) for the fingerprint sensor
+ExecStart=-/usr/bin/pinctrl set 4 op dl
+
+[Install]
+WantedBy=multi-user.target

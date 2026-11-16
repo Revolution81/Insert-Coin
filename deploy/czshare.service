@@ -1,0 +1,62 @@
+[Unit]
+Description=Insert Coin file sharing (SHARE FILES: download history and paper wallets on the local network)
+# Started and stopped only by the app, through /usr/local/sbin/cz-share.
+After=network-online.target
+
+[Service]
+Type=simple
+User=czshare
+Group=czshare
+ExecStart=/opt/czwallet-venv/bin/python -I /opt/czwallet/tools/share_service.py
+# Belt and braces: the page stops itself at the time limit; this ends it anyway.
+RuntimeMaxSec=3700
+Restart=no
+
+# The runtime folder holds config.json (from the helper) and status.json (for the app).
+RuntimeDirectory=czshare
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+StateDirectory=czshare
+StateDirectoryMode=0700
+
+# It sees the history exports and the paper folder, nothing else of the wallet.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+TemporaryFileSystem=/var/lib/czwallet /boot
+BindReadOnlyPaths=-/boot/firmware/InsertCoin-exports
+# paper wallets: kept off the card, in a folder only root and this service can
+# read (root:czshare 2770); writable so DELETE works after you've saved one
+BindPaths=-/var/lib/czwallet/paper
+InaccessiblePaths=-/var/lib/czwallet/signer -/var/lib/czwallet/app
+
+# Network: local addresses only, enforced by the kernel, on top of the
+# server's own check. No outgoing internet.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=localhost link-local 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 fc00::/7
+SocketBindAllow=tcp:8443
+SocketBindDeny=any
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

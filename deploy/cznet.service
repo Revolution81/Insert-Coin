@@ -1,0 +1,36 @@
+[Unit]
+Description=Insert Coin network relay (Electrum over Tor; no keys, no data)
+After=network.target tor.service
+Before=czwallet.service
+
+[Service]
+User=cznet
+Group=cznet
+WorkingDirectory=/opt/czwallet
+EnvironmentFile=/etc/czwallet/signer.env
+Environment=CZ_NET_SOCK=/run/cznet/net.sock PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/czwallet-venv/bin/python -m core.netd
+RuntimeDirectory=cznet
+RuntimeDirectoryMode=0750
+UMask=0007
+Restart=always
+
+# Internet yes; everything else no. It can't read the wallet's files, the
+# signer's files, the keyboard, the camera or the screen.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ProtectSystem=strict
+ProtectHome=yes
+InaccessiblePaths=/var/lib/czwallet
+PrivateTmp=yes
+PrivateDevices=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictRealtime=yes
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

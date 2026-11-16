@@ -1,0 +1,58 @@
+[Unit]
+Description=Insert Coin printing (PRINT for paper wallets, to a printer on the local network)
+After=network-online.target
+
+[Service]
+Type=simple
+User=czprint
+Group=czprint
+# reads the paper folder (root:czshare 2770, files 0640)
+SupplementaryGroups=czshare
+ExecStart=/opt/czwallet-venv/bin/python -I /opt/czwallet/tools/print_service.py
+Restart=on-failure
+RestartSec=3
+
+# The socket the app talks to (group czprint; the app's user is in it).
+RuntimeDirectory=czprint
+RuntimeDirectoryMode=0750
+StateDirectory=czprint
+StateDirectoryMode=0700
+
+# It sees the paper folder (read-only) and nothing else of the wallet.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+TemporaryFileSystem=/var/lib/czwallet /boot
+BindReadOnlyPaths=-/var/lib/czwallet/paper
+InaccessiblePaths=-/var/lib/czwallet/signer -/var/lib/czwallet/app
+
+# Network: local addresses and printer discovery (mDNS multicast) only,
+# enforced by the kernel on top of the service's own check. No internet, so
+# no cloud print service can ever be reached.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+IPAddressDeny=any
+IPAddressAllow=link-local 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 fc00::/7 multicast
+SocketBindDeny=any
+
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

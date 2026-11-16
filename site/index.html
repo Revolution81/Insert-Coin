@@ -1,0 +1,510 @@
+<title>Insert Coin</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Insert Coin: a Bitcoin wallet with a 16-bit arcade look for the M5Stack Cardputer Zero.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;500;700&display=swap">
+<style>
+/* Layout: an arcade attract screen. Night sky hero with the real title screen in a cabinet bezel,
+   then the app's own blue pixel windows (tabbed titles) carry every section. Single dark world by design. */
+:root {
+  --night: #08081a;        /* the app's ink */
+  --night-2: #141033;      /* bar background, a touch of purple */
+  --horizon: #40206e;      /* purple_dk, the dusk band */
+  --win-top: #3858d0;      /* win_top */
+  --win-bot: #101c68;      /* win_bot */
+  --frame: #e8e8f8;        /* window border, the app's light */
+  --ink: #f8f8f8;
+  --muted: #b4b8e0;
+  --dim: #7a80b8;
+  --gold: #f8c830;
+  --gold-dk: #b07810;
+  --orange: #f7931a;       /* bitcoin */
+  --green: #58d858;
+  --cyan: #58c8f8;
+  --red: #e84040;
+  --red-dk: #781020;
+  --display: "Press Start 2P", ui-monospace, "Courier New", monospace;
+  --body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --px: 4px;               /* one screen pixel at the site's scale */
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+body {
+  background: var(--night);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.6;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--night-2); }
+img { max-width: 100%; }
+.px { image-rendering: pixelated; image-rendering: crisp-edges; }
+a { color: var(--gold); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.35; text-wrap: balance; margin: 0; }
+p { margin: 0; }
+.eyebrow { font-family: var(--display); font-size: 11px; letter-spacing: .08em; color: var(--gold); text-transform: uppercase; }
+
+/* ---------- top bar ---------- */
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--night-2); border-bottom: var(--px) solid var(--night); box-shadow: 0 2px 0 #2a2458; }
+.bar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 12px; flex-wrap: wrap; }
+.brand { font-family: var(--display); font-size: 14px; color: var(--gold); text-decoration: none; text-shadow: 2px 2px 0 var(--gold-dk); white-space: nowrap; }
+.brand img { display: block; width: 182px; height: auto; }
+.nav { display: flex; gap: 18px; flex-wrap: wrap; }
+.nav a { font-family: var(--display); font-size: 10px; color: var(--muted); text-decoration: none; letter-spacing: .05em; }
+.nav a:hover { color: var(--ink); }
+.mode-pill { font-family: var(--display); font-size: 9px; background: var(--purple, #9860e8); color: var(--ink); padding: 4px 6px; }
+
+/* ---------- hero ---------- */
+.hero {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 31% 9%, #cfd3ff 50%, transparent 51%),
+    radial-gradient(2px 2px at 47% 26%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 68% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 83% 31%, #cfd3ff 50%, transparent 51%),
+    radial-gradient(2px 2px at 93% 7%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 6% 44%, #cfd3ff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 58% 47%, #fff 50%, transparent 51%),
+    linear-gradient(to bottom, var(--night) 0%, var(--night-2) 55%, var(--horizon) 100%);
+}
+.hero::after { /* stepped pixel hills on the horizon */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 28px;
+  background:
+    linear-gradient(to right, transparent 0 8%, #1a0f3a 8% 22%, transparent 22% 30%, #1a0f3a 30% 52%, transparent 52% 61%, #1a0f3a 61% 79%, transparent 79% 86%, #1a0f3a 86%) top / 100% 12px no-repeat,
+    linear-gradient(#1a0f3a, #1a0f3a) bottom / 100% 16px no-repeat;
+}
+.hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 48px; align-items: center; padding-block: 64px 88px; }
+.hero-copy { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.hero h1 { font-size: clamp(22px, 3.4vw, 34px); color: var(--ink); text-shadow: 3px 3px 0 #000; }
+.hero h1 em { font-style: normal; color: var(--gold); }
+.hero .lede { font-size: 18px; color: var(--muted); max-width: 34em; }
+.ctas { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
+.btn {
+  font-family: var(--display); font-size: 12px; letter-spacing: .04em; text-decoration: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 18px; border: 0; color: var(--night);
+  background: var(--gold);
+  box-shadow: inset -4px -4px 0 var(--gold-dk), 0 0 0 3px var(--night), 4px 4px 0 3px #000;
+  transition: transform .06s;
+}
+.btn:active { transform: translate(3px, 3px); box-shadow: inset -4px -4px 0 var(--gold-dk), 0 0 0 3px var(--night), 1px 1px 0 3px #000; }
+.btn.ghost { background: var(--win-bot); color: var(--ink); box-shadow: inset -4px -4px 0 #08104a, 0 0 0 3px var(--frame), 4px 4px 0 3px #000; }
+.credit { font-family: var(--display); font-size: 10px; color: var(--dim); }
+.credit span { color: var(--gold); }
+
+/* the cabinet bezel around the real title screen */
+.cabinet { position: relative; min-width: 0; }
+.bezel {
+  background: #1c1c2c; padding: 18px 18px 40px; border-radius: 6px;
+  box-shadow: 0 0 0 4px #000, 0 0 0 8px #2e2e48, 10px 12px 0 8px #000, 0 30px 80px rgba(120, 80, 255, .35);
+}
+.screen { position: relative; aspect-ratio: 320 / 170; max-width: 100%; background: #000; overflow: hidden; }
+.screen img { display: block; width: 100%; height: 100%; }
+.screen::after { /* faint scanlines */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+}
+.bezel-label { position: absolute; left: 26px; right: 26px; bottom: 12px; display: flex; justify-content: space-between; font-family: var(--display); font-size: 8px; color: #6b6b90; }
+.bezel-label .led { color: var(--green); }
+.bezel-label .led.on { text-shadow: 0 0 6px var(--green); }
+
+/* ---------- pixel window, the app's own box ---------- */
+.win {
+  position: relative; min-width: 0;
+  background: linear-gradient(to bottom, var(--win-top), var(--win-bot));
+  border: 3px solid var(--frame);
+  box-shadow: 0 0 0 3px #000, 6px 6px 0 3px #000;
+  padding: 30px 22px 22px;
+}
+.win > .tab {
+  position: absolute; top: -12px; left: 14px;
+  font-family: var(--display); font-size: 10px; letter-spacing: .04em;
+  background: #c8cce8; color: var(--night); padding: 5px 8px 4px;
+  box-shadow: 0 0 0 3px #000;
+}
+.win.gold { border-color: var(--gold); }
+.win.gold > .tab { background: var(--gold); }
+.win.red { background: linear-gradient(to bottom, #6a1424, #2a0610); border-color: var(--red); }
+.win.red > .tab { background: var(--red); color: var(--ink); }
+
+section { padding-block: 72px; }
+.section-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; max-width: 46em; }
+.section-head h2 { font-size: clamp(18px, 2.6vw, 24px); }
+.section-head p { color: var(--muted); }
+
+/* ---------- two worlds ---------- */
+.worlds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+.world { display: flex; flex-direction: column; gap: 14px; }
+.world h3 { font-size: 15px; display: flex; align-items: center; gap: 12px; }
+.world h3 .chip { font-size: 9px; padding: 4px 6px; color: var(--night); }
+.world ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.world li { padding-left: 22px; position: relative; }
+.world li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 8px; height: 8px; background: currentColor; }
+.vault h3 { color: var(--gold); }
+.vault li::before { color: var(--gold); }
+.online h3 { color: var(--cyan); }
+.online li::before { color: var(--cyan); }
+.world .note { font-size: 15px; color: var(--muted); }
+
+/* ---------- the party (process separation) ---------- */
+.party-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.party { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
+.member { display: flex; flex-direction: column; gap: 8px; }
+.member .who { font-family: var(--display); font-size: 11px; }
+.member .proc { font-family: var(--display); font-size: 8px; color: var(--dim); }
+.member p { font-size: 15px; color: var(--ink); }
+.member .cant { font-size: 14px; color: var(--muted); }
+.member .cant b { color: var(--red); font-weight: 500; }
+.shield-demo { display: flex; flex-direction: column; gap: 18px; }
+.shot { display: block; width: 100%; border: 3px solid #000; box-shadow: 6px 6px 0 #000; background: #000; }
+.caption { font-size: 14px; color: var(--muted); }
+.caption b { color: var(--gold); font-weight: 500; }
+
+/* ---------- power-ups ---------- */
+.powerups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px 24px; }
+.pu h3 { font-size: 11px; color: var(--gold); margin-bottom: 10px; line-height: 1.6; }
+.pu p { font-size: 15px; }
+.pu .std { display: block; margin-top: 10px; font-family: var(--display); font-size: 8px; color: var(--cyan); letter-spacing: .04em; line-height: 1.8; }
+
+/* ---------- screens gallery ---------- */
+.gallery { overflow-x: auto; padding-bottom: 18px; scrollbar-color: var(--win-top) var(--night-2); }
+.reel { display: flex; gap: 28px; width: max-content; padding: 6px 10px 12px 6px; }
+.reel figure { margin: 0; width: min(420px, 78vw); display: flex; flex-direction: column; gap: 10px; }
+.reel figcaption { font-size: 14px; color: var(--muted); }
+.reel figcaption b { font-family: var(--display); font-size: 9px; color: var(--ink); font-weight: 400; display: block; margin-bottom: 4px; letter-spacing: .04em; }
+
+/* ---------- spec sheet ---------- */
+.specs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+dl { margin: 0; display: grid; grid-template-columns: minmax(0, 10em) minmax(0, 1fr); gap: 10px 18px; font-size: 15px; }
+dt { font-family: var(--display); font-size: 9px; color: var(--gold); padding-top: 5px; letter-spacing: .03em; line-height: 1.6; }
+dd { margin: 0; }
+
+/* ---------- warning ---------- */
+.warn { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 22px; align-items: start; }
+.warn .hearts { font-family: var(--display); color: var(--red); font-size: 16px; letter-spacing: 2px; line-height: 1.2; }
+.warn ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.warn h3 { font-size: 14px; margin-bottom: 14px; }
+
+/* ---------- get it ---------- */
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 24px; }
+.step { display: flex; flex-direction: column; gap: 12px; }
+.step .num { font-family: var(--display); font-size: 9px; color: var(--dim); }
+.step h3 { font-size: 13px; }
+.step p { font-size: 15px; color: var(--muted); flex: 1; }
+.step .btn { align-self: flex-start; font-size: 10px; padding: 12px 14px; }
+.soon { font-family: var(--display); font-size: 9px; color: var(--night); background: var(--cyan); padding: 4px 6px; align-self: flex-start; }
+
+footer { background: #05050f; border-top: var(--px) solid var(--night-2); }
+footer .wrap { padding-block: 40px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: var(--dim); }
+footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); }
+
+.blink { animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+@media (max-width: 900px) {
+  .hero .wrap, .party-wrap, .specs-grid { grid-template-columns: minmax(0, 1fr); }
+  .hero .wrap { padding-block: 40px 76px; gap: 40px; }
+  .powerups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  body { font-size: 16px; }
+  section { padding-block: 52px; }
+  .worlds, .powerups, .party { grid-template-columns: minmax(0, 1fr); }
+  dl { grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+  dd { margin-bottom: 10px; }
+  .warn { grid-template-columns: minmax(0, 1fr); }
+  .nav { gap: 12px; }
+  .bezel { padding: 10px 10px 32px; }
+}
+</style>
+
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top"><img class="px" src="logo.png" width="182" height="22" alt="Insert Coin"></a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#worlds">Modes</a>
+      <a href="#signer">Security</a>
+      <a href="#rules">Rules</a>
+      <a href="#powerups">Features</a>
+      <a href="#screens">Screens</a>
+      <a href="#get">Get it</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">A Bitcoin wallet for the M5Stack Cardputer Zero</span>
+        <h1>Your keys, your coins, <em>16-bit.</em></h1>
+        <p class="lede">Insert Coin turns a pocket Linux computer into a Bitcoin wallet that looks and sounds like a game from 1993. It starts with every radio off, and only the signer, in its own locked-down process, can ever touch your keys.</p>
+        <div class="ctas">
+          <button class="btn" id="press-ok" type="button">▶ PRESS OK</button>
+          <a class="btn ghost" href="#get">GET IT</a>
+          <span class="credit" aria-live="polite">CREDIT <span id="credits">0</span></span>
+        </div>
+      </div>
+      <div class="cabinet">
+        <div class="bezel">
+          <div class="screen"><img class="px" src="title.gif" alt="The Insert Coin title screen: INSERT COIN in gold pixel letters with a bitcoin as the O, PRESS OK blinking over a night sky."></div>
+          <div class="bezel-label"><span>CARDPUTER ZERO</span><span class="led" id="led">● PWR</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section id="worlds">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Choose mode</span>
+        <h2>Two worlds. Vault is the default.</h2>
+        <p>Every Insert Coin starts in Vault mode with Wi-Fi switched off. Go Online only when you want the convenience of a hot wallet, and switch back with one key.</p>
+      </div>
+      <div class="worlds">
+        <div class="win world vault">
+          <span class="tab">VAULT</span>
+          <h3>Radios off</h3>
+          <ul>
+            <li>Cold storage: the device never touches the internet.</li>
+            <li>Sign payments as PSBTs over animated QR codes or the microSD card.</li>
+            <li>Works with watch-only apps like Sparrow on your computer.</li>
+          </ul>
+          <p class="note">For savings you rarely move.</p>
+        </div>
+        <div class="win world online">
+          <span class="tab">ONLINE</span>
+          <h3>Wi-Fi and Tor</h3>
+          <ul>
+            <li>Check balances and send straight from the device.</li>
+            <li>Talks to your own Electrum server, through Tor by default.</li>
+            <li>An online cap limits what can leave each day.</li>
+          </ul>
+          <p class="note">For spending money. Keep the amount small.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="signer">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">How it keeps your keys safe</span>
+        <h2>Four characters, and only one holds the keys.</h2>
+        <p>Insert Coin is split into four programs, each running as its own Linux user with only the permissions it needs. If one part goes wrong, it still can't reach what the others guard.</p>
+      </div>
+      <div class="party-wrap">
+        <div class="party">
+          <div class="member">
+            <span class="who" style="color: var(--gold)">SIR SIGNER</span>
+            <span class="proc">czsigner</span>
+            <p>Holds the encrypted seed, asks for your PIN and your YES, and signs.</p>
+            <p class="cant"><b>Can't</b> reach the network at all.</p>
+          </div>
+          <div class="member">
+            <span class="who" style="color: var(--orange)">CARDY</span>
+            <span class="proc">czapp</span>
+            <p>Runs the menus and the watch-only wallet: balances, coins, history.</p>
+            <p class="cant"><b>Never</b> sees your PIN, seed words or private keys.</p>
+          </div>
+          <div class="member">
+            <span class="who" style="color: var(--cyan)">THE COURIER</span>
+            <span class="proc">cznet</span>
+            <p>The only program on the internet: Wi-Fi, TLS, Tor and Electrum.</p>
+            <p class="cant"><b>No</b> keys, no screen, no wallet files.</p>
+          </div>
+          <div class="member">
+            <span class="who" style="color: var(--green)">THE LOOKOUT</span>
+            <span class="proc">czscan</span>
+            <p>Runs the camera and reads QR codes in a sandbox.</p>
+            <p class="cant"><b>No</b> network, no files, no keys.</p>
+          </div>
+        </div>
+        <div class="shield-demo">
+          <img class="shot px" src="img/08-confirm.png" alt="The signer's CONFIRM SEND screen showing the address, amount, fee and total, with a gold SIGNER badge in the corner." loading="lazy">
+          <p class="caption">The signer draws its own screens. Look for the <b>gold SIGNER shield</b> and the <b>security words</b> you chose when you made the wallet. No shield, or the wrong words? Don't type your PIN.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="win red warn">
+        <span class="tab">READ THIS FIRST</span>
+        <span class="hearts" aria-hidden="true">♥♥♥<br>♥♥♥<br>♥♥♥♥</span>
+        <div>
+          <h3>Ten hearts, ten PIN tries</h3>
+          <ul>
+            <li>Insert Coin is brand new and hasn't been reviewed by outside security experts yet. Play with small amounts.</li>
+            <li>Ten wrong PINs erase the wallet. Your seed words are the only way back, so write them on paper or metal.</li>
+            <li>In Online mode it's a hot wallet. Keep savings in Vault mode, or on a dedicated hardware wallet.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="rules">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">House rules</span>
+        <h2>Your rules, enforced by the signer.</h2>
+      </div>
+      <div class="powerups">
+        <div class="win pu"><span class="tab">POLICY</span><h3>Spending limits</h3><p>Set a most-per-payment, a most-per-day, a cooldown between payments, a maximum fee rate and a list of the only addresses you'll pay. The signer checks every payment, offline or online.</p><span class="std">PER TX · PER DAY · ALLOW-LIST</span></div>
+        <div class="win pu"><span class="tab">2FA</span><h3>Phone codes</h3><p>Link an authenticator app and big payments, or all of them, need a 6-digit code before the signer will sign.</p><span class="std">TOTP · RFC 6238</span></div>
+        <div class="win pu"><span class="tab">BYPASS</span><h3>Lock the rules</h3><p>Add a bypass PIN and the rules can only loosen with both PINs. The seed words can't be shown or exported while it's set.</p><span class="std">SECOND PIN · ARGON2ID</span></div>
+        <div class="win pu"><span class="tab">COUNTDOWN</span><h3>Make them wait</h3><p>After the right PIN, the wallet waits five minutes to a day before it opens. Anyone forcing you to unlock waits too.</p><span class="std">5 MIN TO 24 H</span></div>
+        <div class="win pu"><span class="tab">WIPE PIN</span><h3>One PIN to erase it all</h3><p>Enter it and the device starts like new. Nothing is bricked; your seed words bring everything back. A duress PIN opens a decoy wallet instead.</p><span class="std">WIPE · DURESS</span></div>
+        <div class="win pu"><span class="tab">AUTO LOCK</span><h3>Locks when you walk away</h3><p>Two to fifteen minutes, a time you choose, or never. Sharing files keeps it awake until you're done.</p><span class="std">CHANGES NEED YOUR PIN</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="powerups">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Power-ups</span>
+        <h2>Small device. Full wallet.</h2>
+      </div>
+      <div class="powerups">
+        <div class="win pu"><span class="tab">SEEDS</span><h3>Make it your own way</h3><p>Every new seed mixes the system's randomness, the secure chip if fitted, and any dice rolls, coin flips, shuffled cards or key mashing you add. One weak source can't make a weak seed.</p><span class="std">BIP39 · 12 or 24 words</span></div>
+        <div class="win pu"><span class="tab">BACKUP</span><h3>Back up three ways</h3><p>Write the words, show a SeedQR, or split the seed into shares so no single paper reveals it.</p><span class="std">SEEDQR · SLIP39</span></div>
+        <div class="win pu"><span class="tab">ACCOUNTS</span><h3>SegWit and Taproot</h3><p>Several accounts per seed, child seeds for other wallets, and message signing.</p><span class="std">BIP84 · BIP86 · BIP85 · BIP322</span></div>
+        <div class="win pu"><span class="tab">MULTISIG</span><h3>Share the keys</h3><p>Join a multisig as a cosigner, import descriptors, or set up an inheritance wallet with a time-locked heir key.</p><span class="std">BIP48 · DESCRIPTORS</span></div>
+        <div class="win pu"><span class="tab">QR</span><h3>Sign with the camera</h3><p>Scan a payment request, sign it and show the result as an animated QR code.</p><span class="std">PSBT · UR · BBQR</span></div>
+        <div class="win pu"><span class="tab">NFC</span><h3>Tap a card</h3><p>Read a SATSCARD, check it's genuine, and sweep its coins into your wallet. TAPSIGNER works too.</p><span class="std">SATSCARD · TAPSIGNER</span></div>
+        <div class="win pu"><span class="tab">PAPER</span><h3>Paper wallets</h3><p>Make a fresh paper wallet with QR codes and print it at home over encrypted Wi-Fi. The keys stay inside the device, never on the microSD card.</p><span class="std">IPPS · PINNED PRINTER</span></div>
+        <div class="win pu"><span class="tab">SHARE</span><h3>Wi-Fi file sharing</h3><p>Grab your transaction history and paper wallets from a browser on your home network. Password-protected, download only, and it switches itself off. Paper wallets need your own password.</p><span class="std">HTTPS · LOCAL NETWORK ONLY</span></div>
+        <div class="win pu"><span class="tab">ADD-ONS</span><h3>Extra armor</h3><p>Add a secure chip to bind the PIN to the hardware, or a fingerprint sensor for quick unlocks.</p><span class="std">SECURE CHIP · FINGERPRINT</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Screen tour</span>
+        <h2>Every screen is real.</h2>
+        <p>Captured straight from the app, pixel for pixel. Scroll sideways for more.</p>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="gallery" tabindex="0" aria-label="Screenshots, scroll sideways">
+        <div class="reel">
+          <figure><img class="shot px" src="img/04-home.png" alt="Home screen with a bitcoin balance and the SEND, RECEIVE, COINS, HISTORY, MODE and SETUP menu." loading="lazy"><figcaption><b>HOME</b>Your balance, big and clear, with everything one key away.</figcaption></figure>
+          <figure><img class="shot px" src="img/05-receive.png" alt="Receive screen with a QR code and the address split into colored groups." loading="lazy"><figcaption><b>RECEIVE</b>Addresses in groups of four, colored so they're easy to check.</figcaption></figure>
+          <figure><img class="shot px" src="img/06-verify.png" alt="The signer showing the same address in a gold window." loading="lazy"><figcaption><b>VERIFY</b>The signer confirms the address from your own keys.</figcaption></figure>
+          <figure><img class="shot px" src="img/03-new-wallet.png" alt="New wallet menu with 12 words, 24 words and entropy options." loading="lazy"><figcaption><b>NEW WALLET</b>Mix in dice, coin flips, cards or key mashing.</figcaption></figure>
+          <figure><img class="shot px" src="img/07-coins.png" alt="Coins list showing individual coins and their status." loading="lazy"><figcaption><b>COINS</b>Pick exactly which coins a payment spends.</figcaption></figure>
+          <figure><img class="shot px" src="img/12-mode.png" alt="Choose mode screen with Vault and Online side by side." loading="lazy"><figcaption><b>MODE</b>Vault or Online, one key to switch.</figcaption></figure>
+          <figure><img class="shot px" src="img/17-pin.png" alt="Enter PIN screen with ten hearts showing remaining tries." loading="lazy"><figcaption><b>UNLOCK</b>Ten hearts, ten tries, and your security words.</figcaption></figure>
+          <figure><img class="shot px" src="img/15-satscard.png" alt="SATSCARD screen showing slot 1 of 10 sealed." loading="lazy"><figcaption><b>SATSCARD</b>Tap a card on the back to read it.</figcaption></figure>
+          <figure><img class="shot px" src="img/10-setup.png" alt="SETUP menu with six groups: Security, Backup, Network, Files, Tools, Display and Sound." loading="lazy"><figcaption><b>SETUP</b>Six tidy groups, and it remembers where you were.</figcaption></figure>
+          <figure><img class="shot px" src="img/20-policy.png" alt="Spending policy menu with per-payment, per-day, cooldown, 2FA and max fee rules." loading="lazy"><figcaption><b>SPENDING POLICY</b>Limits the signer checks before every payment.</figcaption></figure>
+          <figure><img class="shot px" src="img/25-countdown.png" alt="Login countdown screen showing 03:59 left before the wallet opens." loading="lazy"><figcaption><b>COUNTDOWN</b>The right PIN, then a wait nobody can skip.</figcaption></figure>
+          <figure><img class="shot px" src="img/28-print-warning.png" alt="Print private key warning naming the trusted home printer." loading="lazy"><figcaption><b>PRINT</b>Paper wallets to a printer you've trusted.</figcaption></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="specs">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Spec sheet</span>
+        <h2>Under the cartridge</h2>
+      </div>
+      <div class="specs-grid">
+        <div class="win">
+          <span class="tab">WALLET</span>
+          <dl>
+            <dt>Seeds</dt><dd>BIP39, 12 or 24 words, encrypted at rest with Argon2id and AES-GCM</dd>
+            <dt>Addresses</dt><dd>Native SegWit (BIP84) and Taproot (BIP86)</dd>
+            <dt>Signing</dt><dd>PSBT by QR (UR, BBQr) or microSD; messages by BIP137 and BIP322</dd>
+            <dt>Multisig</dt><dd>BIP48 cosigner keys, output descriptors, inheritance policies</dd>
+            <dt>Backups</dt><dd>Seed words, SeedQR, SLIP39 split shares, encrypted card backup</dd>
+            <dt>Network</dt><dd>Electrum protocol over TLS, optional Tor</dd>
+            <dt>Guards</dt><dd>Wipe PIN, duress PIN, login countdown, auto lock, spending policy with TOTP 2FA and bypass PIN</dd>
+          </dl>
+        </div>
+        <div class="win">
+          <span class="tab">HARDWARE</span>
+          <dl>
+            <dt>Device</dt><dd>M5Stack Cardputer Zero (Raspberry Pi CM0)</dd>
+            <dt>Screen</dt><dd>320 × 170, drawn in 16-bit pixel art</dd>
+            <dt>Controls</dt><dd>The physical keys only: D Z X C to move, OK to pick</dd>
+            <dt>Camera</dt><dd>QR scanning in a sandboxed process</dd>
+            <dt>NFC</dt><dd>SATSCARD and TAPSIGNER</dd>
+            <dt>Printing</dt><dd>IPP over TLS to printers on your own network</dd>
+            <dt>Optional</dt><dd>Secure chip, fingerprint sensor</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="get">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Player 1, start</span>
+        <h2>Get Insert Coin</h2>
+      </div>
+      <div class="steps">
+        <div class="win step">
+          <span class="tab">STAGE 1</span>
+          <h3>Get the hardware</h3>
+          <p>Insert Coin runs on the M5Stack Cardputer Zero, a pocket Linux computer with a screen, keyboard and camera.</p>
+          <a class="btn" href="https://shop.m5stack.com" target="_blank" rel="noopener">M5STACK SHOP ↗</a>
+        </div>
+        <div class="win step">
+          <span class="tab">STAGE 2</span>
+          <h3>Get the code</h3>
+          <p>The full source code, the installer and the desktop simulator, so you can try it on your PC first. Signed releases are coming soon.</p>
+          <a class="btn" href="https://github.com/Revolution81/Insert-Coin" target="_blank" rel="noopener">GITHUB ↗</a>
+        </div>
+        <div class="win step">
+          <span class="tab">STAGE 3</span>
+          <h3>Read the booklet</h3>
+          <p>A 20-page instruction booklet in the style of an old game manual, with controls, every screen and hints. It comes with every download.</p>
+          <a class="btn" href="booklet.pdf" target="_blank" rel="noopener">BOOKLET PDF ↗</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="run">RUNNING BITCOIN... · v0.8.20</span>
+    <p>Insert Coin is an independent project and is not affiliated with or endorsed by M5Stack. Cardputer Zero is a product of M5Stack.</p>
+    <p>All sounds and art are original. No tokens, no altcoins: Bitcoin only.</p>
+  </div>
+</footer>
+
+<audio id="fanfare" src="fanfare.wav" preload="auto"></audio>
+<script>
+(function () {
+  var btn = document.getElementById('press-ok');
+  var audio = document.getElementById('fanfare');
+  var credits = document.getElementById('credits');
+  var led = document.getElementById('led');
+  var n = 0;
+  btn.addEventListener('click', function () {
+    n = Math.min(n + 1, 99);
+    credits.textContent = String(n);
+    led.classList.add('on');
+    setTimeout(function () { led.classList.remove('on'); }, 1400);
+    try { audio.currentTime = 0; var p = audio.play(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+  });
+})();
+</script>

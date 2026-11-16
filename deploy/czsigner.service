@@ -1,0 +1,47 @@
+[Unit]
+Description=Insert Coin signer (holds the keys, owns screen and keyboard, no network)
+Before=czwallet.service
+
+[Service]
+User=czsigner
+Group=czsigner
+WorkingDirectory=/opt/czwallet
+EnvironmentFile=/etc/czwallet/signer.env
+Environment=CZ_DATA=/var/lib/czwallet PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/czwallet-venv/bin/python -m core.signer_service
+RuntimeDirectory=czwallet
+RuntimeDirectoryMode=0750
+UMask=0007
+Restart=always
+
+# The signer gets no network: it may only create Unix sockets.
+# (Not PrivateNetwork=yes: the signer must see the real interfaces in
+# /sys/class/net to know when to enforce the online spend cap.)
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+# Read-only system except its own data folder.
+ProtectSystem=strict
+ReadWritePaths=/var/lib/czwallet/signer
+ProtectHome=yes
+PrivateTmp=yes
+# Devices: the I2C bus (secure chip), and the panel and keyboard: the
+# signer draws every frame and reads every key (the trusted path; the app
+# gets frames shown and keys passed on through /run/czwallet/screen.sock).
+DevicePolicy=closed
+DeviceAllow=/dev/i2c-1 rw
+DeviceAllow=char-fb rw
+DeviceAllow=char-input r
+SupplementaryGroups=i2c input czscreen
+Environment=CZ_SCREEN_SOCK=/run/czwallet/screen.sock
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictRealtime=yes
+CapabilityBoundingSet=
+# Keys must never land in swap.
+MemorySwapMax=0
+
+[Install]
+WantedBy=multi-user.target

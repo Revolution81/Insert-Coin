@@ -1,0 +1,114 @@
+"""
+Radio and network control for Vault / Online modes.
+
+Vault mode = Wi-Fi and Bluetooth blocked with rfkill, Ethernet link down.
+The device boots into Vault mode (deploy/czwallet-vault.service runs
+`python3 -m core.radios vault` before anything else starts).
+
+Wi-Fi joining uses NetworkManager (nmcli), the default on Raspberry Pi OS
+Bookworm. These calls need permission: the install script adds a polkit rule
+so the app user may run them.
+"""
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+
+ETH = "eth0"
+
+
+def _run(*cmd, check=True, timeout=30) -> str:
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        if check:
+            raise RuntimeError(f"{cmd[0]} is not installed")
+        return ""
+    if check and r.returncode != 0:
+        raise RuntimeError((r.stderr or r.stdout).strip() or f"{cmd[0]} failed")
+    return r.stdout
+
+
+HELPER = "/usr/local/sbin/cz-radio"     # root-owned, allowed via sudoers
+
+
+SIM = bool(os.environ.get("CZ_SIM"))     # desktop simulator: never touch the PC's network
+
+
+def _as_root(mode: str) -> None:
+    """The app runs unprivileged; flipping radios goes through one tiny
+    root helper that accepts only 'vault' or 'online'."""
+    if SIM:
+        os.environ["CZ_FORCE_ONLINE"] = "1" if mode == "online" else "0"
+        return
+    if os.geteuid() == 0:
+        _apply(mode)
+    elif os.path.exists(HELPER):
+        _run("sudo", "-n", HELPER, mode)
+    else:
+        _apply(mode)   # dev machine: best effort, failures ignored
+
+
+def _apply(mode: str) -> None:
+    if mode == "vault":
+        _run("nmcli", "networking", "off", check=False)
+        _run("rfkill", "block", "wifi", check=False)
+        _run("rfkill", "block", "bluetooth", check=False)
+        _run("ip", "link", "set", ETH, "down", check=False)
+    else:
+        _run("rfkill", "unblock", "wifi", check=False)
+        _run("ip", "link", "set", ETH, "up", check=False)
+        _run("nmcli", "networking", "on", check=False)
+
+
+def vault_mode() -> None:
+    _as_root("vault")
+
+
+def online_mode() -> None:
+    _as_root("online")
+
+
+def wifi_scan() -> list[dict]:
+    """[{ssid, signal 0-100, secure}] strongest first, de-duplicated."""
+    if SIM:
+        return [{"ssid": "Simulated Wi-Fi", "signal": 88, "secure": True},
+                {"ssid": "Coffee Shop", "signal": 41, "secure": False}]
+    _run("nmcli", "device", "wifi", "rescan", check=False)
+    out = _run("nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+    nets: dict[str, dict] = {}
+    for line in out.splitlines():
+        parts = line.replace("\\:", "\x00").split(":")
+        if len(parts) < 3 or not parts[0]:
+            continue
+        ssid = parts[0].replace("\x00", ":")
+        sig = int(parts[1] or 0)
+        if ssid not in nets or nets[ssid]["signal"] < sig:
+            nets[ssid] = {"ssid": ssid, "signal": sig, "secure": parts[2] not in ("", "--")}
+    return sorted(nets.values(), key=lambda n: -n["signal"])
+
+
+def wifi_connect(ssid: str, password: str | None) -> None:
+    if SIM:
+        return
+    cmd = ["nmcli", "device", "wifi", "connect", ssid]
+    if password:
+        cmd += ["password", password]
+    _run(*cmd, timeout=45)
+
+
+def wifi_current() -> str | None:
+    if SIM:
+        return "Simulated Wi-Fi"
+    out = _run("nmcli", "-t", "-f", "ACTIVE,SSID", "device", "wifi", check=False)
+    for line in out.splitlines():
+        if line.startswith("yes:"):
+            return line[4:]
+    return None
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2 or sys.argv[1] not in ("vault", "online"):
+        sys.exit("usage: radios.py vault|online")
+    _apply(sys.argv[1])
