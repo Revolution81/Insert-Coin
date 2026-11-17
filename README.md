@@ -14,6 +14,7 @@
   <a href="SECURITY.md">Security model</a> ·
   <a href="docs/AUDIT.md">Security review</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="LICENSE">License</a> ·
   <a href="docs/HARDWARE_TEST.md">Hardware test plan</a>
 </p>
 
@@ -195,10 +196,15 @@ tests/                 python3 -m pytest tests
 
 ## License
 
-<!-- Choose a license before publishing (MIT, Apache-2.0 or GPL-3.0 are common for wallets) and add a LICENSE file. -->
-To be decided. Fonts are under the SIL Open Font License 1.1: Press Start 2P
-(CodeMan38), Silkscreen (Jason Kottke), Tiny5 (Gissio). SLIP39 uses Trezor's
-MIT-licensed `shamir-mnemonic`.
+**Source-available, not open source.** Anyone may read, audit, build and run
+Insert Coin, including paid security reviews, under the
+[PolyForm Strict License 1.0.0](LICENSE) plus the extra permissions at the top
+of that file. Publishing or distributing it, changed or not, needs written
+permission. Third-party libraries and fonts keep their own licenses: see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Found a security problem? Please report it privately: see
+[SECURITY.md](SECURITY.md#reporting).
 
 Insert Coin is an independent project, not affiliated with or endorsed by
 M5Stack. Cardputer Zero is a product of M5Stack. Bitcoin only.

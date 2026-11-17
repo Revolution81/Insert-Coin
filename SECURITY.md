@@ -260,8 +260,16 @@ and BIP84 test vectors.
 
 ## Reporting
 
-Until there's a public repository with a security contact, report issues
-privately to the maintainer of your build.
+Please report security problems **privately**, not in a public issue:
+
+- On GitHub: [report a vulnerability](https://github.com/Revolution81/Insert-Coin/security/advisories/new)
+  (Security tab → Report a vulnerability).
+
+Include the version (SETUP → ABOUT), what you did, and what happened. Expect
+an answer within a week. Once a fix is released, the finding is credited
+in the changelog and, if you like, a public advisory. Reviewing, testing and
+publishing findings is explicitly allowed by the license, paid work included
+(see LICENSE, Additional Permissions).
 
 ## Wipe PIN, login countdown, spending policy (0.8.20)
 
