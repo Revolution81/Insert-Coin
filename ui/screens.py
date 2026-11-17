@@ -149,7 +149,7 @@ def passphrase(value="satoshi nakamoto", pos=7, indicators=None, frame=0,
                  peek=True)
     t.text(d, (18, 80), f"{len(value)} CHARS  CASE + SPACES COUNT", TINY, "grey")
     t.text(d, (18, 94), "[TAB] " + ("SHOW" if masked else "HIDE"), TINY, "light")
-    hints = [("FN+DZXC", "MOVE"), ("OK", "DONE"), ("HOME", "CANCEL")]
+    hints = [("FN+FZXC", "MOVE"), ("OK", "DONE"), ("HOME", "CANCEL")]
     x = 10
     for key, label in hints:
         x = t.text(d, (x, 124), key, TINY, "gold") + 4

@@ -4,6 +4,12 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 ## 0.8.20: wipe PIN, login countdown, spending policy
 
+**Keyboard matched to a production Cardputer Zero.** The arrows are printed
+on **F**▲ Z◀ X▼ C▶, not D, so UP is now F (and fn+F in text fields). The
+sym layer now follows the real keycaps: Q~ W` E_ R- T+ Y= U[ I] O{ P}
+A; S: D' G" H< J> K\ L| V, B. N/ M?. The booklet's controls page shows the
+real layout, with the HOME button left of the screen and TAB on the right.
+
 All in SETUP › SECURITY, all set on the signer's gold screen with your PIN.
 
 **WIPE PIN.** A second PIN that, entered at unlock, erases everything (the

@@ -177,7 +177,7 @@ def main():
     held: set[str] = set()
     ctrl = False
     frame, last_blink = 0, time.monotonic()
-    help1 = "Enter=OK  Backspace=DEL  Esc  Tab  |  DZXC or arrows move  |  Left Alt=fn  Right Alt=sym"
+    help1 = "Enter=OK  Backspace=DEL  Esc  Tab  |  FZXC or arrows move  |  Left Alt=fn  Right Alt=sym"
     help2 = "Ctrl+V paste | F2 finger | F3 card | F12 screenshot | Vault/Online simulated: PC network untouched"
     shots = 0
     while True:

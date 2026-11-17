@@ -36,7 +36,7 @@ and send both, plus a photo of the screen if it's a display problem.
       both `czsigner.service` and `czwallet.service`.
 - [ ] Does **fn** send its own code, or does fn+F arrive as `KEY_UP`? (Both work;
       just note which.)
-- [ ] In the wallet: D▲ Z◀ X▼ C▶ move, OK selects, DEL goes back, HOME goes home,
+- [ ] In the wallet: F▲ Z◀ X▼ C▶ move, OK selects, DEL goes back, HOME goes home,
       shift gives capitals, fn+left/right moves the text cursor.
 - [ ] Holding a key repeats in text boxes, not in menus.
 - [ ] Symbols: there's no separate sym key. Find out what types the blue

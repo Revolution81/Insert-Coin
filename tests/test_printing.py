@@ -217,7 +217,7 @@ def test_print_screens_end_to_end(app, tmp_path, monkeypatch):  # noqa: F811
     def type_ip(a, text):
         ip, port = text.split(":")
         type_text(a, ip)
-        press(a, "KEY_RIGHTALT", "KEY_H")                     # sym + H types ':'
+        press(a, "KEY_RIGHTALT", "KEY_S")                     # sym + S types ':'
         type_text(a, port)
     import app as app_mod
     from ui.print_flow import print_menu

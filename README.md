@@ -106,7 +106,7 @@ python3 sim.py
 The real app in a window at 3x size. It runs on **signet** (mainnet is off,
 because a seed typed into a PC is hot) and simulates Vault/Online without
 touching your network settings. Keys follow the Cardputer layout: Enter = OK,
-Backspace = DEL, Esc = HOME, D Z X C or the arrow keys move. F12 saves a
+Backspace = DEL, Esc = HOME, F Z X C or the arrow keys move. F12 saves a
 screenshot. Data lives in `./simdata`; delete it to start over.
 
 On Windows, put paths with spaces in quotes: `cd "C:\Users\you\Insert Coin"`.
@@ -131,12 +131,12 @@ choose NETWORK on the welcome screen.
 
 ## Keys
 
-Menus: **D Z X C** move (the arrows printed on D▲ Z◀ X▼ C▶), **OK** select,
+Menus: **F Z X C** move (the arrows printed on F▲ Z◀ X▼ C▶), **OK** select,
 **DEL** back, the **HOME** button home.
 Home screen: **S** send, **R** receive, **H** history, **M** mode, **Q** scan
 anything, **T** tap a card, **W** wallets, **L** lock.
 Receive: **N** new address, **L** label, **V** verify on the signer, **M** sign a message.
-Typing: every key types, **fn + D Z X C** moves the cursor, **OK** done, **HOME** cancel.
+Typing: every key types, **fn + F Z X C** moves the cursor, **OK** done, **HOME** cancel.
 
 ## Develop
 

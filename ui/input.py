@@ -4,8 +4,8 @@ Keyboard input for Insert Coin (the Cardputer Zero's keyboard).
 Two modes, picked by the current screen (never toggled by hand):
 
 MENU (default)
-    D / Z / X / C   up / left / down / right   (no fn needed; the arrows
-                    printed on the Cardputer Zero's keys: D▲ Z◀ X▼ C▶)
+    F / Z / X / C   up / left / down / right   (no fn needed; the arrows
+                    printed on the Cardputer Zero's keys: F▲ Z◀ X▼ C▶)
     OK (Enter)      select
     DEL             back
     HOME button     home screen (ESC on a PC keyboard)
@@ -14,7 +14,7 @@ MENU (default)
 
 TEXT (passphrase, labels, Wi-Fi password)
     every key types; shift and sym give capitals and the printed symbols
-    fn + D/Z/X/C    move the text cursor
+    fn + F/Z/X/C    move the text cursor
     fn + K / N      cursor to start / end
     OK              submit, DEL backspace, ESC cancel
 
@@ -75,12 +75,12 @@ KEY_ESC = {"KEY_ESC", "KEY_HOMEPAGE"}
 KEY_TAB = {"KEY_TAB"}
 
 # Menu arrows: the inverted T printed on the keys.
-MENU_ARROWS = {"KEY_D": "UP", "KEY_Z": "LEFT", "KEY_X": "DOWN", "KEY_C": "RIGHT"}
-# If the kernel driver already turns fn+D into KEY_UP, accept that too.
+MENU_ARROWS = {"KEY_F": "UP", "KEY_Z": "LEFT", "KEY_X": "DOWN", "KEY_C": "RIGHT"}
+# If the kernel driver already turns fn+F into KEY_UP, accept that too.
 REAL_ARROWS = {"KEY_UP": "UP", "KEY_LEFT": "LEFT", "KEY_DOWN": "DOWN",
                "KEY_RIGHT": "RIGHT", "KEY_HOME": "START", "KEY_END": "END",
                "KEY_PAGEUP": "PAGE_UP", "KEY_PAGEDOWN": "PAGE_DOWN"}
-FN_LAYER = {"KEY_D": "UP", "KEY_Z": "LEFT", "KEY_X": "DOWN", "KEY_C": "RIGHT",
+FN_LAYER = {"KEY_F": "UP", "KEY_Z": "LEFT", "KEY_X": "DOWN", "KEY_C": "RIGHT",
             "KEY_K": "START", "KEY_N": "END", "KEY_L": "PAGE_UP", "KEY_M": "PAGE_DOWN"}
 
 LETTERS = {f"KEY_{c}": c.lower() for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
@@ -90,11 +90,13 @@ DIGITS = {f"KEY_{d}": d for d in "1234567890"}
 SYM_LAYER = {
     "KEY_1": "!", "KEY_2": "@", "KEY_3": "#", "KEY_4": "$", "KEY_5": "%",
     "KEY_6": "^", "KEY_7": "&", "KEY_8": "*", "KEY_9": "(", "KEY_0": ")",
-    "KEY_Q": "~", "KEY_W": "`", "KEY_E": "+", "KEY_R": "-", "KEY_T": "/",
-    "KEY_Y": "\\", "KEY_U": "{", "KEY_I": "}", "KEY_O": "[", "KEY_P": "]",
-    "KEY_F": "|", "KEY_G": "=", "KEY_H": ":", "KEY_J": ";", "KEY_K": "_", "KEY_L": "?",
-    "KEY_V": "<", "KEY_B": ">", "KEY_N": "'", "KEY_M": '"', "KEY_COMMA": ".",
-    # D, Z, X, C carry the arrows instead of symbols; A and S have none.
+    "KEY_Q": "~", "KEY_W": "`", "KEY_E": "_", "KEY_R": "-", "KEY_T": "+",
+    "KEY_Y": "=", "KEY_U": "[", "KEY_I": "]", "KEY_O": "{", "KEY_P": "}",
+    "KEY_A": ";", "KEY_S": ":", "KEY_D": "'", "KEY_G": '"', "KEY_H": "<",
+    "KEY_J": ">", "KEY_K": "\\", "KEY_L": "|",
+    "KEY_V": ",", "KEY_B": ".", "KEY_N": "/", "KEY_M": "?",
+    # F, Z, X, C carry the arrows instead of symbols. Read off a production
+    # Cardputer Zero (November 2026).
 }
 # Shift on a digit gives the same symbol as sym, like a normal keyboard.
 SHIFT_DIGITS = {k: SYM_LAYER[k] for k in DIGITS}

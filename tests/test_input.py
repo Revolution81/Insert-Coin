@@ -12,8 +12,8 @@ def tap(tr, name):
 
 def test_menu_arrows_need_no_fn():
     tr = Translator(Mode.MENU)
-    assert tap(tr, "KEY_D") == [Event(Kind.NAV, "UP")]
-    assert tap(tr, "KEY_F") == [Event(Kind.HOTKEY, "F")]           # F is just a letter now
+    assert tap(tr, "KEY_F") == [Event(Kind.NAV, "UP")]
+    assert tap(tr, "KEY_D") == [Event(Kind.HOTKEY, "D")]           # D is just a letter
     assert tap(tr, "KEY_Z") == [Event(Kind.NAV, "LEFT")]
     assert tap(tr, "KEY_X") == [Event(Kind.NAV, "DOWN")]
     assert tap(tr, "KEY_C") == [Event(Kind.NAV, "RIGHT")]
@@ -73,7 +73,7 @@ def test_double_tap_disarms():
 def test_sym_and_shift_digits():
     tr = Translator(Mode.TEXT)
     tap(tr, "KEY_RIGHTALT")  # sym
-    assert tap(tr, "KEY_K") == [Event(Kind.CHAR, "_")]       # as printed: K_
+    assert tap(tr, "KEY_E") == [Event(Kind.CHAR, "_")]       # as printed: E_
     tr.feed("KEY_LEFTSHIFT", 1)
     assert tap(tr, "KEY_2") == [Event(Kind.CHAR, "@")]
     tr.feed("KEY_LEFTSHIFT", 0)
@@ -105,15 +105,16 @@ def test_text_buffer_editing():
 
 
 def test_symbols_match_the_keycaps():
-    """Read off a Cardputer Zero: Q~ W` E+ R- T/ Y\\ U{ I} O[ P] F| G= H: J; K_ L?
-    V< B> N' M" and , gives . ; D Z X C carry the arrows."""
-    printed = {"Q": "~", "W": "`", "E": "+", "R": "-", "T": "/", "Y": "\\", "U": "{",
-               "I": "}", "O": "[", "P": "]", "F": "|", "G": "=", "H": ":", "J": ";",
-               "K": "_", "L": "?", "V": "<", "B": ">", "N": "'", "M": '"', "COMMA": "."}
+    """Read off a production Cardputer Zero: Q~ W` E_ R- T+ Y= U[ I] O{ P}
+    A; S: D' G" H< J> K\\ L| V, B. N/ M? ; F Z X C carry the arrows."""
+    printed = {"Q": "~", "W": "`", "E": "_", "R": "-", "T": "+", "Y": "=", "U": "[",
+               "I": "]", "O": "{", "P": "}", "A": ";", "S": ":", "D": "'", "G": '"',
+               "H": "<", "J": ">", "K": "\\", "L": "|", "V": ",", "B": ".", "N": "/",
+               "M": "?"}
     for key, sym in printed.items():
         tr = Translator(Mode.TEXT)
         tap(tr, "KEY_RIGHTALT")
         assert tap(tr, f"KEY_{key}") == [Event(Kind.CHAR, sym)], key
     tr = Translator(Mode.TEXT)
     tr.feed("KEY_FN", 1)
-    assert tap(tr, "KEY_D") == [Event(Kind.CURSOR, "UP")]
+    assert tap(tr, "KEY_F") == [Event(Kind.CURSOR, "UP")]
