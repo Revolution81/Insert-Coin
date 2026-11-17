@@ -27,7 +27,7 @@ def main():
         for p in evdev.list_devices():
             print(f"  {p}  {evdev.InputDevice(p).name}")
     kb = KeyboardDevice(sys.argv[1] if len(sys.argv) > 1 else None)
-    print(f"\nReading {kb.dev.path} ({kb.dev.name}). ESC x3 to quit.\n")
+    print(f"\nReading {kb.dev.path} ({kb.dev.name}). ESC x3 to quit.\n", flush=True)
     menu, text = Translator(Mode.MENU), Translator(Mode.TEXT)
     escapes = 0
     try:
@@ -36,7 +36,7 @@ def main():
                 state = {0: "up", 1: "down", 2: "repeat"}[value]
                 m, t = menu.feed(name, value), text.feed(name, value)
                 if value == 1:
-                    print(f"{name:<18} {state:<6}  menu: {m}   text: {t}")
+                    print(f"{name:<18} {state:<6}  menu: {m}   text: {t}", flush=True)
                     escapes = escapes + 1 if name == "KEY_ESC" else 0
     finally:
         kb.close()
