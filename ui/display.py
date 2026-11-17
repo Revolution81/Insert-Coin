@@ -28,6 +28,9 @@ def _find_fb() -> str | None:
             continue
         if {w, h} == {W, H}:
             return "/dev/" + os.path.basename(sysdir)
+    # The Cardputer Zero image names its panel /dev/fb_lcd
+    if os.path.exists("/dev/fb_lcd"):
+        return os.path.realpath("/dev/fb_lcd")
     return None
 
 

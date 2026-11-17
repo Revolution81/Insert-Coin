@@ -273,6 +273,9 @@ class KeyboardDevice:
 
     def _find(self) -> str:
         ev = self._evdev
+        # The Cardputer Zero's own udev rule names its keyboard
+        if os.path.exists("/dev/input/cardputer-zero-internal"):
+            return os.path.realpath("/dev/input/cardputer-zero-internal")
         for p in ev.list_devices():
             d = ev.InputDevice(p)
             name = d.name.lower()

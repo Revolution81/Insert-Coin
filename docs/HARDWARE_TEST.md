@@ -17,6 +17,12 @@ and send both, plus a photo of the screen if it's a display problem.
 
 ## 1. Install and boot
 
+Tested image: M5Stack's Debian 13 (trixie), aarch64, Python 3.13, 352 MB RAM.
+The installer turns off M5Stack's launcher (lightdm) so Insert Coin owns the
+screen; `sudo sh deploy/uninstall.sh` brings the launcher back (add
+`--purge` to also delete the wallet's data). After a reboot the wallet starts
+in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
+
 - [ ] `sudo sh deploy/install.sh` finishes without errors. Note how long the
       `evdev` and `argon2` installs take.
 - [ ] `sudo reboot`, then `systemctl status czsigner czwallet cznet czscan`:

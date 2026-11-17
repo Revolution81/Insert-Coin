@@ -12,7 +12,13 @@ echo "== packages"
 apt-get update
 # python3-evdev, picamera2 and the build tools come from apt (signed), not PyPI
 apt-get install -y python3-venv python3-pip python3-setuptools python3-wheel \
-    python3-evdev python3-spidev tor rfkill network-manager sudo python3-picamera2 libzbar0 alsa-utils
+    python3-evdev tor rfkill network-manager sudo alsa-utils
+# Names differ between Raspberry Pi OS and plain Debian 13 (trixie's 64-bit
+# time renames, e.g. libzbar0t64); these are needed only for add-ons.
+apt-get install -y libzbar0t64 2>/dev/null || apt-get install -y libzbar0 2>/dev/null \
+    || echo "!! zbar not installed: QR scanning won't work"
+apt-get install -y python3-picamera2 2>/dev/null || echo "!! picamera2 not installed: no camera"
+apt-get install -y python3-spidev 2>/dev/null || echo "!! spidev not installed: no NFC Cap"
 # SPI for the Cap CC1101 & NFC
 raspi-config nonint do_spi 0 2>/dev/null || true
 # Optional: native secp256k1 makes signing much faster than embit's pure-Python fallback
@@ -100,5 +106,16 @@ systemctl daemon-reload
 systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
+# The Cardputer Zero's own launcher runs in a desktop session started by
+# lightdm. Two programs can't share the screen and keyboard, so boot to
+# Insert Coin instead. deploy/uninstall.sh puts the launcher back.
+if systemctl list-unit-files lightdm.service >/dev/null 2>&1; then
+  systemctl get-default > /etc/czwallet/previous-target 2>/dev/null || true
+  systemctl disable lightdm 2>/dev/null || true
+  systemctl set-default multi-user.target
+fi
 
-echo "Done. Reboot, or: systemctl start czwallet-vault czsigner czwallet"
+echo "Done. Reboot to start Insert Coin: sudo reboot"
+echo "Note: it boots in Vault mode with Wi-Fi off, so SSH works only after you"
+echo "switch the wallet to Online mode. To go back to the M5Stack launcher:"
+echo "  sudo sh deploy/uninstall.sh"
