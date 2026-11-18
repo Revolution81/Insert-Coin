@@ -365,6 +365,12 @@ include them for that session.
 
 ## App mode
 
+App mode is the **spending edition**; the wallet image and `--dedicated`
+install are the **savings edition**. The title screen says SPENDING WALLET or
+SAVINGS WALLET, the launcher icon is *Insert Coin Spending*, the image file
+name has *Savings* in it, and in app mode the wallet shows a SPENDING WALLET
+notice before a seed is created or restored.
+
 `deploy/install.sh --app` runs Insert Coin from M5Stack's launcher instead of
 at boot. The wallet's own isolation is the same (separate users for the
 signer, app, network relay and scanner, the same sandboxes, the signer owns
@@ -382,6 +388,10 @@ not dedicated:
 - The panel keeps its usual `video` group so the launcher can draw; the
   signer joins that group instead of owning a private one.
 
-Use app mode for a spending wallet. Keep savings on a dedicated install or
-the image, or in a multisig where this device is one key.
+Use the spending edition for spending money only. Keep savings on the
+savings edition, or in a multisig where this device is one key.
+
+Things that lower the risk in app mode: install only apps you trust, change
+the default SSH password or turn SSH off, and exit the wallet when you're
+done (the seed is only in memory while it's open and unlocked).
 

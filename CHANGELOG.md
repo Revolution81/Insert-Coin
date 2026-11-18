@@ -2,6 +2,24 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.23: savings and spending editions
+
+Insert Coin now comes in two clearly labelled editions, so nobody puts
+savings on the wrong one.
+
+- **Savings edition**: the wallet image (now named
+  `Insert-Coin-Savings-<version>-cardputerzero.img.xz`) or
+  `deploy/install.sh --dedicated`. The device runs nothing else. The title
+  screen says SAVINGS WALLET in green.
+- **Spending edition**: app mode, `deploy/install.sh --app`. The launcher
+  icon is *Insert Coin Spending*, the title screen says SPENDING WALLET in
+  orange, the welcome screen says small amounts only, and an orange notice
+  explains why before a seed is created or restored. The installer prints the
+  same warning.
+- README, website, SECURITY.md and the image release notes explain the
+  difference side by side. The M5Stack Store version was dropped: the Store
+  doesn't allow apps that need root, and the wallet's isolation needs it.
+
 ## 0.8.22: merge coins, app mode, wallet image
 
 **Merge coins.** COINS › M merges the coins you picked with OK (or every coin

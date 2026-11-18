@@ -355,13 +355,15 @@ def _rounded(d, x0, y0, x1, y1, color, r):
 def window(d, box, title=None, border="light", fill=None):
     """Classic RPG menu window: dark outline, bright bevel, blue gradient.
 
-    border: "light" (normal), "gold" (selected), "red" (danger), "cyan".
+    border: "light" (normal), "gold" (selected), "red" (danger), "cyan",
+    "orange" (caution).
     """
     x0, y0, x1, y1 = box
     edge = {"light": (PAL["light"], PAL["grey"]),
             "gold": (PAL["gold"], PAL["gold_dk"]),
             "red": (PAL["red"], PAL["red_dk"]),
-            "cyan": (PAL["cyan"], PAL["cyan_dk"])}[border]
+            "cyan": (PAL["cyan"], PAL["cyan_dk"]),
+            "orange": (PAL["orange"], PAL["orange_dk"])}[border]
     _rounded(d, x0, y0, x1, y1, PAL["ink"], 3)
     _rounded(d, x0 + 1, y0 + 1, x1 - 1, y1 - 1, edge[0], 2)
     _rounded(d, x0 + 2, y0 + 2, x1 - 2, y1 - 2, edge[1], 1)

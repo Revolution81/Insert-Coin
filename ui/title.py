@@ -8,6 +8,7 @@ so each animation frame is just a copy plus the coin.
 """
 from __future__ import annotations
 
+import os
 import time
 
 from PIL import Image, ImageDraw
@@ -26,6 +27,20 @@ BANDS = [(255, 240, 160), t.PAL["gold"], t.PAL["gold"], t.PAL["orange"], t.PAL["
 SPIN = [32, 30, 24, 14, 4, 14, 24, 30, 32, 32, 32, 32, 32, 32, 32, 32]
 SPIN_S = 0.08                       # seconds per spin frame
 LINE2_Y = 58
+
+
+def edition() -> str:
+    """"spending" (app mode, from M5Stack's launcher), "savings" (the wallet
+    image or a dedicated install), or "" (simulator, development)."""
+    e = os.environ.get("CZ_EDITION", "").lower()
+    if e in ("spending", "savings"):
+        return e
+    return "spending" if os.environ.get("CZ_APP_MODE") == "1" else ""
+
+
+EDITION_LABEL = {"spending": ("SPENDING WALLET", "orange"),
+                 "savings": ("SAVINGS WALLET", "green"),
+                 "": ("BITCOIN ONLY", "dim")}
 
 
 def logo_text(img, xy, s):
@@ -101,7 +116,8 @@ def _layout():
         logo_text(img, (x, LINE2_Y), "C")
         logo_text(img, (x + cw + 34, LINE2_Y), "IN")
         t.text(d, (W // 2, 126), "RUNNING BITCOIN...", t.TINY, "grey", align="center")
-        t.text(d, (8, 158), "BITCOIN ONLY", t.TINY, "dim")
+        label, color = EDITION_LABEL[edition()]
+        t.text(d, (8, 158), label, t.TINY, color)
         t.text(d, (W - 8, 158), f"v{VERSION}", t.TINY, "dim", align="right")
         _cache.update(base=img, coin_x=x + cw + 2, coin_y=LINE2_Y - 2, coins=_coin_images())
     return _cache

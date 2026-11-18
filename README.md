@@ -113,10 +113,36 @@ On Windows, put paths with spaces in quotes: `cd "C:\Users\you\Insert Coin"`.
 
 ## Install on the Cardputer Zero
 
-Three ways, from most convenient to most locked-down:
+Insert Coin comes in two editions. **Pick by how much money it will hold.**
 
-**1. As an app in M5Stack's launcher.** Keeps the CardputerZero home screen;
-Insert Coin gets an icon there. Over SSH:
+| | **Savings edition** | **Spending edition** |
+|---|---|---|
+| What it is | A wallet image: the device boots into Insert Coin and runs nothing else | An app in M5Stack's launcher, next to your other apps |
+| For | Savings, real amounts | Spending money only, like cash in a pocket |
+| Other apps on the device | None | Anything you install from M5Stack's store, which could reach the wallet while it's open |
+| How it's labelled | **SAVINGS WALLET** on the title screen, *Savings* in the file name | **SPENDING WALLET** on the title screen, *Insert Coin Spending* in the launcher |
+
+The wallet inside is the same: the signer in its own locked-down process,
+Vault mode at every start, your PIN and spending rules. The difference is
+what else shares the device. [SECURITY.md](SECURITY.md#app-mode) has the
+details.
+
+### Savings edition
+
+**Wallet image (recommended).** Burn
+`Insert-Coin-Savings-<version>-cardputerzero.img.xz` from the releases page
+with M5 Imager or Raspberry Pi Imager (*Use custom*), after checking its
+SHA-256. It's M5Stack's CardputerZero OS with Insert Coin installed in
+dedicated mode by `tools/build_image.sh`, built in public by the *Build
+wallet image* workflow, so anyone can see what went in.
+
+**Or on the card you already have:** `sudo sh deploy/install.sh --dedicated`,
+then `sudo reboot`. `sudo sh deploy/uninstall.sh` brings the launcher back.
+
+### Spending edition
+
+Keeps the CardputerZero home screen; **Insert Coin Spending** gets an icon
+there. Over SSH:
 ```
 sudo apt-get install -y git
 git clone https://github.com/Revolution81/Insert-Coin.git
@@ -124,22 +150,7 @@ cd Insert-Coin && sudo sh deploy/install.sh --app
 ```
 Opening the icon starts the wallet in Vault mode; SETUP › EXIT TO MENU locks
 it, stops every wallet service and puts Wi-Fi back as it was.
-`sudo sh deploy/uninstall.sh` removes it.
-
-**2. Dedicated wallet on your current card.** The device boots straight into
-the wallet and runs nothing else: `sudo sh deploy/install.sh --dedicated`,
-then `sudo reboot`. `deploy/uninstall.sh` brings the launcher back.
-
-**3. Dedicated wallet image.** Burn `Insert-Coin-<version>-cardputerzero.img.xz`
-from the releases page with M5 Imager or Raspberry Pi Imager (*Use custom*),
-after checking its SHA-256. It's M5Stack's CardputerZero OS with Insert Coin
-installed in dedicated mode by `tools/build_image.sh`, built in public by the
-*Build wallet image* workflow, so anyone can see what went in.
-
-App mode trades some isolation for convenience: other apps you install from
-M5Stack's store run as the same user as the launcher, which can become root.
-Keep real savings on a dedicated install. [SECURITY.md](SECURITY.md#app-mode)
-has the details.
+`sudo sh deploy/uninstall.sh` removes it. Keep only spending money on it.
 
 The installer creates the service users, installs the code under
 `/opt/czwallet-releases/<version>` with a Python venv, the data folders, the
@@ -164,7 +175,7 @@ Typing: every key types, **fn + F Z X C** moves the cursor, **OK** done, **HOME*
 
 ```
 pip install -r requirements.txt pytest
-python3 -m pytest tests                     # 395 tests, offline
+python3 -m pytest tests                     # 419 tests, offline
 python3 tools/fuzz.py                       # junk input at every parser
 python3 tools/monkey.py 10 1500             # random key-mashing robot
 python3 tools/leakcheck.py                  # long-running memory loops
@@ -214,7 +225,8 @@ tests/                 python3 -m pytest tests
   limit the damage.
 - SD cards remap blocks, so wiping can't promise every old copy is gone.
   Treat a lost card as exposed to the offline attack above.
-- Keep real savings in Vault mode or in a multisig where this device is one key.
+- Keep real savings on the savings edition, in Vault mode, or in a multisig
+  where this device is one key. The spending edition is for spending money.
 
 ## License
 

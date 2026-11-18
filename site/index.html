@@ -133,6 +133,18 @@ p { margin: 0; }
 .win.gold > .tab { background: var(--gold); }
 .win.red { background: linear-gradient(to bottom, #6a1424, #2a0610); border-color: var(--red); }
 .win.red > .tab { background: var(--red); color: var(--ink); }
+.win.green { border-color: var(--green); }
+.win.green > .tab { background: var(--green); }
+.win.orange { border-color: var(--orange); }
+.win.orange > .tab { background: var(--orange); }
+.editions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; margin-bottom: 48px; }
+.edition { display: flex; flex-direction: column; gap: 12px; }
+.edition h3 { font-size: 13px; }
+.edition .for { font-family: var(--display); font-size: 9px; line-height: 1.8; }
+.edition.green .for { color: var(--green); }
+.edition.orange .for { color: var(--orange); }
+.edition ul { color: var(--muted); font-size: 15px; padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 760px) { .editions { grid-template-columns: minmax(0, 1fr); } }
 
 section { padding-block: 72px; }
 .section-head { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; max-width: 46em; }
@@ -346,7 +358,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
           <ul>
             <li>Insert Coin is brand new and hasn't been reviewed by outside security experts yet. Play with small amounts.</li>
             <li>Ten wrong PINs erase the wallet. Your seed words are the only way back, so write them on paper or metal.</li>
-            <li>In Online mode it's a hot wallet. Keep savings in Vault mode, or on a dedicated hardware wallet.</li>
+            <li>In Online mode it's a hot wallet. Keep savings on the savings edition in Vault mode, never on the spending app.</li>
           </ul>
         </div>
       </div>
@@ -460,6 +472,28 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
         <span class="eyebrow">Player 1, start</span>
         <h2>Get Insert Coin</h2>
       </div>
+      <div class="editions">
+        <div class="win green edition">
+          <span class="tab">SAVINGS EDITION</span>
+          <h3>The wallet image</h3>
+          <span class="for">FOR SAVINGS</span>
+          <ul>
+            <li>Burn it to a microSD card. The device boots into Insert Coin and runs nothing else.</li>
+            <li>No other apps on the device, so nothing else can get near your keys.</li>
+            <li>Says SAVINGS WALLET on the title screen.</li>
+          </ul>
+        </div>
+        <div class="win orange edition">
+          <span class="tab">SPENDING EDITION</span>
+          <h3>An app in M5Stack's launcher</h3>
+          <span class="for">FOR SPENDING MONEY ONLY</span>
+          <ul>
+            <li>Keeps the CardputerZero home screen and your other apps; open Insert Coin Spending when you need it.</li>
+            <li>Apps you install from M5Stack's store could reach the wallet while it's open. Treat it like cash in your pocket.</li>
+            <li>Says SPENDING WALLET on the title screen.</li>
+          </ul>
+        </div>
+      </div>
       <div class="steps">
         <div class="win step">
           <span class="tab">STAGE 1</span>
@@ -470,7 +504,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
         <div class="win step">
           <span class="tab">STAGE 2</span>
           <h3>Get the code</h3>
-          <p>Every line of code is public to read and audit, with the installer and the desktop simulator so you can try it on your PC first. Signed releases are coming soon.</p>
+          <p>Every line of code is public to read and audit. The releases page has the savings image; the README shows how to install the spending app. There is a desktop simulator so you can try it on your PC first.</p>
           <a class="btn" href="https://github.com/Revolution81/Insert-Coin" target="_blank" rel="noopener">GITHUB ↗</a>
         </div>
         <div class="win step">
@@ -486,7 +520,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
 
 <footer>
   <div class="wrap">
-    <span class="run">RUNNING BITCOIN... · v0.8.22</span>
+    <span class="run">RUNNING BITCOIN... · v0.8.23</span>
     <p>Insert Coin is an independent project and is not affiliated with or endorsed by M5Stack. Cardputer Zero is a product of M5Stack.</p>
     <p>All sounds and art are original. No tokens, no altcoins: Bitcoin only.</p>
     <p>Source available: free to use and audit under the <a href="https://github.com/Revolution81/Insert-Coin/blob/main/LICENSE">PolyForm Strict License</a>. Please don't republish it.</p>

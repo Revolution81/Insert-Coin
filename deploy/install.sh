@@ -1,10 +1,12 @@
 #!/bin/sh
 # Installs Insert Coin on the Cardputer Zero (M5Stack's image, Debian 13), as root.
 #
-#   sudo sh deploy/install.sh --app        an app in M5Stack's launcher (default
-#                                          when the launcher is there)
-#   sudo sh deploy/install.sh --dedicated  the device boots straight into the
-#                                          wallet and runs nothing else
+#   sudo sh deploy/install.sh --app        SPENDING edition: an app in M5Stack's
+#                                          launcher (default when the launcher
+#                                          is there). Small amounts only.
+#   sudo sh deploy/install.sh --dedicated  SAVINGS edition: the device boots
+#                                          straight into the wallet and runs
+#                                          nothing else
 #   ... --image                            building a disk image (in a chroot):
 #                                          skip steps that need a running system
 #
@@ -24,7 +26,14 @@ done
 if [ -z "$MODE" ]; then
   if [ -d /usr/share/APPLaunch ]; then MODE=app; else MODE=dedicated; fi
 fi
-echo "== Insert Coin: $MODE mode"
+if [ "$MODE" = app ]; then
+  echo "== Insert Coin, SPENDING edition (app in M5Stack's launcher)"
+  echo "   Other apps on this device could reach the wallet while it's open."
+  echo "   Keep only spending money on it. For savings, use the wallet image"
+  echo "   or: sudo sh deploy/install.sh --dedicated"
+else
+  echo "== Insert Coin, SAVINGS edition (dedicated: boots into the wallet only)"
+fi
 VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$SRC/core/version.py")"
 VENV=/opt/czwallet-venv
 RELEASE=/opt/czwallet-releases/$VERSION
@@ -140,7 +149,8 @@ getent group i2c >/dev/null && usermod -aG i2c czsigner
 echo "== services"
 install -m 644 "$SRC"/deploy/*.service /etc/systemd/system/
 mkdir -p /etc/systemd/system/czwallet.service.d
-rm -f /etc/systemd/system/czwallet.service.d/appmode.conf
+rm -f /etc/systemd/system/czwallet.service.d/appmode.conf \
+      /etc/systemd/system/czwallet.service.d/savings.conf
 systemctl daemon-reload || true
 
 if [ "$MODE" = app ]; then
@@ -162,12 +172,15 @@ if [ "$MODE" = app ]; then
   else
     echo "!! no UID 1000 user yet: run this again after the first-boot setup"
   fi
-  echo "Done. Insert Coin is now an app on the CardputerZero home screen."
+  echo "Done. Insert Coin Spending is now an app on the CardputerZero home screen."
+  echo "Spending money only: keep savings on the wallet image or a dedicated install."
   echo "To remove it: sudo sh deploy/uninstall.sh"
   exit 0
 fi
 
-# Dedicated: boot straight into the wallet
+# Dedicated (the savings edition): boot straight into the wallet
+install -m 644 "$SRC/deploy/czwallet-savings.conf" /etc/systemd/system/czwallet.service.d/savings.conf
+systemctl daemon-reload || true
 systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
@@ -182,7 +195,7 @@ systemctl disable lightdm 2>/dev/null || true
 systemctl set-default multi-user.target
 rm -f /usr/share/APPLaunch/applications/insert-coin.desktop /etc/sudoers.d/czwallet-app
 
-echo "Done. Reboot to start Insert Coin: sudo reboot"
+echo "Done. Reboot to start Insert Coin (savings edition): sudo reboot"
 echo "Note: it boots in Vault mode with Wi-Fi off, so SSH works only after you"
 echo "switch the wallet to Online mode. To go back to the M5Stack launcher:"
 echo "  sudo sh deploy/uninstall.sh"

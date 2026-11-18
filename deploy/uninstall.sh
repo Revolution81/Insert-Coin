@@ -23,7 +23,8 @@ echo "== app-mode pieces"
 rm -f /usr/share/APPLaunch/applications/insert-coin.desktop \
       /usr/share/APPLaunch/share/images/insert_coin_80.png \
       /usr/local/bin/insert-coin /usr/local/sbin/cz-session /etc/sudoers.d/czwallet-app \
-      /etc/systemd/system/czwallet.service.d/appmode.conf
+      /etc/systemd/system/czwallet.service.d/appmode.conf \
+      /etc/systemd/system/czwallet.service.d/savings.conf
 systemctl unmask APPLaunch.service 2>/dev/null || true
 systemctl --global unmask APPLaunch.service pipewire.socket pipewire.service \
     pipewire-pulse.socket pipewire-pulse.service wireplumber.service 2>/dev/null || true

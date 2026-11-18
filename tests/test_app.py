@@ -296,3 +296,37 @@ def test_no_exit_item_outside_app_mode(app):  # noqa: F811
     create_wallet(app)
     settings_screen(app)
     assert "EXIT TO MENU" not in [i[0] for i in app.visible.items]
+
+
+def test_spending_notice_before_a_seed(app, monkeypatch):  # noqa: F811
+    import ui.flow as flow
+    monkeypatch.setattr(flow, "APP_MODE", True)
+    app.replace(flow.welcome(app))
+    render_all(app)
+    assert "SPENDING WALLET" in app.visible.info[0]
+    enter(app)                                     # CREATE NEW WALLET
+    assert app.visible.title == "SPENDING WALLET"
+    render_all(app)
+    enter(app)
+    assert app.visible.title != "SPENDING WALLET"
+
+
+def test_no_spending_notice_outside_app_mode(app):  # noqa: F811
+    import ui.flow as flow
+    app.replace(flow.welcome(app))
+    enter(app)
+    assert app.visible.title != "SPENDING WALLET"
+
+
+def test_edition_label(monkeypatch):
+    from ui import title
+    for env, want in (({}, ""), ({"CZ_APP_MODE": "1"}, "spending"),
+                      ({"CZ_EDITION": "savings"}, "savings"),
+                      ({"CZ_EDITION": "Spending"}, "spending"),
+                      ({"CZ_EDITION": "junk"}, "")):
+        monkeypatch.delenv("CZ_APP_MODE", raising=False)
+        monkeypatch.delenv("CZ_EDITION", raising=False)
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+        assert title.edition() == want
+        assert title.EDITION_LABEL[want][0]

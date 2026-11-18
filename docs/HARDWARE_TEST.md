@@ -243,3 +243,12 @@ Wallet image:
 - [ ] First boot ends on the INSERT COIN title, not M5Stack's wizard or
       launcher. How long from power-on?
 - [ ] Sound, keys, camera, Wi-Fi join, Tor sync as in the sections above.
+
+## Editions (0.8.23)
+
+- [ ] Spending edition (`--app`): the launcher icon reads *Insert Coin
+      Spending*; the title says SPENDING WALLET (orange); the welcome screen
+      says small amounts; CREATE NEW WALLET shows the orange SPENDING WALLET
+      notice first, and OK carries on.
+- [ ] Savings edition (image or `--dedicated`): the title says SAVINGS WALLET
+      (green); no notice on the welcome screen.

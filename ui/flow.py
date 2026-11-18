@@ -46,12 +46,28 @@ def welcome(app):
     def items():
         net = app.settings.network.upper()
         return [
-            ("CREATE NEW WALLET", create_flow),
-            ("RESTORE FROM WORDS", restore_flow),
+            ("CREATE NEW WALLET", spending_notice(create_flow)),
+            ("RESTORE FROM WORDS", spending_notice(restore_flow)),
             ("NETWORK", None, net, "gold" if net == "BITCOIN" else "cyan", cycle_net),
         ] + ([("EXIT TO MENU", exit_to_menu, "", "grey")] if APP_MODE else [])
-    return MenuScreen("WELCOME", items,
-                      info=["Your keys. Your coins.", "Pick an option to begin."], back=False)
+    info = (["SPENDING WALLET: small amounts.", "Savings go on the wallet image."]
+            if APP_MODE else ["Your keys. Your coins.", "Pick an option to begin."])
+    return MenuScreen("WELCOME", items, info=info, back=False)
+
+
+SPENDING_LINES = [
+    "This is the spending edition, run from M5Stack's launcher.",
+    "Other apps on this device could reach it while it's open.",
+    "Keep only spending money here. For savings, use the Insert Coin wallet image.",
+]
+
+
+def spending_notice(then):
+    """App mode: say plainly what this edition is for before a seed goes in."""
+    if not APP_MODE:
+        return then
+    return lambda app: app.push(MessageScreen("SPENDING WALLET", SPENDING_LINES,
+                                              then=then, border="orange"))
 
 
 APP_MODE = os.environ.get("CZ_APP_MODE") == "1"    # started from M5Stack's launcher

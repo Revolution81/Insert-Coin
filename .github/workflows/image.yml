@@ -39,5 +39,5 @@ jobs:
           VERSION=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' core/version.py)
           TAG="image-v$VERSION-$(date -u +%Y%m%d%H%M)"
           gh release create "$TAG" out/*.img.xz out/*.sha256 --draft --prerelease \
-            --title "Insert Coin $VERSION wallet image (test build)" \
-            --notes "Burn with M5 Imager or Raspberry Pi Imager (Use custom). Boots straight into Insert Coin. Check the SHA-256 before burning. Built by this workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --title "Insert Coin $VERSION Savings edition: wallet image (test build)" \
+            --notes "SAVINGS EDITION. The device boots straight into Insert Coin and runs nothing else. For spending money there is also the Spending edition (an app in M5Stack's launcher, deploy/install.sh --app); keep savings here, not there. Burn with M5 Imager or Raspberry Pi Imager (Use custom). Check the SHA-256 before burning. Built by this workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -7,7 +7,7 @@
 # .github/workflows/image.yml) as root. It downloads M5Stack's image, checks
 # its SHA-256 if you give one, installs Insert Coin in dedicated mode inside
 # it (deploy/install.sh --dedicated --image), switches off M5Stack's launcher
-# and first-boot wizard, and writes out/Insert-Coin-<version>-cardputerzero.img.xz
+# and first-boot wizard, and writes out/Insert-Coin-Savings-<version>-cardputerzero.img.xz
 # plus its .sha256. Every step prints what it does, so the log shows exactly
 # what went into the image.
 set -eu
@@ -20,7 +20,7 @@ GROW="${GROW:-2G}"
 VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$SRC/core/version.py")"
 WORK="${WORK:-$SRC/work}"
 OUT="${OUT:-$SRC/out}"
-NAME="Insert-Coin-$VERSION-cardputerzero"
+NAME="Insert-Coin-Savings-$VERSION-cardputerzero"
 ROOT="$WORK/root"
 LOOP=""
 
@@ -96,7 +96,7 @@ rm -rf "$ROOT/opt/insert-coin-src" "$ROOT/usr/sbin/policy-rc.d" "$ROOT/var/lib/a
 rm -f "$ROOT/etc/resolv.conf"
 [ -e "$ROOT/etc/resolv.conf.orig" ] || [ -L "$ROOT/etc/resolv.conf.orig" ] && mv "$ROOT/etc/resolv.conf.orig" "$ROOT/etc/resolv.conf"
 {
-  echo "Insert Coin $VERSION, dedicated wallet image"
+  echo "Insert Coin $VERSION, savings edition (dedicated wallet image)"
   echo "base: $BASE_URL"
   echo "base sha256: $SHA"
   echo "source: $(cd "$SRC" && git rev-parse HEAD 2>/dev/null || echo unknown)"
