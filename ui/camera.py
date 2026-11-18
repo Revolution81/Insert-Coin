@@ -25,6 +25,9 @@ import time
 from PIL import Image, ImageOps
 
 FRAME = (640, 480)
+# The Cardputer Zero's camera is mounted upside down. CZ_CAMERA_ROTATE=0
+# turns the correction off (180 is the only other value used).
+ROTATE = int(os.environ.get("CZ_CAMERA_ROTATE", "180"))
 
 
 class CameraError(Exception):
@@ -39,8 +42,17 @@ class PiCamera:
             raise CameraError("camera software missing (python3-picamera2)") from e
         try:
             self.cam = Picamera2()
+            self.flip = ROTATE == 180
+            kw = {}
+            if self.flip:
+                try:                                   # flip in the camera itself: free
+                    from libcamera import Transform
+                    kw["transform"] = Transform(hflip=1, vflip=1)
+                    self.flip = False
+                except Exception:  # noqa: BLE001 - no libcamera bindings: flip each frame
+                    pass
             cfg = self.cam.create_preview_configuration(
-                main={"size": FRAME, "format": "YUV420"}, buffer_count=2)
+                main={"size": FRAME, "format": "YUV420"}, buffer_count=2, **kw)
             self.cam.configure(cfg)
             self.cam.start()
         except Exception as e:  # noqa: BLE001 - no camera, busy, etc.
@@ -48,7 +60,8 @@ class PiCamera:
 
     def grab(self) -> Image.Image:
         arr = self.cam.capture_array("main")          # YUV420: first H rows are Y
-        return Image.fromarray(arr[:FRAME[1], :FRAME[0]], "L")
+        img = Image.fromarray(arr[:FRAME[1], :FRAME[0]], "L")
+        return img.transpose(Image.Transpose.ROTATE_180) if self.flip else img
 
     def close(self):
         try:
