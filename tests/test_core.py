@@ -270,3 +270,38 @@ def test_fee_from_amount(rig):
     assert tx.vout[1].value == 60_000                     # change untouched
     with pytest.raises(WalletError, match="eat the whole"):
         wallet.build(DEST, 400, 50, fee_from_amount=True)
+
+
+def test_own_server_and_tor_skip_for_home_nodes(monkeypatch):
+    from core import wallet as wmod
+    from core.config import DEFAULT_SERVERS
+    from core.electrum import local_host
+    s = Settings(network="bitcoin")
+    assert not s.own_server
+    s.electrum_url = DEFAULT_SERVERS["bitcoin"]
+    assert not s.own_server                       # typing the default back in: still public
+    s.electrum_url = "tcp://umbrel.local:50001"
+    assert s.own_server
+    for h in ("umbrel.local", "192.168.1.20", "10.0.0.5", "127.0.0.1", "node.lan"):
+        assert local_host(h), h
+    for h in ("electrum.blockstream.info", "8.8.8.8", "abc.onion"):
+        assert not local_host(h), h
+    seen = {}
+
+    class Fake:
+        def __init__(self, url, socks5=None):
+            seen["socks5"] = socks5
+
+        def connect(self):
+            raise OSError("stop here")
+    monkeypatch.setattr(wmod, "ElectrumClient", Fake)
+    monkeypatch.delenv("CZ_NET_SOCK", raising=False)
+    w = WalletService.__new__(WalletService)
+    w.settings = Settings(network="bitcoin", electrum_url="tcp://umbrel.local:50001", use_tor=True)
+    with pytest.raises(WalletError):
+        w.connect()
+    assert seen["socks5"] is None                 # home node: straight there, not via Tor
+    w.settings.electrum_url = "ssl://electrum.blockstream.info:50002"
+    with pytest.raises(WalletError):
+        w.connect()
+    assert seen["socks5"] == w.settings.tor_proxy

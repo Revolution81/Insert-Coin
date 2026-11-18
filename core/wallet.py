@@ -28,7 +28,7 @@ from embit.script import Script, Witness, address_to_scriptpubkey, p2tr, p2wpkh
 from embit.transaction import Transaction, TransactionInput, TransactionOutput
 
 from .config import APP_DIR, NETWORKS, Settings
-from .electrum import ElectrumClient, ElectrumError, scripthash
+from .electrum import local_host, ElectrumClient, ElectrumError, scripthash
 
 DUST = 546
 RBF_SEQUENCE = 0xFFFFFFFD
@@ -215,6 +215,9 @@ class WalletService:
     # ------------------------------------------------------------ network
     def connect(self) -> None:
         proxy = self.settings.tor_proxy if self.settings.use_tor else None
+        host = self.settings.server.split("://")[-1].rsplit(":", 1)[0]
+        if proxy and local_host(host):
+            proxy = None            # your own node at home: Tor can't reach the LAN
         # On the device the app has no IP networking: everything goes through
         # the cznet relay (core/netd.py). Without CZ_NET_SOCK (simulator,
         # tests) it connects directly.

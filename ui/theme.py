@@ -442,7 +442,7 @@ def battery(d, xy, frac, charging=False):
 
 
 def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=False,
-               typing=None, icons=(), charging=False):
+               typing=None, icons=(), charging=False, own_server=False):
     """typing: None in menu mode, or the translator's indicators dict
     ({"shift": bool, "fn": bool, "sym": bool}) in text mode, which shows an
     ABC badge plus whichever modifiers are active."""
@@ -470,7 +470,8 @@ def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=Fal
         sprite(img, LOCK, (ix, 2), {"k": PAL["purple_dk"], "w": PAL["white"],
                                     "y": PAL["purple"]})
     else:
-        col = PAL["cyan"] if online else PAL["dim"]
+        # connected: green = your own server, blue = the public default
+        col = (PAL["green"] if own_server else PAL["cyan"]) if online else PAL["dim"]
         sprite(img, WIFI, (ix, 2), {"w": col})
         if not online:
             d.line((ix, 9, ix + 7, 2), fill=PAL["red"])

@@ -1092,7 +1092,7 @@ def settings_screen(app, at: str | None = None):
             return None
         app.push(TextInputScreen("ELECTRUM", "Server (empty = default):", ok, max_len=90,
                                  initial=app.settings.electrum_url, empty_ok=True,
-                                 info=lambda s: "ssl://host:50002 or tcp://...onion:50001"))
+                                 info=lambda s: "e.g. tcp://umbrel.local:50001"))
 
     def explorer(app):
         from core.history_export import DEFAULT_EXPLORER
@@ -1154,7 +1154,7 @@ def settings_screen(app, at: str | None = None):
             ("SPENDING POLICY", lambda app: _sec().policy_menu(app),
              "LOCKED" if st["policy"]["locked"] else "ON" if st["policy"]["active"] else "OFF",
              "red" if st["policy"]["locked"] else "green" if st["policy"]["active"] else "grey"),
-            ("SERVER", server, host, "grey"),
+            ("SERVER", server, host, "green" if s.own_server else "cyan"),
             ("TOR", None, "ON" if s.use_tor else "OFF", "green" if s.use_tor else "red", tor),
             ("WI-FI", lambda app: wifi_flow(app) if app.online else app.push(MessageScreen(
                 "VAULT MODE", ["Go Online first (MODE)."])),

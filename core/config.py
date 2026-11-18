@@ -62,6 +62,11 @@ class Settings:
     def server(self) -> str:
         return self.electrum_url or DEFAULT_SERVERS[self.network]
 
+    @property
+    def own_server(self) -> bool:
+        """A server you set yourself (your node), not the built-in public one."""
+        return bool(self.electrum_url) and self.electrum_url not in DEFAULT_SERVERS.values()
+
     @classmethod
     def load(cls) -> "Settings":
         path = os.path.join(APP_DIR, "settings.json")

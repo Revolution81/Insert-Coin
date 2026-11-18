@@ -48,6 +48,18 @@ def _socks5_connect(proxy: str, host: str, port: int, timeout: float) -> socket.
     return s
 
 
+def local_host(host: str) -> bool:
+    """On your own network (umbrel.local, 192.168.x.x): Tor can't reach it,
+    and doesn't need to."""
+    if host.endswith((".local", ".lan")) or host == "localhost":
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return False
+
+
 def _private_host(host: str) -> bool:
     if host.endswith((".onion", ".local", ".lan")) or host == "localhost":
         return True

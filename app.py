@@ -539,6 +539,7 @@ class App:
         t.status_bar(img, d, mode="ONLINE" if self.online else "VAULT",
                      battery_frac=level, charging=charging, clock=time.strftime("%H:%M"),
                      online=bool(self.wallet and self.wallet.connected), typing=typing,
+                     own_server=self.settings.own_server,
                      icons=status_icons(self))
 
     def feed(self, name: str, value: int):
