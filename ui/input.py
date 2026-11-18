@@ -315,7 +315,15 @@ class KeyboardDevice:
         import evdev  # pip install evdev (on the device)
         self._evdev = evdev
         self.dev = evdev.InputDevice(path or os.environ.get("CZ_KBD") or self._find())
-        self.dev.grab()
+        try:
+            self.dev.grab()
+        except OSError as e:
+            if e.errno == 16:
+                raise SystemExit(
+                    "The keyboard is in use by another program: another Insert Coin "
+                    "still running (pkill -f app.py), or M5Stack's launcher "
+                    "(systemctl --user stop APPLaunch).") from None
+            raise
         # The Cardputer Zero's driver sends sym combos as their own codes
         self.symbols = load_driver_symbols() if "tca8418" in self.dev.name.lower() else {}
 
