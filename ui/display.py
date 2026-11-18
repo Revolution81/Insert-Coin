@@ -11,7 +11,7 @@ from __future__ import annotations
 import glob
 import os
 
-from PIL import Image
+from PIL import Image, ImageChops
 
 from .theme import W, H
 
@@ -32,6 +32,25 @@ def _find_fb() -> str | None:
     if os.path.exists("/dev/fb_lcd"):
         return os.path.realpath("/dev/fb_lcd")
     return None
+
+
+_HI_R = [v & 0xF8 for v in range(256)]          # rrrrr000
+_HI_G = [v >> 5 for v in range(256)]            # 00000ggg
+_LO_G = [(v & 0x1C) << 3 for v in range(256)]   # ggg00000
+_LO_B = [v >> 3 for v in range(256)]            # 000bbbbb
+
+
+def rgb565(img: Image.Image, swap: bool = False) -> bytes:
+    """Little-endian RGB565, the panel's format. Built from Pillow's own
+    per-channel lookups (fast, no numpy): Pillow 12 removed the "BGR;16"
+    raw packer this used to use. swap=True puts blue in the top bits for
+    panels wired BGR (CZ_FB_BGR=1)."""
+    r, g, b = img.convert("RGB").split()
+    if swap:
+        r, b = b, r
+    hi = ImageChops.add(r.point(_HI_R), g.point(_HI_G))
+    lo = ImageChops.add(g.point(_LO_G), b.point(_LO_B))
+    return Image.merge("LA", (lo, hi)).tobytes()
 
 
 class Display:
@@ -55,7 +74,7 @@ class Display:
         if self.rotate:
             img = img.transpose(Image.Transpose.ROTATE_90)
         if self.bpp == 16:
-            data = img.convert("RGB").tobytes("raw", "BGR;16")  # RGB565 LE
+            data = rgb565(img, swap=os.environ.get("CZ_FB_BGR") == "1")
         else:
             data = img.convert("RGBA").tobytes("raw", "BGRA")
         with open(self.fb, "wb") as f:
