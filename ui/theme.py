@@ -417,20 +417,32 @@ def bar(d, box, frac, color="green", segments=True):
                 d.line((sx, y0 + 2, sx, y1 - 2), fill=dark)
 
 
-def battery(d, xy, frac):
+# A lightning bolt drawn over the battery while it's charging
+BOLT = [(9, 0), (10, 0), (8, 1), (9, 1), (7, 2), (8, 2), (9, 2), (10, 2), (11, 2),
+        (8, 3), (9, 3), (7, 4), (8, 4), (6, 5), (7, 5), (6, 6)]
+
+
+def battery(d, xy, frac, charging=False):
     x, y = xy
     d.rectangle((x, y, x + 15, y + 6), fill=PAL["ink"])
     d.rectangle((x + 1, y + 1, x + 14, y + 5), fill=PAL["light"])
     d.rectangle((x + 2, y + 2, x + 13, y + 4), fill=PAL["ink"])
     d.rectangle((x + 16, y + 2, x + 17, y + 4), fill=PAL["light"])
-    color = PAL["green"] if frac > 0.3 else PAL["red"]
+    color = PAL["green"] if frac > 0.3 or charging else PAL["red"]
     for s in range(4):
         if frac > s / 4 + 0.05:
             d.rectangle((x + 2 + s * 3, y + 2, x + 3 + s * 3, y + 4), fill=color)
+    if charging:
+        for bx, by in BOLT:                     # ink outline, then the gold bolt
+            for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                if (bx + ox, by + oy) not in BOLT:
+                    d.point((x + bx + ox, y + by + oy), fill=PAL["ink"])
+        for bx, by in BOLT:
+            d.point((x + bx, y + by), fill=PAL["gold"])
 
 
 def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=False,
-               typing=None, icons=()):
+               typing=None, icons=(), charging=False):
     """typing: None in menu mode, or the translator's indicators dict
     ({"shift": bool, "fn": bool, "sym": bool}) in text mode, which shows an
     ABC badge plus whichever modifiers are active."""
@@ -464,7 +476,7 @@ def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=Fal
             d.line((ix, 9, ix + 7, 2), fill=PAL["red"])
     clock_x = W - 26
     text(d, (clock_x, 3), clock, TINY, "grey", shadow=False, align="right")
-    battery(d, (W - 21, 2), battery_frac)
+    battery(d, (W - 21, 2), battery_frac, charging)
     # add-on icons (secure chip, fingerprint) left of the clock
     x = clock_x - TINY.width(clock) - 12
     for rows, color in icons:

@@ -867,6 +867,14 @@ def go_online(app):
     app.push(ConfirmScreen("GO ONLINE?", lines, yes))
 
 
+def _wifi_value(app) -> tuple[str, str]:
+    """What SETUP › NETWORK shows next to WI-FI."""
+    if not app.online:
+        return ("OFF", "grey")
+    name = app.wifi_name() if hasattr(app, "wifi_name") else None
+    return ((name[:14], "cyan") if name else ("NOT JOINED", "grey"))
+
+
 def wifi_flow(app):
     from core import radios
 
@@ -890,7 +898,8 @@ def wifi_flow(app):
 
     def join(app, ssid, pw):
         app.job("CONNECTING...", lambda: radios.wifi_connect(ssid, pw),
-                lambda app, _: (app.pop(), app.start_sync(),
+                lambda app, _: (getattr(app, "wifi_joined", lambda s: None)(ssid),
+                                app.pop(), app.start_sync(),
                                 app.push(MessageScreen("CONNECTED", [f"Joined {ssid}."]))))
 
     app.job("SCANNING...", radios.wifi_scan, show)
@@ -1075,7 +1084,8 @@ def settings_screen(app, at: str | None = None):
             ("SERVER", server, host, "grey"),
             ("TOR", None, "ON" if s.use_tor else "OFF", "green" if s.use_tor else "red", tor),
             ("WI-FI", lambda app: wifi_flow(app) if app.online else app.push(MessageScreen(
-                "VAULT MODE", ["Go Online first (MODE)."]))),
+                "VAULT MODE", ["Go Online first (MODE)."])),
+             *_wifi_value(app)),
             ("SHOW SEED WORDS", ask("words_prompt")),
             ("SEEDQR BACKUP", ask("seedqr_prompt")),
             ("SPLIT BACKUP", split_backup),

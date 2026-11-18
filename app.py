@@ -22,6 +22,7 @@ import traceback
 
 from core import radios
 from core.config import APP_DIR, Settings
+from core import power
 from core.signer import network_is_up
 from core.signer_service import RemoteError, SignerClient
 from core.wallet import SignedTx, WalletService
@@ -410,6 +411,26 @@ class App:
     def network_link(self) -> bool:
         return network_is_up()
 
+    def wifi_name(self) -> str | None:
+        """The Wi-Fi network joined, for SETUP › NETWORK. Read in the
+        background at most every 10 s (nmcli is slow on the CM0)."""
+        now = time.monotonic()
+        if not getattr(self, "_wifi_busy", False) and now - getattr(self, "_wifi_at", -99) > 10:
+            self._wifi_busy, self._wifi_at = True, now
+
+            def read():
+                try:
+                    self._wifi_ssid = radios.wifi_current()
+                except Exception:  # noqa: BLE001
+                    self._wifi_ssid = None
+                finally:
+                    self._wifi_busy = False
+            threading.Thread(target=read, daemon=True).start()
+        return getattr(self, "_wifi_ssid", None) if self.online else None
+
+    def wifi_joined(self, ssid: str | None) -> None:
+        self._wifi_ssid, self._wifi_at = ssid, time.monotonic()
+
     def go_online(self):
         radios.online_mode()
         for _ in range(20):           # give DHCP a moment
@@ -514,8 +535,9 @@ class App:
     def status_bar(self, img, d, screen):
         from ui.hardware_flow import status_icons
         typing = self.tr.indicators if screen.mode is Mode.TEXT else None
+        level, charging = power.battery()
         t.status_bar(img, d, mode="ONLINE" if self.online else "VAULT",
-                     battery_frac=battery_level(), clock=time.strftime("%H:%M"),
+                     battery_frac=level, charging=charging, clock=time.strftime("%H:%M"),
                      online=bool(self.wallet and self.wallet.connected), typing=typing,
                      icons=status_icons(self))
 
@@ -616,13 +638,7 @@ class App:
 
 
 def battery_level() -> float:
-    for p in glob.glob("/sys/class/power_supply/*/capacity"):
-        try:
-            with open(p) as f:
-                return int(f.read()) / 100
-        except (OSError, ValueError):
-            pass
-    return 1.0
+    return power.battery()[0]
 
 
 class LocalScreen:
@@ -645,6 +661,14 @@ class LocalScreen:
 
 
 def run(png: bool = False):
+    # Every start is in Vault mode, radios off, until you choose Online.
+    # (Installed, czwallet-vault.service also does this at boot.) CZ_KEEP_RADIOS=1
+    # skips it, for development over SSH.
+    if os.environ.get("CZ_KEEP_RADIOS") != "1":
+        try:
+            radios.vault_mode()
+        except Exception:  # noqa: BLE001 - no permission in a dev checkout: carry on
+            pass
     app = App()
     if app.console is not None:
         screen = LocalScreen()

@@ -189,7 +189,9 @@ class Console:
 
     def status_bar(self, img, d, screen):
         typing = self.tr.indicators if screen.mode is Mode.TEXT else None
-        t.status_bar(img, d, mode="SIGNER", battery_frac=battery_level(),
+        from core import power
+        level, charging = power.battery()
+        t.status_bar(img, d, mode="SIGNER", battery_frac=level, charging=charging,
                      clock=time.strftime("%H:%M"), typing=typing)
 
     def post(self, fn):
