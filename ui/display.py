@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import glob
 import os
+import time
 
 from PIL import Image, ImageChops
 
@@ -71,6 +72,79 @@ def backlight_on(path: str = BACKLIGHT) -> bool:
         return True
     except (OSError, ValueError):
         return False
+
+
+def _bl_read(name: str, path: str = BACKLIGHT) -> int | None:
+    try:
+        with open(os.path.join(path, name)) as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _bl_write(value: int, path: str = BACKLIGHT) -> bool:
+    try:
+        with open(os.path.join(path, "brightness"), "w") as f:
+            f.write(str(value))
+        return True
+    except OSError:
+        return False
+
+
+class ScreenSleep:
+    """SETUP > SCREEN SLEEP: backlight off after `seconds()` with no key
+    pressed; the next key only wakes the screen (it isn't passed on, so a
+    stray press can't choose anything you couldn't see)."""
+
+    def __init__(self, seconds_fn, path: str = BACKLIGHT, clock=time.monotonic):
+        self.seconds_fn, self.path, self.clock = seconds_fn, path, clock
+        self.last = clock()
+        self.asleep = False
+        self._swallow: set[str] = set()
+        self._secs, self._read_at = 120, -99.0
+        self._level: int | None = None
+
+    def seconds(self) -> int:
+        now = self.clock()
+        if now - self._read_at > 5:                 # a file read: not every frame
+            self._read_at = now
+            try:
+                self._secs = int(self.seconds_fn())
+            except Exception:  # noqa: BLE001
+                pass
+        return self._secs
+
+    def keep(self, name: str, value: int) -> bool:
+        """Feed every key event; False means drop it (it woke the screen)."""
+        if name in self._swallow:
+            if value == 0:
+                self._swallow.discard(name)
+            return False
+        self.last = self.clock()
+        if self.asleep and value == 1:
+            self.wake()
+            self._swallow.add(name)
+            return False
+        return True
+
+    def tick(self) -> bool:
+        """Call each loop; True while asleep (skip drawing then)."""
+        secs = self.seconds()
+        if not self.asleep and secs and self.clock() - self.last > secs:
+            self.sleep()
+        return self.asleep
+
+    def sleep(self) -> None:
+        cur = _bl_read("brightness", self.path)
+        self._level = cur if cur else None
+        _bl_write(0, self.path)
+        self.asleep = True
+
+    def wake(self) -> None:
+        level = self._level or _bl_read("max_brightness", self.path) or 100
+        _bl_write(level, self.path)
+        self.asleep = False
+        self.last = self.clock()
 
 
 class Display:

@@ -916,6 +916,55 @@ def lock_label(seconds: int) -> str:
     return f"{m} MIN" if m < 120 else f"{m // 60} H" if m % 60 == 0 else f"{m} MIN"
 
 
+SLEEP_CHOICES = [("2 MIN", 120), ("5 MIN", 300), ("10 MIN", 600), ("15 MIN", 900)]
+
+
+def sleep_label(seconds: int) -> str:
+    return "NEVER" if not seconds else lock_label(seconds)
+
+
+def screen_sleep_menu(app):
+    """SETUP > DISPLAY & SOUND > SCREEN SLEEP: backlight off after this long
+    with no key pressed. The next key only wakes it. No PIN: it's a light."""
+    def apply(seconds):
+        def go(app):
+            try:
+                app.signer.set_screen_sleep(seconds=seconds)
+            except Exception as e:  # noqa: BLE001
+                app.push(MessageScreen("SCREEN SLEEP", [str(e)[:120]], border="red"))
+                return
+            del app.stack[app.stack.index(menu):]
+            app._shown()
+            app.push(MessageScreen("SCREEN SLEEP", [f"Screen sleep: {sleep_label(seconds)}."] + (
+                ["The screen stays on."] if not seconds else
+                ["The screen goes dark after", "that long with no key pressed.",
+                 "Press any key to wake it."])))
+        return go
+
+    def custom(app):
+        def ok(app, text):
+            if not text.isdigit() or not 1 <= int(text) <= 1440:
+                return "Type minutes: 1 to 1440"
+            app.pop()
+            apply(int(text) * 60)(app)
+            return None
+        app.push(TextInputScreen("CUSTOM", "Sleep after how many minutes?", ok,
+                                 allowed="0123456789", max_len=4))
+
+    cur = app.signer.status().get("screen_sleep", 120)
+
+    def mark(sec):
+        return "NOW" if sec == cur else ""
+    items = [(label, apply(sec), mark(sec), "cyan") for label, sec in SLEEP_CHOICES]
+    is_custom = cur and cur not in [v for _, v in SLEEP_CHOICES]
+    items.append(("CUSTOM", custom, sleep_label(cur) if is_custom else "", "cyan"))
+    items.append(("NEVER", apply(0), mark(0), "grey"))
+    menu = MenuScreen("SCREEN SLEEP", items, info=[
+        "Turn the screen off after this", "long with no key pressed.",
+        "Any key wakes it."])
+    app.push(menu)
+
+
 def auto_lock_menu(app):
     """SETUP > AUTO LOCK: how long without a key press before the wallet
     locks and the signer forgets the seed. Shorter applies straight away;
@@ -976,7 +1025,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
-    ("DISPLAY & SOUND", ["APPEARANCE", "SOUND", "QR FORMAT"]),
+    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
 
@@ -1102,6 +1151,8 @@ def settings_screen(app, at: str | None = None):
             ("EXPORT WATCH-ONLY", export_watch_only),
             ("QR FORMAT", None, s.qr_format.upper(), "cyan", qr_format),
             ("APPEARANCE", appearance, "", "grey"),
+            ("SCREEN SLEEP", screen_sleep_menu, sleep_label(st.get("screen_sleep", 120)),
+             "cyan" if st.get("screen_sleep", 120) else "grey"),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
             ("PAPER WALLETS", paper_wallets),
             ("SHARE FILES", share_files, "WI-FI", "grey"),

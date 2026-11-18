@@ -29,7 +29,7 @@ from .vault import _atomic_write
 SAFE = {"status", "public_info", "account_info", "account_rules", "backup_tag", "make_backup",
         "lock", "describe", "list_multisig",
         "check_multisig", "remove_multisig", "chip_status", "touch", "shorten_auto_lock",
-        "policy_info"}
+        "policy_info", "set_screen_sleep"}
 
 PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "shares_prompt", "sign_prompt", "words_prompt", "seedqr_prompt", "split_prompt",

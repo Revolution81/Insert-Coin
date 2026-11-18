@@ -141,6 +141,7 @@ class Signer:
             st["wipe_pin"] = self._wipe_set
         st["quick_hours"] = self._quick_hours()
         st["lock_after"] = self.lock_after()
+        st["screen_sleep"] = self.screen_sleep()
         st["countdown_s"] = self.countdown_s()
         st["policy"] = spolicy.public(spolicy.load(self.policy_path))
         return st
@@ -987,6 +988,30 @@ class Signer:
     def _save_lock_after(self, seconds: int) -> int:
         _atomic_write(os.path.join(self.dir, "autolock.json"),
                       json.dumps({"seconds": seconds}).encode())
+        return seconds
+
+    # SETUP > SCREEN SLEEP: the backlight goes off after this long with no
+    # key pressed. Kept by the signer because it owns the screen; it's only
+    # a light, so changing it needs no PIN.
+    SLEEP_MIN_S, SLEEP_MAX_S, SLEEP_DEFAULT_S = 60, 24 * 3600, 120
+
+    def screen_sleep(self) -> int:
+        try:
+            with open(os.path.join(self.dir, "screen.json")) as f:
+                v = int(json.load(f)["sleep"])
+            if v == 0 or self.SLEEP_MIN_S <= v <= self.SLEEP_MAX_S:
+                return v
+        except (FileNotFoundError, ValueError, KeyError, TypeError):
+            pass
+        return self.SLEEP_DEFAULT_S
+
+    def set_screen_sleep(self, seconds: int) -> int:
+        if isinstance(seconds, bool) or not isinstance(seconds, int) or \
+                not (seconds == 0 or self.SLEEP_MIN_S <= seconds <= self.SLEEP_MAX_S):
+            raise SignerError("screen sleep must be 1 minute to 24 hours, or never")
+        os.makedirs(self.dir, mode=0o700, exist_ok=True)
+        _atomic_write(os.path.join(self.dir, "screen.json"),
+                      json.dumps({"sleep": seconds}).encode())
         return seconds
 
     def set_auto_lock(self, pin: str, seconds: int) -> int:

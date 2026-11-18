@@ -645,16 +645,20 @@ class LocalScreen:
     """Display and keyboard opened by this process: only for development
     with an in-process signer (CZ_SIGNER_INPROC=1)."""
 
-    def __init__(self):
-        from ui.display import Display
+    def __init__(self, sleep_fn=lambda: 120):
+        from ui.display import Display, ScreenSleep
         from ui.input import KeyboardDevice
         self.disp, self.kb = Display("frame.png"), KeyboardDevice()
+        self.sleeper = ScreenSleep(sleep_fn)
 
     def show(self, img):
-        self.disp.show(img)
+        if not self.sleeper.asleep:
+            self.disp.show(img)
 
     def poll(self, timeout):
-        return [("key", n, v) for n, v in self.kb.poll(timeout)]
+        keys = [("key", n, v) for n, v in self.kb.poll(timeout) if self.sleeper.keep(n, v)]
+        self.sleeper.tick()
+        return keys
 
     def close(self):
         self.kb.close()
@@ -671,7 +675,7 @@ def run(png: bool = False):
             pass
     app = App()
     if app.console is not None:
-        screen = LocalScreen()
+        screen = LocalScreen(app.signer.local.screen_sleep)
     else:
         from core.screen_link import ScreenClient
         screen = ScreenClient()
@@ -689,6 +693,11 @@ def run(png: bool = False):
                     secure = m[1]
                     app.tr.reset()
             changed = bool(app.safely(app.pump)) or bool(msgs)
+            sleeper = getattr(screen, "sleeper", None)
+            if sleeper is not None:
+                if getattr(screen, "_dark", False) and not sleeper.asleep:
+                    changed = True                    # just woke: draw at once
+                screen._dark = sleeper.asleep
             app.safely(app.check_idle)
             now = time.monotonic()
             if now - last_blink >= 0.5:

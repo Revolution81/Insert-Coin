@@ -117,21 +117,28 @@ def run_screen(console, allowed_uid: int | None = None):
     from .screen_link import ScreenServer
     link = ScreenServer(allowed_uid=allowed_uid).start()
     console.listeners.append(link.send_mode)
+    from ui.display import ScreenSleep
     disp, kb = Display("frame.png"), KeyboardDevice()
+    sleeper = ScreenSleep(console.signer.screen_sleep)
+    dark = False
     frame, last_blink = 0, time.monotonic()
     disp.show(console.compose(None, frame))
     while True:
-        keys = kb.poll(0.03)
+        keys = [(n, v) for n, v in kb.poll(0.03) if sleeper.keep(n, v)]
         for name, value in keys:
             if not console.feed(name, value):
                 link.send_key(name, value)
         changed = console.pump() or bool(keys) or link.take_fresh()
+        was_dark = dark
+        dark = sleeper.tick()
+        if dark:
+            continue                                  # dark: don't spend power drawing
         now = time.monotonic()
         if now - last_blink >= 0.5:
             frame ^= 1
             last_blink = now
             changed = changed or console.active
-        if changed or console.animated:
+        if changed or console.animated or was_dark:
             disp.show(console.compose(link.frame(), frame))
 
 
