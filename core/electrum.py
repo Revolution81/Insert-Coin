@@ -28,7 +28,10 @@ def scripthash(script_pubkey: bytes) -> str:
 
 def _socks5_connect(proxy: str, host: str, port: int, timeout: float) -> socket.socket:
     phost, pport = proxy.rsplit(":", 1)
-    s = socket.create_connection((phost, int(pport)), timeout=timeout)
+    try:
+        s = socket.create_connection((phost, int(pport)), timeout=timeout)
+    except OSError:
+        raise ElectrumError("Tor isn't running: start it, or turn TOR off in SETUP")
     s.sendall(b"\x05\x01\x00")                       # SOCKS5, no auth
     if s.recv(2) != b"\x05\x00":
         s.close()
