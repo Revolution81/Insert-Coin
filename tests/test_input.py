@@ -118,3 +118,18 @@ def test_symbols_match_the_keycaps():
     tr = Translator(Mode.TEXT)
     tr.feed("KEY_FN", 1)
     assert tap(tr, "KEY_F") == [Event(Kind.CURSOR, "UP")]
+
+
+def test_cardputer_driver_sym_codes(tmp_path):
+    """On the device, sym + S arrives as code 80 and the reader names it
+    CHR:: (M5Stack's driver does the sym layer itself)."""
+    from ui.input import CHR, DRIVER_SYMBOLS, load_driver_symbols
+    assert DRIVER_SYMBOLS[80] == ":" and DRIVER_SYMBOLS[92] == "/"
+    tr = Translator(Mode.TEXT)
+    assert tap(tr, CHR + ":") == [Event(Kind.CHAR, ":")]
+    assert tap(Translator(Mode.MENU), CHR + ":") == []          # nothing in menus
+    assert tap(tr, "KEY_CD") == [] and tap(tr, "KEY_DVD") == []  # sym and fn alone
+    f = tmp_path / "k.map"
+    f.write_text("# test\nkeycode 80 = colon\nkeycode 92 = slash  # /\nkeycode 7 = bogus\n")
+    assert load_driver_symbols(str(f)) == {80: ":", 92: "/"}
+    assert load_driver_symbols(str(tmp_path / "missing")) == DRIVER_SYMBOLS

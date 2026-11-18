@@ -66,7 +66,7 @@ def _key(role: str, default: str) -> str:
 
 KEY_SHIFT = {_key("SHIFT", "KEY_LEFTSHIFT"), "KEY_RIGHTSHIFT"}
 KEY_FN = {_key("FN", "KEY_FN")}
-KEY_SYM = {_key("SYM", "KEY_RIGHTALT")}   # unconfirmed: check with keytest
+KEY_SYM = {_key("SYM", "KEY_RIGHTALT")}   # simulator; on the device the driver does sym (see DRIVER_SYMBOLS)
 KEY_CTRL = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL"}
 KEY_ALT = {"KEY_LEFTALT"}
 KEY_OK = {"KEY_ENTER", "KEY_KPENTER", "KEY_OK"}
@@ -105,6 +105,50 @@ PUNCT = {"KEY_SPACE": " ", "KEY_COMMA": ",", "KEY_DOT": ".", "KEY_SLASH": "/",
          "KEY_MINUS": "-", "KEY_EQUAL": "=", "KEY_SEMICOLON": ";",
          "KEY_APOSTROPHE": "'", "KEY_LEFTBRACE": "[", "KEY_RIGHTBRACE": "]",
          "KEY_BACKSLASH": "\\", "KEY_GRAVE": "`"}
+
+# The Cardputer Zero's keyboard driver does the sym layer itself: sym + a
+# key arrives as its own key code (sym + S = code 80 = ":"), and sym alone
+# as KEY_CD. M5Stack's launcher reads the same table from this file; the
+# defaults below are the ones in its source (cp0_keyboard_keymap.c, MIT).
+DRIVER_KEYMAP = "/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map"
+DRIVER_SYMBOLS = {
+    26: "!", 27: "@", 39: "#", 40: "$", 41: "%", 43: "^", 51: "&", 52: "*",
+    53: "(", 94: ")", 55: "~", 69: "`", 70: "_", 71: "-", 72: "+", 73: "=",
+    74: "[", 75: "]", 76: "{", 77: "}", 79: ";", 80: ":", 81: "'", 82: '"',
+    83: "<", 85: ">", 86: "\\", 89: "|", 90: ",", 91: ".", 92: "/", 93: "?",
+}
+_KEYSYM_CHARS = {
+    "exclam": "!", "at": "@", "numbersign": "#", "dollar": "$", "percent": "%",
+    "asciicircum": "^", "ampersand": "&", "asterisk": "*", "parenleft": "(",
+    "parenright": ")", "asciitilde": "~", "grave": "`", "underscore": "_",
+    "minus": "-", "plus": "+", "equal": "=", "bracketleft": "[",
+    "bracketright": "]", "braceleft": "{", "braceright": "}", "semicolon": ";",
+    "colon": ":", "apostrophe": "'", "quotedbl": '"', "less": "<",
+    "greater": ">", "backslash": "\\", "bar": "|", "comma": ",", "period": ".",
+    "slash": "/", "question": "?",
+}
+# What the driver sends for the sym and fn keys themselves: nothing to type.
+DRIVER_IGNORED = {"KEY_CD", "KEY_DVD"}
+CHR = "CHR:"          # name prefix for a finished character from the driver
+
+
+def load_driver_symbols(path: str = DRIVER_KEYMAP) -> dict[int, str]:
+    """{key code: character}, from the device's keymap file if it has one
+    (lines like "keycode 80 = colon"), else the defaults."""
+    try:
+        with open(path) as f:
+            lines = f.read(64 * 1024).splitlines()
+    except OSError:
+        return dict(DRIVER_SYMBOLS)
+    out = {}
+    for line in lines:
+        parts = line.split("#", 1)[0].split()
+        if len(parts) >= 4 and parts[0] == "keycode" and parts[2] == "=" and parts[1].isdigit():
+            ch = _KEYSYM_CHARS.get(parts[3])
+            if ch:
+                out[int(parts[1])] = ch
+    return out or dict(DRIVER_SYMBOLS)
+
 
 MODIFIERS = {"shift": KEY_SHIFT, "fn": KEY_FN, "sym": KEY_SYM,
              "ctrl": KEY_CTRL, "alt": KEY_ALT}
@@ -197,6 +241,8 @@ class Translator:
             return [] if repeat else [Event(Kind.CANCEL)]
         if name in KEY_TAB:
             return [] if repeat else [Event(Kind.TAB)]   # screens use it to show/hide
+        if name.startswith(CHR):
+            return [] if repeat else [Event(Kind.CHAR, name[len(CHR):])]
         if "fn" in active:
             return []   # unused fn combos type nothing
         ch = self._char(name, active)
@@ -270,6 +316,8 @@ class KeyboardDevice:
         self._evdev = evdev
         self.dev = evdev.InputDevice(path or os.environ.get("CZ_KBD") or self._find())
         self.dev.grab()
+        # The Cardputer Zero's driver sends sym combos as their own codes
+        self.symbols = load_driver_symbols() if "tca8418" in self.dev.name.lower() else {}
 
     def _find(self) -> str:
         ev = self._evdev
@@ -286,6 +334,8 @@ class KeyboardDevice:
         raise RuntimeError("Built-in keyboard not found; set CZ_KBD=/dev/input/eventN")
 
     def name_of(self, code: int) -> str:
+        if code in self.symbols:
+            return CHR + self.symbols[code]
         ecodes = self._evdev.ecodes
         name = ecodes.KEY.get(code) or ecodes.BTN.get(code) or f"KEY_{code}"
         return name[0] if isinstance(name, list) else name   # some codes have aliases

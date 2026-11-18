@@ -39,11 +39,12 @@ the SIL Open Font License 1.1.
 
 `core/hw/nfc.py` follows the register map, commands and start-up sequence of
 M5Stack's M5Unit-NFC library, and `core/hw/finger.py` follows the message
-format of M5Stack's UIFlow driver for the Unit Fingerprint2, both
-translated to Python. Those parts are used under the MIT License:
+format of M5Stack's UIFlow driver for the Unit Fingerprint2, and
+`ui/input.py` uses the sym-key table from M5Stack's CardputerZero launcher
+(`cp0_keyboard_keymap.c`), all translated to Python. Those parts are used under the MIT License:
 
 ```
-Copyright (c) 2025 M5Stack Technology CO LTD
+Copyright (c) 2025-2026 M5Stack Technology CO LTD
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
