@@ -218,3 +218,28 @@ Run `sudo python3 tools/hwtest.py` with everything plugged in, and send the outp
       isn't set; go Online once and it works with Aegis / Google Authenticator.
 - [ ] BYPASS PIN set: SHOW SEED WORDS refuses; changing a limit asks for the
       bypass PIN, then yours.
+
+## App mode, merge, image (0.8.22)
+
+App mode (from M5Stack's image, over SSH):
+- [ ] `sudo sh deploy/install.sh --app` finishes; the **Insert Coin** coin icon
+      appears on the home carousel (reopen the carousel if it doesn't).
+- [ ] Open it: the title screen comes up, OK plays the fanfare (PipeWire is
+      paused for the session), the status bar says VAULT.
+- [ ] MODE › Online works; SETUP › NETWORK shows your Wi-Fi.
+- [ ] SETUP › EXIT TO MENU: back on M5Stack's home screen within a few
+      seconds, Wi-Fi back on if it was on before, launcher sounds work.
+- [ ] `systemctl status czsigner czwallet` afterwards: both inactive.
+- [ ] HOME on the LOCKED screen also offers EXIT.
+
+Merge coins:
+- [ ] With 3+ coins: COINS, M (nothing picked) merges all; MERGE FEE lists
+      the cheapest first; the signer's screen says MERGE n COINS INTO 1.
+- [ ] Pick two with OK, then M: only those two merge.
+
+Wallet image:
+- [ ] Burn the release's `.img.xz` with M5 Imager (custom image) after
+      checking `sha256sum` against the `.sha256` file.
+- [ ] First boot ends on the INSERT COIN title, not M5Stack's wizard or
+      launcher. How long from power-on?
+- [ ] Sound, keys, camera, Wi-Fi join, Tor sync as in the sections above.

@@ -2,6 +2,33 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.22: merge coins, app mode, wallet image
+
+**Merge coins.** COINS › M merges the coins you picked with OK (or every coin
+when none are picked) into one coin at a fresh address of the same wallet.
+The fee list starts with the cheapest, the summary mentions the privacy cost
+(the coins are linked afterwards), and the signer's screen shows MERGE n
+COINS INTO 1 / YOU KEEP. Coin rows now show their address.
+
+**App mode.** `deploy/install.sh --app` (the default when M5Stack's launcher
+is installed) puts an Insert Coin icon on the CardputerZero home screen.
+Each session starts in Vault mode; SETUP › EXIT TO MENU (also on the welcome
+screen, and HOME on the lock screen) locks, stops every wallet service and
+puts Wi-Fi and the backlight back. The desktop's PipeWire is paused for the
+session so the wallet has the speaker. See SECURITY.md › App mode for what
+it gives up compared with a dedicated install.
+
+**Dedicated mode** masks M5Stack's launcher and desktop audio properly
+instead of fighting them.
+
+**Wallet image.** `tools/build_image.sh` and the *Build wallet image*
+workflow turn M5Stack's CardputerZero OS into a burnable Insert Coin image
+(dedicated mode), published as a draft release with its SHA-256.
+
+**Checks.** 416 tests; fuzzer 5,000 rounds plus new targets (server strings,
+the keymap file, power readings), which found and fixed non-UTF-8 crashes in
+two file readers; monkey tester 16 x 2,500 keys; leak checker clean.
+
 ## 0.8.21: first night on a real Cardputer Zero
 
 Tested on M5Stack's Debian 13 image. Everything below came from using it.

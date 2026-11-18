@@ -113,21 +113,43 @@ On Windows, put paths with spaces in quotes: `cd "C:\Users\you\Insert Coin"`.
 
 ## Install on the Cardputer Zero
 
+Three ways, from most convenient to most locked-down:
+
+**1. As an app in M5Stack's launcher.** Keeps the CardputerZero home screen;
+Insert Coin gets an icon there. Over SSH:
 ```
-sudo sh deploy/install.sh
-sudo python3 tools/keytest.py      # check the keys, ESC x3 to quit
-sudo reboot
+sudo apt-get install -y git
+git clone https://github.com/Revolution81/Insert-Coin.git
+cd Insert-Coin && sudo sh deploy/install.sh --app
 ```
+Opening the icon starts the wallet in Vault mode; SETUP › EXIT TO MENU locks
+it, stops every wallet service and puts Wi-Fi back as it was.
+`sudo sh deploy/uninstall.sh` removes it.
+
+**2. Dedicated wallet on your current card.** The device boots straight into
+the wallet and runs nothing else: `sudo sh deploy/install.sh --dedicated`,
+then `sudo reboot`. `deploy/uninstall.sh` brings the launcher back.
+
+**3. Dedicated wallet image.** Burn `Insert-Coin-<version>-cardputerzero.img.xz`
+from the releases page with M5 Imager or Raspberry Pi Imager (*Use custom*),
+after checking its SHA-256. It's M5Stack's CardputerZero OS with Insert Coin
+installed in dedicated mode by `tools/build_image.sh`, built in public by the
+*Build wallet image* workflow, so anyone can see what went in.
+
+App mode trades some isolation for convenience: other apps you install from
+M5Stack's store run as the same user as the launcher, which can become root.
+Keep real savings on a dedicated install. [SECURITY.md](SECURITY.md#app-mode)
+has the details.
 
 The installer creates the service users, installs the code under
 `/opt/czwallet-releases/<version>` with a Python venv, the data folders, the
 root helpers (radios on/off, signed updates, backups), a polkit rule for
-Wi-Fi, and enables Tor and the services. Dependencies are pinned with
-SHA-256 hashes in `requirements.lock`.
+Wi-Fi, and Tor. Dependencies are pinned with SHA-256 hashes in
+`requirements.lock`.
 
-Things to check on first boot (keys, framebuffer, network names, camera) are
-in [docs/HARDWARE_TEST.md](docs/HARDWARE_TEST.md). Try **signet** first:
-choose NETWORK on the welcome screen.
+Things to check on a device (keys, screen, network, camera) are in
+[docs/HARDWARE_TEST.md](docs/HARDWARE_TEST.md). Try **signet** first: choose
+NETWORK on the welcome screen.
 
 ## Keys
 

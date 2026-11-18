@@ -363,3 +363,25 @@ the folder's own listing. The default password (`bitcoin`) is public, so on
 shared networks change it. Paper wallets are left out unless you choose to
 include them for that session.
 
+## App mode
+
+`deploy/install.sh --app` runs Insert Coin from M5Stack's launcher instead of
+at boot. The wallet's own isolation is the same (separate users for the
+signer, app, network relay and scanner, the same sandboxes, the signer owns
+the screen and grabs the keyboard while it runs), but the device around it is
+not dedicated:
+
+- The launcher and every app from M5Stack's store run as the UID 1000 user,
+  which has sudo. Anything installed that way can become root, and root can
+  read memory, log keys before the signer grabs them, or replace the wallet's
+  files. In dedicated mode nothing else runs.
+- The session is started through one sudo rule (`cz-session`, no
+  arguments). It starts the wallet in Vault mode, waits for EXIT TO MENU,
+  then stops every wallet service, so the signer and the seed leave memory,
+  and restores Wi-Fi and the backlight.
+- The panel keeps its usual `video` group so the launcher can draw; the
+  signer joins that group instead of owning a private one.
+
+Use app mode for a spending wallet. Keep savings on a dedicated install or
+the image, or in a multisig where this device is one key.
+

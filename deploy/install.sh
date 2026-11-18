@@ -67,7 +67,13 @@ gpasswd -d czapp video 2>/dev/null || true
 usermod -aG input,czscreen czsigner
 # app mode: the screen keeps its usual group (video) so the launcher can
 # still draw when the wallet isn't open
-[ "$MODE" = app ] && usermod -aG video czsigner
+if [ "$MODE" = app ]; then
+  usermod -aG video czsigner
+  # and whichever group M5Stack's image lets the launcher set the backlight
+  # with, so SCREEN SLEEP works inside a session too
+  BLG="$(stat -c %G /sys/class/backlight/backlight/brightness 2>/dev/null || echo root)"
+  if [ "$BLG" != root ] && getent group "$BLG" >/dev/null; then usermod -aG "$BLG" czsigner; fi
+fi
 
 echo "== code ($VERSION)"
 rm -rf "$RELEASE"
