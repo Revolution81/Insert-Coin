@@ -49,9 +49,19 @@ def welcome(app):
             ("CREATE NEW WALLET", create_flow),
             ("RESTORE FROM WORDS", restore_flow),
             ("NETWORK", None, net, "gold" if net == "BITCOIN" else "cyan", cycle_net),
-        ]
+        ] + ([("EXIT TO MENU", exit_to_menu, "", "grey")] if APP_MODE else [])
     return MenuScreen("WELCOME", items,
                       info=["Your keys. Your coins.", "Pick an option to begin."], back=False)
+
+
+APP_MODE = os.environ.get("CZ_APP_MODE") == "1"    # started from M5Stack's launcher
+
+
+def exit_to_menu(app):
+    """App mode: lock, then hand the screen back to M5Stack's launcher."""
+    app.push(ConfirmScreen("EXIT?", ["Lock the wallet and go back", "to the CardputerZero menu?",
+                                     "The seed leaves memory and", "Wi-Fi is put back as it was."],
+                           lambda app: app.request_exit()))
 
 
 def _ready(app, info):
@@ -185,6 +195,8 @@ class LockedScreen(Screen):
     def handle(self, ev, app):
         if ev.kind is Kind.SELECT and not app.prompting:
             unlock(app)
+        elif ev.kind is Kind.HOME and APP_MODE and not app.prompting:
+            exit_to_menu(app)
 
     def render(self, app, frame):
         img, d = t.new_canvas()
@@ -197,6 +209,8 @@ class LockedScreen(Screen):
         t.text(d, (W // 2, 84), "The PIN is typed on the", TINY, "grey", align="center")
         t.text(d, (W // 2, 96), "signer's screen: gold shield", TINY, "grey", align="center")
         t.text(d, (W // 2, 108), "top left, your security words.", TINY, "grey", align="center")
+        if APP_MODE:
+            t.text(d, (W // 2, 152), "HOME: BACK TO THE MENU", TINY, "grey", align="center")
         if self.error:
             t.text(d, (W // 2, 140), self.error[:40], TINY, "red", align="center")
         return img
@@ -1261,6 +1275,7 @@ def settings_screen(app, at: str | None = None):
             ("EXPORT LABELS", export_labels),
             ("WIPE DEVICE", ask("wipe_prompt", lambda app, _: app.factory_reset()), "", "red"),
             ("ABOUT", about),
+            ("EXIT TO MENU", exit_to_menu, "", "grey"),
         ]
         return {r[0]: r for r in rows}
 
@@ -1277,7 +1292,10 @@ def settings_screen(app, at: str | None = None):
         every = all_items()
         top = [(name, (lambda n, ls: lambda app: open_group(n, ls))(name, labels), "", "light")
                for name, labels in SETUP_GROUPS]
-        return top + [every[label] for label in SETUP_DIRECT]
+        direct = list(SETUP_DIRECT)
+        if APP_MODE:
+            direct.insert(direct.index("WIPE DEVICE"), "EXIT TO MENU")
+        return top + [every[label] for label in direct]
 
     menu = MenuScreen("SETUP", items)
     group = setup_group_of(at) if at else None

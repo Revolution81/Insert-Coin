@@ -182,6 +182,27 @@ def main():
               rnd.choice(junk[4:6] + ["123456", "abcdef", "12345"]), ok=(policy.PolicyError,
                                                                            AttributeError))
 
+    # 0.8.21: node server strings (typed or scanned), the keyboard driver's
+    # keymap file, the power-supply readings
+    from core.config import parse_server
+    from ui.input import load_driver_symbols
+    from core import power
+    seeds = ["umbrel.local:50003:t", "tcp://192.168.1.20:50001", "ssl://h.example:50002",
+             "abc.onion:50001:t", "host:1"]
+    tmp = __import__("tempfile").mkdtemp()
+    for i in range(n // 3):
+        check("parse_server", parse_server, mutate_text(rnd, rnd.choice(seeds)), ok=(ValueError,))
+        km = os.path.join(tmp, "k.map")
+        with open(km, "wb") as f:
+            f.write(mutate(rnd, b"keycode 80 = colon\nkeycode 92 = slash # x\n"))
+        check("load_driver_symbols", load_driver_symbols, km)
+        d = os.path.join(tmp, f"ps{i % 4}")
+        os.makedirs(d, exist_ok=True)
+        for name, val in (("type", b"Battery"), ("capacity", b"57"), ("status", b"Charging")):
+            with open(os.path.join(d, name), "wb") as f:
+                f.write(mutate(rnd, val))
+        check("power.read", power.read, tmp)
+
     print(f"{len(FOUND)} distinct problems")
     for (name, et, line), (data, tb) in FOUND.items():
         print("=" * 70)

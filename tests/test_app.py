@@ -273,3 +273,26 @@ def test_merge_coins_from_the_coins_screen(app):  # noqa: F811
     enter(app)                                     # sign: Vault mode keeps it in the Outbox
     assert app.outbox_count() == 1
     assert app.balance["total"] == 52_000 - s["fee"]
+
+
+def test_app_mode_exit_to_menu(app, monkeypatch):  # noqa: F811
+    import ui.flow as flow
+    from ui.flow import settings_screen
+    monkeypatch.setattr(flow, "APP_MODE", True)
+    create_wallet(app)
+    settings_screen(app)
+    labels = [i[0] for i in app.visible.items]
+    assert labels[-2:] == ["EXIT TO MENU", "WIPE DEVICE"]
+    app.visible.sel = labels.index("EXIT TO MENU")
+    enter(app)
+    assert app.visible.title == "EXIT?"
+    press(app, "KEY_Z")
+    enter(app)
+    assert app.exit_requested and not app.signer.status()["unlocked"]
+
+
+def test_no_exit_item_outside_app_mode(app):  # noqa: F811
+    from ui.flow import settings_screen
+    create_wallet(app)
+    settings_screen(app)
+    assert "EXIT TO MENU" not in [i[0] for i in app.visible.items]

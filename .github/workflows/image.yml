@@ -1,0 +1,41 @@
+name: Build wallet image
+
+# Builds a burnable Insert Coin image from M5Stack's CardputerZero OS
+# (tools/build_image.sh) and attaches it to a DRAFT release, so nothing is
+# public until you've tested it and press Publish.
+on:
+  workflow_dispatch:
+    inputs:
+      base_sha256:
+        description: "Expected SHA-256 of M5Stack's base image (blank: just print it)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: image
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: sudo apt-get update && sudo apt-get install -y parted e2fsprogs xz-utils curl
+      - name: Build
+        env:
+          BASE_SHA256: ${{ inputs.base_sha256 }}
+        run: sudo -E sh tools/build_image.sh
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' core/version.py)
+          TAG="image-v$VERSION-$(date -u +%Y%m%d%H%M)"
+          gh release create "$TAG" out/*.img.xz out/*.sha256 --draft --prerelease \
+            --title "Insert Coin $VERSION wallet image (test build)" \
+            --notes "Burn with M5 Imager or Raspberry Pi Imager (Use custom). Boots straight into Insert Coin. Check the SHA-256 before burning. Built by this workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

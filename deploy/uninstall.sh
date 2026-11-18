@@ -19,11 +19,21 @@ nmcli networking on 2>/dev/null || true
 echo "== screen and keyboard back to everyone"
 rm -f /etc/udev/rules.d/60-czwallet-screen.rules /etc/udev/rules.d/61-czwallet-backlight.rules
 udevadm control --reload-rules 2>/dev/null && udevadm trigger --subsystem-match=graphics 2>/dev/null || true
+echo "== app-mode pieces"
+rm -f /usr/share/APPLaunch/applications/insert-coin.desktop \
+      /usr/share/APPLaunch/share/images/insert_coin_80.png \
+      /usr/local/bin/insert-coin /usr/local/sbin/cz-session /etc/sudoers.d/czwallet-app \
+      /etc/systemd/system/czwallet.service.d/appmode.conf
+systemctl --global unmask APPLaunch.service pipewire.socket pipewire.service \
+    pipewire-pulse.socket pipewire-pulse.service wireplumber.service 2>/dev/null || true
+systemctl daemon-reload 2>/dev/null || true
 echo "== launcher back"
-target="$(cat /etc/czwallet/previous-target 2>/dev/null || echo graphical.target)"
-systemctl set-default "$target"
-systemctl enable lightdm 2>/dev/null || true
-systemctl enable getty@tty1 2>/dev/null || true
+if [ -f /etc/czwallet/previous-target ]; then        # dedicated mode changed these
+  systemctl set-default "$(cat /etc/czwallet/previous-target)"
+  systemctl enable lightdm 2>/dev/null || true
+  systemctl enable getty@tty1 2>/dev/null || true
+  rm -f /etc/czwallet/previous-target
+fi
 if [ "${1:-}" = "--purge" ]; then
   echo "== deleting wallet data"
   /usr/local/sbin/cz-backup wipe 2>/dev/null || true

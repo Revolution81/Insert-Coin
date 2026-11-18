@@ -15,8 +15,8 @@ _cache: tuple[float, float, bool] | None = None
 
 
 def _read(path: str) -> str:
-    with open(path) as f:
-        return f.read().strip()
+    with open(path, errors="replace") as f:
+        return f.read(64).strip()
 
 
 def read(root: str = ROOT) -> tuple[float, bool]:

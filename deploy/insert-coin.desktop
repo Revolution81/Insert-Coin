@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Insert Coin
+Comment=Bitcoin wallet
+Exec=/usr/local/bin/insert-coin
+Terminal=false
+Icon=share/images/insert_coin_80.png

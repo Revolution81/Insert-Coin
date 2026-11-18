@@ -1,0 +1,13 @@
+#!/bin/sh
+# Insert Coin, started from M5Stack's launcher (app mode).
+#
+# The launcher runs this as its own user and waits for it to finish. The
+# wallet itself runs in its own locked-down services (cz-session, as root
+# through one sudo rule); this script only frees the speaker from the
+# desktop's PipeWire for the time being and puts it back afterwards.
+units="pipewire-pulse.socket pipewire-pulse.service pipewire.socket pipewire.service wireplumber.service"
+systemctl --user stop $units 2>/dev/null
+sudo -n /usr/local/sbin/cz-session
+rc=$?
+systemctl --user start pipewire.socket pipewire-pulse.socket wireplumber.service 2>/dev/null
+exit $rc

@@ -1,8 +1,30 @@
 #!/bin/sh
-# Installs Insert Coin on the Cardputer Zero (Raspberry Pi OS / Debian, as root).
-#   sudo sh deploy/install.sh
+# Installs Insert Coin on the Cardputer Zero (M5Stack's image, Debian 13), as root.
+#
+#   sudo sh deploy/install.sh --app        an app in M5Stack's launcher (default
+#                                          when the launcher is there)
+#   sudo sh deploy/install.sh --dedicated  the device boots straight into the
+#                                          wallet and runs nothing else
+#   ... --image                            building a disk image (in a chroot):
+#                                          skip steps that need a running system
+#
+# deploy/uninstall.sh undoes either.
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
+MODE=""
+IMAGE=0
+for a in "$@"; do
+  case "$a" in
+    --app) MODE=app ;;
+    --dedicated) MODE=dedicated ;;
+    --image) IMAGE=1 ;;
+    *) echo "usage: install.sh [--app|--dedicated] [--image]" >&2; exit 2 ;;
+  esac
+done
+if [ -z "$MODE" ]; then
+  if [ -d /usr/share/APPLaunch ]; then MODE=app; else MODE=dedicated; fi
+fi
+echo "== Insert Coin: $MODE mode"
 VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$SRC/core/version.py")"
 VENV=/opt/czwallet-venv
 RELEASE=/opt/czwallet-releases/$VERSION
@@ -43,6 +65,9 @@ usermod -aG video czscan
 gpasswd -d czapp input 2>/dev/null || true
 gpasswd -d czapp video 2>/dev/null || true
 usermod -aG input,czscreen czsigner
+# app mode: the screen keeps its usual group (video) so the launcher can
+# still draw when the wallet isn't open
+[ "$MODE" = app ] && usermod -aG video czsigner
 
 echo "== code ($VERSION)"
 rm -rf "$RELEASE"
@@ -90,9 +115,14 @@ install -o root -g root -m 755 "$SRC/deploy/cz-share" /usr/local/sbin/cz-share
 visudo -cf /etc/sudoers.d/czwallet
 chmod 440 /etc/sudoers.d/czwallet
 install -m 644 "$SRC/deploy/50-czwallet-nm.rules" /etc/polkit-1/rules.d/
-install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/
-install -m 644 "$SRC/deploy/61-czwallet-backlight.rules" /etc/udev/rules.d/
-udevadm control --reload-rules && udevadm trigger --subsystem-match=graphics || true
+if [ "$MODE" = dedicated ]; then
+  # only the signer may draw on the panel or set the backlight
+  install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/
+  install -m 644 "$SRC/deploy/61-czwallet-backlight.rules" /etc/udev/rules.d/
+  if [ "$IMAGE" = 0 ]; then
+    udevadm control --reload-rules && udevadm trigger --subsystem-match=graphics || true
+  fi
+fi
 
 echo "== interfaces for add-ons"
 # I2C for the secure chip; the UART (without a login console) for the fingerprint sensor
@@ -103,18 +133,47 @@ getent group i2c >/dev/null && usermod -aG i2c czsigner
 
 echo "== services"
 install -m 644 "$SRC"/deploy/*.service /etc/systemd/system/
-systemctl daemon-reload
+mkdir -p /etc/systemd/system/czwallet.service.d
+rm -f /etc/systemd/system/czwallet.service.d/appmode.conf
+systemctl daemon-reload || true
+
+if [ "$MODE" = app ]; then
+  # Nothing starts at boot: the launcher's Insert Coin icon runs a session
+  install -m 644 "$SRC/deploy/czwallet-appmode.conf" /etc/systemd/system/czwallet.service.d/appmode.conf
+  systemctl daemon-reload || true
+  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet 2>/dev/null || true
+  install -o root -g root -m 755 "$SRC/deploy/cz-session" /usr/local/sbin/cz-session
+  install -o root -g root -m 755 "$SRC/deploy/insert-coin" /usr/local/bin/insert-coin
+  install -d /usr/share/APPLaunch/applications /usr/share/APPLaunch/share/images
+  install -m 644 "$SRC/deploy/insert-coin.desktop" /usr/share/APPLaunch/applications/insert-coin.desktop
+  install -m 644 "$SRC/deploy/insert_coin_80.png" /usr/share/APPLaunch/share/images/insert_coin_80.png
+  # the launcher's user (UID 1000) may start a session, and nothing else
+  LUSER="$(getent passwd 1000 | cut -d: -f1 || true)"
+  if [ -n "$LUSER" ]; then
+    echo "$LUSER ALL=(root) NOPASSWD: /usr/local/sbin/cz-session" > /etc/sudoers.d/czwallet-app
+    visudo -cf /etc/sudoers.d/czwallet-app
+    chmod 440 /etc/sudoers.d/czwallet-app
+  else
+    echo "!! no UID 1000 user yet: run this again after the first-boot setup"
+  fi
+  echo "Done. Insert Coin is now an app on the CardputerZero home screen."
+  echo "To remove it: sudo sh deploy/uninstall.sh"
+  exit 0
+fi
+
+# Dedicated: boot straight into the wallet
 systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
-# The Cardputer Zero's own launcher runs in a desktop session started by
-# lightdm. Two programs can't share the screen and keyboard, so boot to
-# Insert Coin instead. deploy/uninstall.sh puts the launcher back.
-if systemctl list-unit-files lightdm.service >/dev/null 2>&1; then
-  systemctl get-default > /etc/czwallet/previous-target 2>/dev/null || true
-  systemctl disable lightdm 2>/dev/null || true
-  systemctl set-default multi-user.target
-fi
+# M5Stack's launcher (a user service) and its desktop audio would fight the
+# wallet for the screen, keyboard and speaker: mask them for every user.
+systemctl get-default > /etc/czwallet/previous-target 2>/dev/null || true
+systemctl --global mask APPLaunch.service 2>/dev/null || true
+systemctl --global mask pipewire.socket pipewire.service pipewire-pulse.socket \
+    pipewire-pulse.service wireplumber.service 2>/dev/null || true
+systemctl disable lightdm 2>/dev/null || true
+systemctl set-default multi-user.target
+rm -f /usr/share/APPLaunch/applications/insert-coin.desktop /etc/sudoers.d/czwallet-app
 
 echo "Done. Reboot to start Insert Coin: sudo reboot"
 echo "Note: it boots in Vault mode with Wi-Fi off, so SSH works only after you"

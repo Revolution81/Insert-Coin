@@ -408,6 +408,16 @@ class App:
     def online(self) -> bool:
         return network_is_up()
 
+    exit_requested = False
+
+    def request_exit(self) -> None:
+        """App mode: lock (the seed leaves memory) and end the run loop."""
+        try:
+            self.signer.lock()
+        except Exception:  # noqa: BLE001
+            pass
+        self.exit_requested = True
+
     def network_link(self) -> bool:
         return network_is_up()
 
@@ -685,7 +695,7 @@ def run(png: bool = False):
     secure = False                       # the signer has the screen: our frames aren't shown
     try:
         screen.show(app.render(frame))
-        while True:
+        while not app.exit_requested:
             msgs = screen.poll(0.05)
             for m in msgs:
                 if m[0] == "key":

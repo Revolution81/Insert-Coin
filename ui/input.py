@@ -136,7 +136,7 @@ def load_driver_symbols(path: str = DRIVER_KEYMAP) -> dict[int, str]:
     """{key code: character}, from the device's keymap file if it has one
     (lines like "keycode 80 = colon"), else the defaults."""
     try:
-        with open(path) as f:
+        with open(path, errors="replace") as f:
             lines = f.read(64 * 1024).splitlines()
     except OSError:
         return dict(DRIVER_SYMBOLS)
