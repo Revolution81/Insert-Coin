@@ -29,3 +29,13 @@ def test_rgb565_full_frame_size_and_speed():
     data = rgb565(img)
     assert len(data) == 320 * 170 * 2
     assert time.monotonic() - t < 0.5
+
+
+def test_backlight_turned_on_only_when_off(tmp_path):
+    from ui.display import backlight_on
+    (tmp_path / "max_brightness").write_text("100\n")
+    (tmp_path / "brightness").write_text("0\n")
+    assert backlight_on(str(tmp_path)) and (tmp_path / "brightness").read_text() == "100"
+    (tmp_path / "brightness").write_text("40\n")
+    assert backlight_on(str(tmp_path)) and (tmp_path / "brightness").read_text() == "40\n"
+    assert not backlight_on(str(tmp_path / "missing"))

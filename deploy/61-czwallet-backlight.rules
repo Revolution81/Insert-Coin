@@ -1,0 +1,3 @@
+# Let the wallet's screen owner turn the backlight on (M5Stack's launcher
+# leaves it at 0 when it stops).
+SUBSYSTEM=="backlight", ACTION=="add", RUN+="/bin/chgrp czscreen /sys%p/brightness", RUN+="/bin/chmod g+w /sys%p/brightness"

@@ -91,6 +91,7 @@ visudo -cf /etc/sudoers.d/czwallet
 chmod 440 /etc/sudoers.d/czwallet
 install -m 644 "$SRC/deploy/50-czwallet-nm.rules" /etc/polkit-1/rules.d/
 install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/
+install -m 644 "$SRC/deploy/61-czwallet-backlight.rules" /etc/udev/rules.d/
 udevadm control --reload-rules && udevadm trigger --subsystem-match=graphics || true
 
 echo "== interfaces for add-ons"

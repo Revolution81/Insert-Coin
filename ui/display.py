@@ -53,6 +53,26 @@ def rgb565(img: Image.Image, swap: bool = False) -> bytes:
     return Image.merge("LA", (lo, hi)).tobytes()
 
 
+BACKLIGHT = "/sys/class/backlight/backlight"
+
+
+def backlight_on(path: str = BACKLIGHT) -> bool:
+    """Turn the panel's backlight up if it's off. M5Stack's launcher dims it
+    to 0 when it stops, which leaves a perfectly working screen black.
+    Best effort: needs write access (deploy/61-czwallet-backlight.rules)."""
+    try:
+        with open(os.path.join(path, "brightness")) as f:
+            if int(f.read().strip() or 0) > 0:
+                return True
+        with open(os.path.join(path, "max_brightness")) as f:
+            mx = int(f.read().strip())
+        with open(os.path.join(path, "brightness"), "w") as f:
+            f.write(str(mx))
+        return True
+    except (OSError, ValueError):
+        return False
+
+
 class Display:
     def __init__(self, preview_path: str = "frame.png"):
         self.fb = _find_fb()
@@ -66,6 +86,7 @@ class Display:
             with open(os.path.join(sysdir, "virtual_size")) as f:
                 w, _ = (int(v) for v in f.read().strip().split(","))
             self.rotate = w != W   # panel mounted portrait
+            backlight_on()
 
     def show(self, img: Image.Image) -> None:
         if not self.fb:
