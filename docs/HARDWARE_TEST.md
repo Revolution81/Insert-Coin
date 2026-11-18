@@ -39,8 +39,19 @@ Found and fixed:
 - **Tor** isn't on M5's image: `sudo apt-get install -y tor`. Verified syncing
   through Tor.
 
-Still to check: fanfare through pw-play, sym typing in the wallet, PIN time,
-`free -m` while running, camera, then app mode in M5's launcher.
+Also verified 11-17: your own Electrum server set by scanning its QR
+(Umbrel, `umbrel.local:50003:t`, green Wi-Fi icon); Vault mode cutting Wi-Fi.
+
+## Where testing stands
+
+Ticked boxes below were confirmed on the device, run by hand over SSH. Not
+yet tried on hardware: the installed app (`--app`), the wallet image, sending
+(fee from amount, merge coins), the PIN timing and power-cut tests, animated
+PSBTs from Sparrow, the Savings account refusal online, card backup, SHARE
+FILES, printing, the wipe PIN, countdown and spending policy, and **every
+add-on** (secure chip, fingerprint, NFC Cap). Still to check from the first
+session: the fanfare's first note since the lead-in fix, sym typing inside
+the wallet, `free -m` while running.
 
 ---
 
@@ -66,30 +77,30 @@ in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
 
 ## 2. Keys
 
-- [ ] `sudo python3 tools/keytest.py`, press every key (ESC three times to quit).
-- [ ] What does **sym** send? If it isn't `KEY_RIGHTALT`, set `CZ_KEY_SYM` in
+- [x] `sudo python3 tools/keytest.py`, press every key (ESC three times to quit). *Done 11-17.*
+- [x] What does **sym** send? If it isn't `KEY_RIGHTALT`, set `CZ_KEY_SYM` in *Done: the driver handles it (see above).*
       both `czsigner.service` and `czwallet.service`.
-- [ ] Does **fn** send its own code, or does fn+F arrive as `KEY_UP`? (Both work;
+- [x] Does **fn** send its own code, or does fn+F arrive as `KEY_UP`? (Both work; *Done: KEY_DVD alone.*
       just note which.)
-- [ ] In the wallet: F▲ Z◀ X▼ C▶ move, OK selects, DEL goes back, HOME goes home,
+- [x] In the wallet: F▲ Z◀ X▼ C▶ move, OK selects, DEL goes back, HOME goes home, *Movement keys done; shift and the text cursor still to try.*
       shift gives capitals, fn+left/right moves the text cursor.
 - [ ] Holding a key repeats in text boxes, not in menus.
 - [ ] Symbols: there's no separate sym key. Find out what types the blue
       symbols (Aa? fn?) and whether Aa gives capitals. Type a Wi-Fi password
       with a symbol and a capital to be sure. Report what `keytest.py` shows.
-- [ ] Does the HOME button arrive as `KEY_HOMEPAGE` (or ESC)? What does NEXT send?
+- [x] Does the HOME button arrive as `KEY_HOMEPAGE` (or ESC)? What does NEXT send? *Done: KEY_ESC.*
 
 ## 3. Screen
 
-- [ ] Colors look right: gold is gold and the sky is dark blue. If red and blue
+- [x] Colors look right: gold is gold and the sky is dark blue. If red and blue *Done.*
       are swapped, report it (the pixel format needs flipping).
-- [ ] Nothing is cut off at any edge; the picture is right way up.
+- [x] Nothing is cut off at any edge; the picture is right way up. *Done.*
 - [ ] Moving through menus feels instant. Animated QR codes run smoothly.
 - [ ] If the screen stays black: `ls /sys/class/graphics/` and set `CZ_FB`.
 
 ## 4. Make a wallet
 
-- [ ] CREATE NEW WALLET → 12 WORDS. The gold shield and your security words
+- [x] CREATE NEW WALLET → 12 WORDS. The gold shield and your security words *Wallet made 11-17.*
       show in the corner during the PIN and words screens.
 - [ ] Try ADD DICE ROLLS once (any rolls) to be sure it doesn't hang.
 - [ ] **Unlock time:** after choosing the PIN, lock (L) and unlock. How many
@@ -101,7 +112,7 @@ in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
 ## 5. Camera and QR
 
 - [ ] `rpicam-hello --list-cameras` lists the camera.
-- [ ] Press Q on home: the preview shows, and scanning a signet address from a
+- [x] Press Q on home: the preview shows, and scanning a signet address from a *Scanning works (own node's QR, 11-17); camera flipped the right way since.*
       phone screen at 10 to 15 cm starts a send.
 - [ ] Scan an animated PSBT from Sparrow (UR and BBQr both). How many seconds?
 - [ ] Leave the scan screen: the camera light (if any) goes off.
@@ -110,16 +121,16 @@ in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
 ## 6. Radios: Vault and Online
 
 - [ ] At boot (Vault): `rfkill list` shows Wi-Fi and Bluetooth **blocked**.
-- [ ] SETUP › WI-FI: networks are listed and you can join one.
-- [ ] MODE › Online: `rfkill` shows Wi-Fi unblocked; the status bar says ONLINE.
-- [ ] MODE › Vault again: Wi-Fi drops within a few seconds.
+- [x] SETUP › WI-FI: networks are listed and you can join one. *Done.*
+- [x] MODE › Online: `rfkill` shows Wi-Fi unblocked; the status bar says ONLINE. *Online works.*
+- [x] MODE › Vault again: Wi-Fi drops within a few seconds. *Done: SSH dropped as expected.*
 - [ ] **Savings account:** while Online, try to send from it. It must refuse.
 
 ## 7. Network: Tor and sync
 
-- [ ] Online with Tor on: the status line shows syncing, then a balance.
+- [x] Online with Tor on: the status line shows syncing, then a balance. *Done.*
       How long does the first sync take?
-- [ ] Get signet coins from a faucet to a RECEIVE address; they show as
+- [x] Get signet coins from a faucet to a RECEIVE address; they show as *Done on mainnet: 2,000 sats received.*
       PENDING, then confirm.
 - [ ] Send some back: the confirm screen is the signer's (gold shield), the
       payment broadcasts, and it shows in HISTORY.
