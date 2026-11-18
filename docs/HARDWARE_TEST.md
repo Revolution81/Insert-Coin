@@ -13,6 +13,35 @@ sudo cat /var/lib/czwallet/app/crash.log
 
 and send both, plus a photo of the screen if it's a display problem.
 
+## First session on a real device (2026-11-17)
+
+M5Stack image: Debian 13 trixie, aarch64, Python 3.13.5, Pillow 12.3, 352 MB
+RAM. Run by hand (`CZ_SIGNER_INPROC=1 CZ_DATA=$HOME/czdev python app.py`,
+M5's launcher paused with `systemctl --user stop APPLaunch`).
+
+Found and fixed:
+- **Arrows are F▲ Z◀ X▼ C▶** (was D for up). Sym layer read off the keycaps.
+- **Sym is done by the keyboard driver** (tca8418c): sym alone = `KEY_CD`, fn
+  alone = `KEY_DVD`, sym + key = its own key code (sym+S = 80 = ':'), from
+  `/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map`. fn + digits give
+  F-keys. HOME button = `KEY_ESC`, TAB button = `KEY_TAB`.
+- **Black screen, cause 1:** Pillow 12 removed the `BGR;16` packer; own RGB565
+  conversion now. Colours and orientation verified correct.
+- **Black screen, cause 2:** M5's launcher leaves the backlight at 0 when it
+  stops (`/sys/class/backlight/backlight`); the wallet turns it up at start.
+- **The launcher is APPLaunch**, a systemd *user* service for `pi`, not
+  lightdm; it needs `/dev/fb0` (= `/dev/fb_lcd`, panel-mipi-dbid 320x170
+  16 bpp). The old installer's screen rule locked it out: don't use the
+  dedicated install on M5's image until app mode is done.
+- **Sound** goes through PipeWire (pw-play), not straight ALSA.
+- **Wi-Fi:** `nmcli device wifi connect` fails ("key-mgmt: property is
+  missing"); joins now use explicit profiles. Verified: joins and syncs.
+- **Tor** isn't on M5's image: `sudo apt-get install -y tor`. Verified syncing
+  through Tor.
+
+Still to check: fanfare through pw-play, sym typing in the wallet, PIN time,
+`free -m` while running, camera, then app mode in M5's launcher.
+
 ---
 
 ## 1. Install and boot
