@@ -137,7 +137,7 @@ def test_coins_say_pending(app):  # noqa: F811
     coins_screen(app)
     settle(app)
     tags = [i[2] for i in app.visible.items]
-    assert tags == ["PENDING"]
+    assert len(tags) == 1 and tags[0].startswith("PENDING tb1q")
 
 
 def _at(menu, label):
