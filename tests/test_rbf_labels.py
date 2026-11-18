@@ -219,3 +219,33 @@ def test_sim_radios_never_touch_the_pc(monkeypatch):
     assert r.wifi_scan()[0]["ssid"] == "Simulated Wi-Fi"
     r.wifi_connect("x", "y")
     assert calls == []
+
+
+def test_wifi_connect_uses_explicit_profiles(monkeypatch):
+    """No "nmcli device wifi connect" (key-mgmt bug on the device's
+    NetworkManager): reuse a saved profile, or add one with WPA-PSK set."""
+    import core.radios as r
+    monkeypatch.setattr(r, "SIM", False)
+    calls = []
+
+    def run(*cmd, check=True, timeout=30):
+        calls.append(cmd)
+        if cmd[:3] == ("nmcli", "-t", "-f") and cmd[3] == "ACTIVE,SSID":
+            return "no:Other\n"
+        if cmd[:5] == ("nmcli", "-t", "-f", "NAME,TYPE", "connection"):
+            return "preconfigured:802-11-wireless\nWired:802-3-ethernet\n"
+        if cmd[:3] == ("nmcli", "-g", "802-11-wireless.ssid"):
+            return "Home\n" if cmd[-1] == "preconfigured" else ""
+        return ""
+    monkeypatch.setattr(r, "_run", run)
+    r.wifi_connect("Home", None)                  # saved by the imager: just bring it up
+    assert calls[-1] == ("nmcli", "connection", "up", "preconfigured")
+    assert not any("add" in c for c in calls)
+    calls.clear()
+    r.wifi_connect("Cafe", "secret123")
+    assert ("nmcli", "connection", "add", "type", "wifi", "con-name", "Cafe", "ssid", "Cafe",
+            "connection.autoconnect", "yes") in calls
+    assert ("nmcli", "connection", "modify", "Cafe", "wifi-sec.key-mgmt", "wpa-psk",
+            "wifi-sec.psk", "secret123") in calls
+    assert calls[-1] == ("nmcli", "connection", "up", "Cafe")
+    assert not any(c[:4] == ("nmcli", "device", "wifi", "connect") for c in calls)

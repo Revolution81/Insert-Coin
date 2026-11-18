@@ -89,13 +89,40 @@ def wifi_scan() -> list[dict]:
     return sorted(nets.values(), key=lambda n: -n["signal"])
 
 
+def _saved_wifi(ssid: str) -> str | None:
+    """Name of a saved NetworkManager profile for this network, if any (the
+    imager's setup, or one the wallet made earlier)."""
+    out = _run("nmcli", "-t", "-f", "NAME,TYPE", "connection", "show", check=False)
+    for line in out.splitlines():
+        name, _, kind = line.replace("\\:", "\x00").rpartition(":")
+        name = name.replace("\x00", ":")
+        if kind != "802-11-wireless" or not name:
+            continue
+        if _run("nmcli", "-g", "802-11-wireless.ssid", "connection", "show", name,
+                check=False).strip() == ssid:
+            return name
+    return None
+
+
 def wifi_connect(ssid: str, password: str | None) -> None:
+    """Join a network. "nmcli device wifi connect" fails on some
+    NetworkManager versions with "key-mgmt: property is missing" (and when a
+    saved profile exists), so profiles are made and started explicitly."""
     if SIM:
         return
-    cmd = ["nmcli", "device", "wifi", "connect", ssid]
+    if wifi_current() == ssid:
+        return
+    name = _saved_wifi(ssid)
+    if name is None:
+        name = ssid
+        _run("nmcli", "connection", "add", "type", "wifi", "con-name", name,
+             "ssid", ssid, "connection.autoconnect", "yes")
+        if not password:
+            _run("nmcli", "connection", "modify", name, "remove", "802-11-wireless-security")
     if password:
-        cmd += ["password", password]
-    _run(*cmd, timeout=45)
+        _run("nmcli", "connection", "modify", name,
+             "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password)
+    _run("nmcli", "connection", "up", name, timeout=45)
 
 
 def wifi_current() -> str | None:
