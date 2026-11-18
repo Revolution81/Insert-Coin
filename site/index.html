@@ -285,7 +285,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
           <h3>Wi-Fi and Tor</h3>
           <ul>
             <li>Check balances and send straight from the device.</li>
-            <li>Talks to your own Electrum server, through Tor by default.</li>
+            <li>Uses a public server through Tor, or your own node: just scan its QR.</li>
             <li>An online cap limits what can leave each day.</li>
           </ul>
           <p class="note">For spending money. Keep the amount small.</p>
@@ -381,6 +381,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
         <div class="win pu"><span class="tab">BACKUP</span><h3>Back up three ways</h3><p>Write the words, show a SeedQR, or split the seed into shares so no single paper reveals it.</p><span class="std">SEEDQR · SLIP39</span></div>
         <div class="win pu"><span class="tab">ACCOUNTS</span><h3>SegWit and Taproot</h3><p>Several accounts per seed, child seeds for other wallets, and message signing.</p><span class="std">BIP84 · BIP86 · BIP85 · BIP322</span></div>
         <div class="win pu"><span class="tab">MULTISIG</span><h3>Share the keys</h3><p>Join a multisig as a cosigner, import descriptors, or set up an inheritance wallet with a time-locked heir key.</p><span class="std">BIP48 · DESCRIPTORS</span></div>
+        <div class="win pu"><span class="tab">NODE</span><h3>Bring your own node</h3><p>Scan the server QR on your Umbrel or Start9 and the wallet talks only to your node. The Wi-Fi icon turns green on your own server, blue on the public one.</p><span class="std">ELECTRUM · UMBREL · START9</span></div>
         <div class="win pu"><span class="tab">QR</span><h3>Sign with the camera</h3><p>Scan a payment request, sign it and show the result as an animated QR code.</p><span class="std">PSBT · UR · BBQR</span></div>
         <div class="win pu"><span class="tab">NFC</span><h3>Tap a card</h3><p>Read a SATSCARD, check it's genuine, and sweep its coins into your wallet. TAPSIGNER works too.</p><span class="std">SATSCARD · TAPSIGNER</span></div>
         <div class="win pu"><span class="tab">PAPER</span><h3>Paper wallets</h3><p>Make a fresh paper wallet with QR codes and print it at home over encrypted Wi-Fi. The keys stay inside the device, never on the microSD card.</p><span class="std">IPPS · PINNED PRINTER</span></div>
@@ -433,7 +434,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
             <dt>Signing</dt><dd>PSBT by QR (UR, BBQr) or microSD; messages by BIP137 and BIP322</dd>
             <dt>Multisig</dt><dd>BIP48 cosigner keys, output descriptors, inheritance policies</dd>
             <dt>Backups</dt><dd>Seed words, SeedQR, SLIP39 split shares, encrypted card backup</dd>
-            <dt>Network</dt><dd>Electrum protocol over TLS, optional Tor</dd>
+            <dt>Network</dt><dd>Electrum protocol over TLS and Tor, or your own node (Umbrel, Start9) by scanning its QR</dd>
             <dt>Guards</dt><dd>Wipe PIN, duress PIN, login countdown, auto lock, spending policy with TOTP 2FA and bypass PIN</dd>
           </dl>
         </div>
@@ -485,7 +486,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
 
 <footer>
   <div class="wrap">
-    <span class="run">RUNNING BITCOIN... · v0.8.20</span>
+    <span class="run">RUNNING BITCOIN... · v0.8.21</span>
     <p>Insert Coin is an independent project and is not affiliated with or endorsed by M5Stack. Cardputer Zero is a product of M5Stack.</p>
     <p>All sounds and art are original. No tokens, no altcoins: Bitcoin only.</p>
     <p>Source available: free to use and audit under the <a href="https://github.com/Revolution81/Insert-Coin/blob/main/LICENSE">PolyForm Strict License</a>. Please don't republish it.</p>
