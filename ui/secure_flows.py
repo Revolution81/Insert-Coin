@@ -94,6 +94,12 @@ class ConfirmSendScreen(Screen):
                 ("AMOUNT", f"{fmt_btc(s['spend'])} BTC", "gold"),
                 ("FEE", f"{s['fee_rate']:g} sat/vB {fmt_sats(s['fee'])}", "light"),
                 ("TOTAL", f"{fmt_btc(s['spend'] + s['fee'])} BTC", "gold")]
+        if not sends:                    # nothing leaves: coins merged into your own
+            kept = sum(o["sats"] for o in s["outputs"])
+            rows = [("TO", "YOUR WALLET", "green"),
+                    ("MERGE", f"{s.get('inputs', 0)} COINS INTO {len(s['outputs'])}", "light"),
+                    ("FEE", f"{s['fee_rate']:g} sat/vB {fmt_sats(s['fee'])}", "light"),
+                    ("YOU KEEP", f"{fmt_btc(kept)} BTC", "gold")]
         for i, (k, v, c) in enumerate(rows):
             y = 32 + i * 15
             t.text(d, (14, y), k, BODY, "grey")

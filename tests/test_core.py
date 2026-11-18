@@ -320,3 +320,23 @@ def test_parse_server_from_node_dashboards():
     for bad in ("", "bc1qxyz", "http://x:1", "host:99999", "a b:1", "x:1:q", "bitcoin:bc1q"):
         with pytest.raises(ValueError):
             parse_server(bad)
+
+
+def test_consolidate_merges_into_own_change(rig):
+    from embit.psbt import PSBT
+    signer, wallet = rig
+    fund(wallet, 30_000)
+    fund(wallet, 5_000)
+    assert len(wallet.coins()) == 3
+    with pytest.raises(WalletError, match="at least two"):
+        wallet.consolidate([wallet.coins()[0].outpoint], 2)
+    b = wallet.consolidate(None, 2)
+    tx = PSBT.from_string(b["psbt"]).tx
+    assert b["count"] == 3 and len(tx.vin) == 3 and len(tx.vout) == 1
+    assert tx.vout[0].value == 135_000 - b["fee"] == b["amount"]
+    s = signer.describe(b["psbt"])          # the signer sees it as the wallet's own coins
+    assert s["spend"] == 0 and s["fee"] == b["fee"]
+    signer.sign(b["psbt"], s["digest"])
+    two = [c.outpoint for c in wallet.coins()[1:]]
+    b = wallet.consolidate(two, 3)
+    assert b["count"] == 2 and b["total"] == 35_000

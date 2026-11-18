@@ -580,6 +580,31 @@ class WalletService:
                 fee = total - sats                   # tiny remainder goes to the fee
         return {"psbt": self._psbt(chosen, outputs), "fee": fee, "amount": outputs[0][1]}
 
+    def consolidate(self, coins: list[str] | None, fee_rate: int) -> dict:
+        """Merge coins into one, sent to this wallet's next unused change
+        address (so the signer sees it as yours, not a payment).
+        coins=None merges every coin. Returns {psbt, fee, amount, count}."""
+        rate = int(fee_rate)
+        if rate < 1:
+            raise WalletError("fee rate must be at least 1 sat/vB")
+        if self.kind == "inherit" and self.role == "heir":
+            raise WalletError("an heir can't consolidate: send the coins instead")
+        utxos = self._utxos()
+        if coins:
+            utxos = [u for u in utxos if f"{u['txid']}:{u['vout']}" in coins]
+            if len(utxos) != len(coins):
+                raise WalletError("some chosen coins are already spent")
+        if len(utxos) < 2:
+            raise WalletError("pick at least two coins to merge")
+        total = sum(u["value"] for u in utxos)
+        fee = math.ceil(rate * self._vsize(len(utxos), 1))
+        if total - fee < DUST:
+            raise WalletError("the fee would eat these coins")
+        ci = self._first_unused(1, self._used())
+        outputs = [(self._script(1, ci), total - fee, (1, ci))]
+        return {"psbt": self._psbt(utxos, outputs), "fee": fee, "amount": total - fee,
+                "count": len(utxos), "total": total}
+
     def _psbt(self, chosen: list[dict], outputs: list[tuple]) -> str:
         """Unsigned PSBT with everything the signer needs to check it."""
         # The heir's path needs nSequence >= the delay (BIP68/112); it's also

@@ -240,3 +240,36 @@ def test_send_everything_typed_as_an_amount_offers_fee_from_amount(app):  # noqa
     assert isinstance(app.visible, ConfirmSendScreen)
     s = app.visible.s
     assert s["spend"] == 2_000 - s["fee"] and s["fee"] > 0
+
+
+def test_merge_coins_from_the_coins_screen(app):  # noqa: F811
+    from test_core import fund
+    create_wallet(app)
+    for amt in (40_000, 9_000, 3_000):
+        fund(app.wallet, amt)
+    app.refresh_balance()
+    press(app, "KEY_C")                            # home grid: RECEIVE
+    press(app, "KEY_C")                            # COINS
+    enter(app)
+    assert app.visible.title == "COINS"
+    render_all(app)
+    enter(app)                                     # pick one coin only
+    press(app, "KEY_M")
+    assert app.visible.title == "MERGE"            # needs two or more
+    enter(app)
+    enter(app)                                     # unpick: none chosen = all
+    press(app, "KEY_M")
+    assert app.visible.title == "MERGE FEE"
+    enter(app)                                     # cheapest
+    assert app.visible.title == "MERGE COINS?"
+    render_all(app)
+    press(app, "KEY_Z")
+    enter(app)                                     # YES -> the signer's confirm screen
+    assert isinstance(app.visible, ConfirmSendScreen)
+    s = app.visible.s
+    assert s["spend"] == 0 and s["inputs"] == 3 and len(s["outputs"]) == 1
+    render_all(app)
+    press(app, "KEY_Z")
+    enter(app)                                     # sign: Vault mode keeps it in the Outbox
+    assert app.outbox_count() == 1
+    assert app.balance["total"] == 52_000 - s["fee"]

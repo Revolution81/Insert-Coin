@@ -813,16 +813,17 @@ class CoinsScreen(MenuScreen):
     def __init__(self, app):
         self.coins = app.wallet.coins()
         self.chosen: set[str] = set()
-        super().__init__("COINS", [], info=["OK picks coins, S sends them"])
+        super().__init__("COINS", [], info=["OK picks · S sends · M merges"])
         self._rebuild()
 
     def _rebuild(self):
         self.items = []
         for c in self.coins:
             mark = "*" if c.outpoint in self.chosen else " "
-            tag = "CHANGE" if c.change else ("PENDING" if not c.confirmed else "")
+            short = f"{c.address[:6]}..{c.address[-4:]}"
+            tag = ("PENDING " if not c.confirmed else "CHANGE " if c.change else "") + short
             self.items.append((f"{mark}{fmt_sats(c.sats)}", self._toggle(c.outpoint), tag,
-                               "cyan" if tag == "PENDING" else "grey"))
+                               "cyan" if not c.confirmed else "grey"))
         total = sum(c.sats for c in self.coins if c.outpoint in self.chosen)
         self.title = f"COINS {fmt_sats(total)}" if self.chosen else "COINS"
 
@@ -835,12 +836,62 @@ class CoinsScreen(MenuScreen):
     def handle(self, ev, app):
         if ev.kind is Kind.HOTKEY and ev.value == "S" and self.chosen:
             send_flow(app, coins=sorted(self.chosen))
+        elif ev.kind is Kind.HOTKEY and ev.value == "M":
+            consolidate_flow(app, sorted(self.chosen))
         else:
             super().handle(ev, app)
 
 
 def coins_screen(app):
     app.push(CoinsScreen(app))
+
+
+def consolidate_flow(app, chosen: list[str]):
+    """COINS > M: merge the picked coins (or all of them) into one coin at a
+    fresh address of this wallet. Fewer, bigger coins make later payments
+    cheaper; do it while fees are low."""
+    coins = app.wallet.coins()
+    if len(chosen) == 1:
+        app.push(MessageScreen("MERGE", ["Pick two or more coins with OK,",
+                                         "or none to merge them all."]))
+        return
+    if not chosen and len(coins) < 2:
+        app.push(MessageScreen("MERGE", ["There's only one coin here:", "nothing to merge."]))
+        return
+    picked = [c for c in coins if not chosen or c.outpoint in chosen]
+    total = sum(c.sats for c in picked)
+    est = app.fees()
+
+    def build(rate):
+        def go(app):
+            app.pop()
+            app.job("BUILDING TX...",
+                    lambda: app.wallet.consolidate(chosen or None, rate), confirm)
+        return go
+
+    def confirm(app, built):
+        lines = [f"{len(picked)} coins, {fmt_sats(total)} sats,", "become one coin.",
+                 f"Fee: {fmt_sats(built['fee'])} sats" +
+                 (f" ({built['fee'] * 100 // max(1, total)}%)" if built["fee"] * 10 > total else "") + ".",
+                 "Afterwards anyone can tell", "these coins were together."]
+        built["label"] = "Consolidation"
+        app.push(ConfirmScreen("MERGE COINS?", lines, lambda app: sign_and_send(app, built)))
+
+    def custom(app):
+        def ok(app, text):
+            if not text.isdigit() or not 1 <= int(text) <= 500:
+                return "1 to 500 sat/vB"
+            app.pop()
+            build(int(text))(app)
+            return None
+        app.push(TextInputScreen("FEE RATE", "sat/vB:", ok, allowed="0123456789", max_len=3))
+
+    items = [(name.upper(), build(rate), f"{rate} sat/vB", "gold")
+             for name, rate in sorted(est.items(), key=lambda kv: kv[1])]   # cheapest first
+    items.append(("CUSTOM", custom, "", None))
+    app.push(MenuScreen("MERGE FEE", items, selected=0, info=[
+        f"Merge {len(picked)} coins ({fmt_sats(total)} sats).",
+        "Not urgent: a low fee is fine."]))
 
 
 # =============================================================== modes
