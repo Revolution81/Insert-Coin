@@ -250,3 +250,23 @@ def test_history_and_coins(rig):
     assert len(h) == 1 and h[0].delta == 100_000 and not h[0].confirmed
     c = wallet.coins()
     assert c[0].sats == 100_000 and not c[0].change
+
+
+def test_fee_from_amount(rig):
+    """Sending everything you have, typed as an amount: the fee comes out of
+    it instead of failing. And a partial amount keeps its change."""
+    from embit.psbt import PSBT
+    signer, wallet = rig
+    with pytest.raises(WalletError, match="not enough funds"):
+        wallet.build(DEST, 100_000, 5)
+    b = wallet.build(DEST, 100_000, 5, fee_from_amount=True)
+    tx = PSBT.from_string(b["psbt"]).tx
+    assert len(tx.vout) == 1 and b["amount"] == tx.vout[0].value == 100_000 - b["fee"]
+    s = signer.describe(b["psbt"])                       # the signer agrees on the numbers
+    signer.sign(b["psbt"], s["digest"])
+    b = wallet.build(DEST, 40_000, 5, fee_from_amount=True)
+    tx = PSBT.from_string(b["psbt"]).tx
+    assert len(tx.vout) == 2 and tx.vout[0].value == 40_000 - b["fee"]
+    assert tx.vout[1].value == 60_000                     # change untouched
+    with pytest.raises(WalletError, match="eat the whole"):
+        wallet.build(DEST, 400, 50, fee_from_amount=True)

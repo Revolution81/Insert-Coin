@@ -218,3 +218,25 @@ def test_bad_checksum_rejected(app):
         type_text(app, w[:4] + " ")
     assert isinstance(app.visible, WordEntryScreen)
     assert "Checksum" in app.visible.error
+
+
+def test_send_everything_typed_as_an_amount_offers_fee_from_amount(app):  # noqa: F811
+    from test_core import DEST, fund
+    create_wallet(app)
+    fund(app.wallet, 2_000)
+    app.refresh_balance()
+    press(app, "KEY_S")
+    type_text(app, DEST)
+    enter(app)
+    type_text(app, "2000")
+    enter(app)
+    render_all(app)
+    enter(app)                                     # NORMAL fee: 2,000 + fee won't fit
+    render_all(app)
+    assert app.visible.title == "FEE FROM AMOUNT?"
+    press(app, "KEY_Z")                            # YES
+    enter(app)
+    render_all(app)
+    assert isinstance(app.visible, ConfirmSendScreen)
+    s = app.visible.s
+    assert s["spend"] == 2_000 - s["fee"] and s["fee"] > 0

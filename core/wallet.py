@@ -491,8 +491,10 @@ class WalletService:
 
     # ------------------------------------------------------------- spend
     def build(self, address: str, sats: int | None, fee_rate: int,
-              coins: list[str] | None = None) -> dict:
-        """sats=None sends everything (minus fee). Returns {psbt, fee}."""
+              coins: list[str] | None = None, fee_from_amount: bool = False) -> dict:
+        """sats=None sends everything (minus fee). fee_from_amount: the fee
+        comes out of `sats`, so the recipient gets sats - fee and exactly
+        `sats` leaves your wallet. Returns {psbt, fee, amount}."""
         dest = address_to_scriptpubkey(self.validate_address(address))
         rate = int(fee_rate)
         if rate < 1:
@@ -526,6 +528,31 @@ class WalletService:
             if total - fee < DUST:
                 raise WalletError("not enough funds for amount + fee")
             outputs.append((dest, total - fee, None))
+        elif fee_from_amount:
+            if coins:
+                chosen, total = utxos, sum(u["value"] for u in utxos)
+            else:
+                chosen, total = [], 0
+                for u in utxos:
+                    chosen.append(u)
+                    total += u["value"]
+                    if total >= sats:
+                        break
+            if total < sats:
+                raise WalletError("not enough funds for that amount")
+            change = total - sats
+            if change >= DUST:
+                fee = fee_for(len(chosen), 2)
+                ci = self._first_unused(1, self._used())
+                pay = sats - fee
+                outputs.append((dest, pay, None))
+                outputs.append((self._script(1, ci), change, (1, ci)))
+            else:
+                pay = sats - fee_for(len(chosen), 1)
+                fee = total - pay                    # tiny remainder goes to the fee
+                outputs.append((dest, pay, None))
+            if pay < DUST:
+                raise WalletError("the fee would eat the whole amount")
         else:
             if sats < 330:
                 raise WalletError("amount below the dust limit (330 sats)")
@@ -548,7 +575,7 @@ class WalletService:
                 fee = fee_for(len(chosen), 2)
             else:
                 fee = total - sats                   # tiny remainder goes to the fee
-        return {"psbt": self._psbt(chosen, outputs), "fee": fee}
+        return {"psbt": self._psbt(chosen, outputs), "fee": fee, "amount": outputs[0][1]}
 
     def _psbt(self, chosen: list[dict], outputs: list[tuple]) -> str:
         """Unsigned PSBT with everything the signer needs to check it."""

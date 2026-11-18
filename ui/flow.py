@@ -527,13 +527,27 @@ def send_flow(app, coins=None, prefill=None):
             ["Offline: rates are guesses."]
         app.push(MenuScreen("FEE", items, info=info, selected=1))
 
-    def build(app, addr, sats, rate, label=""):
+    def build(app, addr, sats, rate, label="", fee_from_amount=False):
         def work():
-            built = app.wallet.build(addr, sats, rate, coins)
+            built = app.wallet.build(addr, sats, rate, coins, fee_from_amount=fee_from_amount)
             built["label"] = label
             return built
 
-        app.job("BUILDING TX...", work, sign_and_send)
+        def failed(app, err):
+            # Enough for the amount but not amount + fee: offer to take the
+            # fee out of the amount instead of giving up.
+            if sats and not fee_from_amount and "not enough funds" in str(err) \
+                    and sats <= _available(app, coins):
+                app.push(ConfirmScreen("FEE FROM AMOUNT?", [
+                    "Not enough left over for the fee.",
+                    "Take the fee out of the amount?",
+                    f"{fmt_sats(sats)} sats leave your wallet;",
+                    "they get that minus the fee."],
+                    lambda app: build(app, addr, sats, rate, label, True)))
+            else:
+                app.push(MessageScreen("OOPS", [str(err)[:120]], border="red"))
+
+        app.job("BUILDING TX...", work, sign_and_send, failed)
 
     if prefill is not None:
         try:
@@ -546,6 +560,16 @@ def send_flow(app, coins=None, prefill=None):
     app.push(TextInputScreen("SEND TO", "Bitcoin address:", got_addr, max_len=90,
                              info=lambda s: f"{len(s)} chars" if s else "Type it, or TAB to scan a QR",
                              tab=("SCAN", scan)))
+
+
+def _available(app, coins=None) -> int:
+    try:
+        utxos = app.wallet._utxos()
+    except Exception:  # noqa: BLE001
+        return 0
+    if coins:
+        utxos = [u for u in utxos if f"{u['txid']}:{u['vout']}" in coins]
+    return sum(u["value"] for u in utxos)
 
 
 def sign_and_send(app, built):
