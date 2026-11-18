@@ -2,6 +2,32 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.21: first night on a real Cardputer Zero
+
+Tested on M5Stack's Debian 13 image. Everything below came from using it.
+
+**Fixes found on the device.** The panel stayed black: Pillow 12 removed the
+RGB565 packer (own conversion now) and M5's launcher leaves the backlight at
+0 (turned up at start). Sound plays through PipeWire, with a short lead-in so
+the speaker wakes in time. Wi-Fi joins through explicit NetworkManager
+profiles (its `wifi connect` fails on this image). The keyboard driver does
+the sym layer itself; those codes are read now. The camera picture is turned
+the right way up. Plain messages instead of tracebacks for Ctrl+C, a busy
+keyboard and a missing Tor.
+
+**New.**
+- Every start is in Vault mode until you choose Online.
+- SETUP › NETWORK shows the Wi-Fi network you're on.
+- The battery shows a lightning bolt while charging.
+- SCREEN SLEEP (DISPLAY & SOUND): screen off after 2 minutes idle, or 5, 10,
+  15, custom, never. The waking key does nothing else.
+- FEE FROM AMOUNT?: when the amount fits but amount + fee doesn't, take the
+  fee out of the amount instead of failing.
+- Your own node: the Wi-Fi icon is green on a server you set, blue on the
+  public default; home servers (umbrel.local, 192.168.x.x) are reached
+  directly instead of through Tor; SERVER scans your node's QR (TAB).
+- Menus: only UP/DOWN move the cursor; WALLETS marks the open one IN USE.
+
 ## 0.8.20: wipe PIN, login countdown, spending policy
 
 **Keyboard matched to a production Cardputer Zero.** The arrows are printed
