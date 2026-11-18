@@ -714,4 +714,7 @@ def run(png: bool = False):
 
 
 if __name__ == "__main__":
-    run(png="--png" in sys.argv)
+    try:
+        run(png="--png" in sys.argv)
+    except KeyboardInterrupt:          # Ctrl+C in a terminal: a normal way out
+        print("Insert Coin stopped.")
