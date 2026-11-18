@@ -24,7 +24,7 @@ def make(tmp_path, monkeypatch):
 def test_chime_is_a_short_valid_wav():
     with wave.open(io.BytesIO(sound.wav("fanfare"))) as w:
         assert w.getnchannels() == 1 and w.getframerate() == sound.RATE
-        assert 0.3 < w.getnframes() / w.getframerate() < 1.6
+        assert 0.3 < w.getnframes() / w.getframerate() < 1.6 + sound.LEAD_IN
 
 
 def test_title_draws_and_animates():
@@ -116,7 +116,7 @@ def test_one_sound_switch_in_setup_saved_across_restarts(tmp_path, monkeypatch):
 def test_the_fanfare_is_a_good_wav():
     with wave.open(io.BytesIO(sound.wav("fanfare"))) as w:
         secs = w.getnframes() / w.getframerate()
-        assert w.getframerate() == sound.RATE and 0.15 < secs < 1.6
+        assert w.getframerate() == sound.RATE and 0.15 < secs < 1.6 + sound.LEAD_IN
         frames = w.readframes(w.getnframes())
     peak = max(abs(int.from_bytes(frames[i:i + 2], "little", signed=True))
                for i in range(0, len(frames), 2))

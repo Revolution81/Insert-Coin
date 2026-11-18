@@ -142,6 +142,10 @@ _last_ui = 0.0
 
 SOUNDS = {"fanfare": _fanfare}
 DEFAULT = "fanfare"
+# PipeWire suspends the speaker when it's idle and the amplifier takes a
+# moment to wake, which clipped the start of the fanfare on the Cardputer
+# Zero. A short silence in front gives it time. CZ_SOUND_LEAD overrides.
+LEAD_IN = float(os.environ.get("CZ_SOUND_LEAD", "0.25"))
 
 
 def wav(name: str) -> bytes:
@@ -149,6 +153,8 @@ def wav(name: str) -> bytes:
         name = DEFAULT
     if name not in _cache:
         samples = (UI_SOUNDS.get(name) or SOUNDS[name])()
+        if name in SOUNDS and LEAD_IN > 0:
+            samples = _blank(LEAD_IN) + samples
         peak = max(1e-9, max(abs(s) for s in samples))
         k = 0.89 / peak
         if name in UI_SOUNDS:
