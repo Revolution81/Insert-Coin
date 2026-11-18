@@ -13,7 +13,9 @@
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 BASE_URL="${BASE_URL:-https://cardputer-zero-repo.oss-cn-shenzhen.aliyuncs.com/cardputerzero-trixie-arm64-latest.img.xz}"
-BASE_SHA256="${BASE_SHA256:-}"
+# The M5Stack image this was last built and checked against (2026-09-29 "latest").
+# If M5Stack publishes a new one, the build stops: look it over, then pass its hash.
+BASE_SHA256="${BASE_SHA256:-1b1002f7def184d6ca18d973f8b94622ccbe6552f3159cf1789ea955e833ed0a}"
 GROW="${GROW:-2G}"
 VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$SRC/core/version.py")"
 WORK="${WORK:-$SRC/work}"

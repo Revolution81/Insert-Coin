@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       base_sha256:
-        description: "Expected SHA-256 of M5Stack's base image (blank: just print it)"
+        description: "Expected SHA-256 of M5Stack's base image (blank: the one pinned in tools/build_image.sh)"
         required: false
         default: ""
 
@@ -29,7 +29,9 @@ jobs:
       - name: Build
         env:
           BASE_SHA256: ${{ inputs.base_sha256 }}
-        run: sudo -E sh tools/build_image.sh
+        run: |
+          [ -n "$BASE_SHA256" ] || unset BASE_SHA256
+          sudo -E sh tools/build_image.sh
       - name: Draft release
         env:
           GH_TOKEN: ${{ github.token }}

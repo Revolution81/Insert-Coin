@@ -174,7 +174,8 @@ systemctl disable getty@tty1 2>/dev/null || true
 # M5Stack's launcher (a user service) and its desktop audio would fight the
 # wallet for the screen, keyboard and speaker: mask them for every user.
 systemctl get-default > /etc/czwallet/previous-target 2>/dev/null || true
-systemctl --global mask APPLaunch.service 2>/dev/null || true
+systemctl mask APPLaunch.service 2>/dev/null || true            # system service on newer images
+systemctl --global mask APPLaunch.service 2>/dev/null || true   # user service on older ones
 systemctl --global mask pipewire.socket pipewire.service pipewire-pulse.socket \
     pipewire-pulse.service wireplumber.service 2>/dev/null || true
 systemctl disable lightdm 2>/dev/null || true
