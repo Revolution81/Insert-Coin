@@ -1085,14 +1085,39 @@ def settings_screen(app, at: str | None = None):
                                  info=lambda s: f"= {fmt_btc(int(s or 0))} BTC"))
 
     def server(app):
+        from core.config import parse_server
+
         def ok(app, text):
+            if text.strip():
+                try:
+                    text = parse_server(text)
+                except ValueError:
+                    return "Like tcp://umbrel.local:50001"
             app.settings.electrum_url = text.strip()
             app.settings.save()
             app.pop()                                   # back to NETWORK, refreshed
             return None
+
+        def scan(app, scr):
+            def got(app, res):
+                try:
+                    url = parse_server(res.text or res.address)
+                except ValueError:
+                    app.push(MessageScreen("NOT A SERVER", [
+                        "That QR isn't a server address.",
+                        "Look for one like", "umbrel.local:50001:t"], border="red"))
+                    return
+                app.pop()                               # the typing screen
+                app.settings.electrum_url = url
+                app.settings.save()
+                app.push(MessageScreen("SERVER SET", [url, "",
+                                                      "Go Online (MODE) to connect."]))
+            app.push(ScanScreen("SCAN SERVER", got, accept=("text",),
+                                hint="POINT AT YOUR NODE'S QR"))
         app.push(TextInputScreen("ELECTRUM", "Server (empty = default):", ok, max_len=90,
                                  initial=app.settings.electrum_url, empty_ok=True,
-                                 info=lambda s: "e.g. tcp://umbrel.local:50001"))
+                                 info=lambda s: "TAB scans your node's QR",
+                                 tab=("SCAN", scan)))
 
     def explorer(app):
         from core.history_export import DEFAULT_EXPLORER

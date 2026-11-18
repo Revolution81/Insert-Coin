@@ -305,3 +305,18 @@ def test_own_server_and_tor_skip_for_home_nodes(monkeypatch):
     with pytest.raises(WalletError):
         w.connect()
     assert seen["socks5"] == w.settings.tor_proxy
+
+
+def test_parse_server_from_node_dashboards():
+    from core.config import parse_server
+    assert parse_server("umbrel.local:50003:t") == "tcp://umbrel.local:50003"
+    assert parse_server("umbrel.local:50002:s") == "ssl://umbrel.local:50002"
+    assert parse_server(" tcp://Umbrel.local:50001/ ") == "tcp://umbrel.local:50001"
+    assert parse_server("ssl://electrum.blockstream.info:50002") == \
+        "ssl://electrum.blockstream.info:50002"
+    assert parse_server("192.168.1.20:50001") == "tcp://192.168.1.20:50001"
+    assert parse_server("abc123.onion:50001") == "tcp://abc123.onion:50001"
+    assert parse_server("electrum.example.com:50002") == "ssl://electrum.example.com:50002"
+    for bad in ("", "bc1qxyz", "http://x:1", "host:99999", "a b:1", "x:1:q", "bitcoin:bc1q"):
+        with pytest.raises(ValueError):
+            parse_server(bad)

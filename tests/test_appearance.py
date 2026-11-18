@@ -186,6 +186,10 @@ def test_coming_back_from_server_keeps_the_cursor(app):  # noqa: F811
     enter(app)
     type_text(app, "example.org")
     enter(app)
+    assert app.visible.title == "ELECTRUM"            # no port: not a server, stays put
+    press(app, "KEY_RIGHTALT", "KEY_S")               # sym + S types ':'
+    type_text(app, "50002")
+    enter(app)
     menu = app.visible
     assert menu.title == "NETWORK" and menu.items[menu.sel][0] == "SERVER"
     assert dict((i[0], i[2] if len(i) > 2 else '') for i in menu.items)["SERVER"] == "example.org"
