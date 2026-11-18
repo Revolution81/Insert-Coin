@@ -183,6 +183,21 @@ def set_player(fn) -> None:
     _player = fn
 
 
+def _player_cmd() -> list[str]:
+    """The Cardputer Zero's image runs PipeWire, which holds the sound card:
+    play through it when its socket is there (as M5Stack's launcher does),
+    else straight to ALSA. CZ_PLAYER overrides, e.g. "aplay -D plughw:0"."""
+    import shutil
+    if os.environ.get("CZ_PLAYER"):
+        return os.environ["CZ_PLAYER"].split()
+    run = os.environ.get("XDG_RUNTIME_DIR", "")
+    if run and os.path.exists(os.path.join(run, "pipewire-0")) and shutil.which("pw-play"):
+        return ["pw-play"]
+    if run and os.path.exists(os.path.join(run, "pulse", "native")) and shutil.which("paplay"):
+        return ["paplay"]
+    return ["aplay", "-q"]
+
+
 def play(name: str, enabled: bool = True) -> None:
     if not enabled or os.environ.get("CZ_SOUND") == "0":
         return
@@ -199,7 +214,7 @@ def play(name: str, enabled: bool = True) -> None:
         if not os.path.exists(path):
             with open(path, "wb") as f:
                 f.write(data)
-        subprocess.Popen(["aplay", "-q", path], stdout=subprocess.DEVNULL,
+        subprocess.Popen(_player_cmd() + [path], stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, start_new_session=True)
     except Exception:  # noqa: BLE001 - no speaker, no sound; never an error
         pass
