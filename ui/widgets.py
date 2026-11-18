@@ -78,7 +78,7 @@ class MenuScreen(Screen):
     adjust(app, step) makes an item a setting you change in place: LEFT and
     RIGHT call it with -1/+1 (OK with +1 when there's no action), the cursor
     stays put, and the menu rebuilds its items with refresh() to show the new
-    value. Items without adjust: LEFT/RIGHT move like UP/DOWN."""
+    value. Items without adjust ignore LEFT/RIGHT."""
 
     def __init__(self, title: str, items, info: list[str] | None = None,
                  back: bool = True, selected: int = 0):
@@ -116,9 +116,9 @@ class MenuScreen(Screen):
         elif ev.kind is Kind.SELECT and adjustable and not self.items[self.sel][1]:
             self._adjust(app, 1)
         elif ev.kind is Kind.NAV and n:
-            if ev.value in ("UP", "LEFT"):
+            if ev.value == "UP":                    # LEFT/RIGHT only change settings
                 self.sel = (self.sel - 1) % n
-            elif ev.value in ("DOWN", "RIGHT"):
+            elif ev.value == "DOWN":
                 self.sel = (self.sel + 1) % n
             elif ev.value == "PAGE_UP":
                 self.sel = max(0, self.sel - 6)

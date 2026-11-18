@@ -56,17 +56,18 @@ def wallets_menu(app):
             app.push(MenuScreen(e["name"].upper(), items, info=info))
         return go
 
-    items = [("MAIN", open_single, ("< " if current is None else "") + "SEGWIT", "gold")]
+    def tagged(tag, now):
+        return (f"{tag} · IN USE", "green") if now else (tag, "gold")
+
+    items = [("MAIN", open_single, *tagged("SEGWIT", current is None))]
     rules = app.signer.account_rules()
     for a in app.settings.accounts:
         tag = "VAULT" if rules.get(a["id"]) == "vault" else \
             ("TAPROOT" if a["id"].startswith("tr:") else "SEGWIT")
-        items.append((a["name"][:16].upper(), account_menu(a),
-                      ("< " if current == a["id"] else "") + tag, "gold"))
+        items.append((a["name"][:16].upper(), account_menu(a), *tagged(tag, current == a["id"])))
     for e in entries:
         tag = (e["role"].upper() if e.get("kind") == "inherit" else f"{e['k']}/{e['n']}")
-        items.append((e["name"][:16], wallet_menu(e),
-                      ("< " if current == e["id"] else "") + tag, "gold"))
+        items.append((e["name"][:16], wallet_menu(e), *tagged(tag, current == e["id"])))
     from .inherit_flow import new_inheritance
     items += [("NEW ACCOUNT", new_account),
               ("NEW MULTISIG", new_multisig), ("NEW INHERITANCE", new_inheritance),

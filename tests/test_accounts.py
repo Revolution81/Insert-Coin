@@ -314,7 +314,7 @@ def test_savings_preset(app, monkeypatch):  # noqa: F811
     # the list shows which is which
     press(app, "KEY_W")
     rights = {it[0]: it[2] for it in app.visible.items if len(it) > 2}
-    assert rights["SAVINGS"] == "VAULT" and rights["SPENDING"].endswith("TAPROOT")
+    assert rights["SAVINGS"] == "VAULT" and rights["SPENDING"] == "TAPROOT · IN USE"
     # turning the rule off needs the PIN on the signer, too
     goto(app, "SAVINGS")
     goto(app, "VAULT ONLY")

@@ -166,12 +166,14 @@ def test_setup_toggles_change_in_place(app):  # noqa: F811
     shown = dict((i[0], i[2] if len(i) > 2 else '') for i in menu.items)["QR FORMAT"]
     assert shown == app.settings.qr_format.upper()
     app.render(0)
-    # plain items still move with LEFT/RIGHT
+    # plain items ignore LEFT/RIGHT: only UP/DOWN move
     app.home()
     settings_screen(app, at="SERVER")
     menu = app.visible
     menu.sel = _at(menu, "SERVER")
     press(app, "KEY_RIGHT")
+    assert menu.items[menu.sel][0] == "SERVER"
+    press(app, "KEY_DOWN")
     assert menu.items[menu.sel][0] == "TOR"
 
 
