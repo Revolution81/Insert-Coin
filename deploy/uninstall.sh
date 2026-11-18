@@ -16,6 +16,9 @@ echo "== radios back on"
 rfkill unblock wifi 2>/dev/null || true
 rfkill unblock bluetooth 2>/dev/null || true
 nmcli networking on 2>/dev/null || true
+echo "== screen and keyboard back to everyone"
+rm -f /etc/udev/rules.d/60-czwallet-screen.rules
+udevadm control --reload-rules 2>/dev/null && udevadm trigger --subsystem-match=graphics 2>/dev/null || true
 echo "== launcher back"
 target="$(cat /etc/czwallet/previous-target 2>/dev/null || echo graphical.target)"
 systemctl set-default "$target"
