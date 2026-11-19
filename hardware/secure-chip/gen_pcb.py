@@ -168,6 +168,38 @@ for ref, (x, y) in REF_AT.items():
     t.SetTextAngleDegrees(-fps[ref].GetOrientationDegrees())
     t.SetKeepUpright(True)
 
+# Sir Signer under "^ KEYS", one silkscreen colour: his armour, helmet and
+# shield are printed, the black outline and the visor are left as board
+KNIGHT = [".....aaaaaa.....", "....abbbbbba....", "...abcbbbbbba...", "...abaaaaaaba...",
+          "...abadaadaba...", "...abbbbbbbba...", "....aaaaaaaa....", "..aaeeeeeaaaaaa.",
+          ".aeefeeeagggggga", ".aefeeeeaghhhhga", ".aeeeeeeaghgghga", "..aeeeeeaghhhhga",
+          "..aeeeeeagghhgga", "..aeeaeea.agga..", "..abbabba..aa...", "..aaaaaaa......."]
+INK = set("bcdefg")         # printed (d = his eyes); "h", the shield's dark gold, stays bare
+PX, KX, KY = 0.27, 0.75, 1.95
+
+
+def silk_rect(x1, y1, x2, y2):
+    r = pcbnew.PCB_SHAPE(b)
+    r.SetShape(pcbnew.SHAPE_T_RECT)
+    r.SetStart(P(x1, y1))
+    r.SetEnd(P(x2, y2))
+    r.SetFilled(True)
+    r.SetWidth(0)
+    r.SetLayer(pcbnew.F_SilkS)
+    b.Add(r)
+
+
+for row, line in enumerate(KNIGHT):
+    col = 0
+    while col < 16:
+        if line[col] in INK:
+            start = col
+            while col < 16 and line[col] in INK:
+                col += 1
+            silk_rect(KX + start * PX, KY + row * PX, KX + col * PX, KY + (row + 1) * PX)
+        else:
+            col += 1
+
 # outline
 for (x1, y1), (x2, y2) in [((0, 0), (W, 0)), ((W, 0), (W, H)), ((W, H), (0, H)), ((0, H), (0, 0))]:
     s = pcbnew.PCB_SHAPE(b)
