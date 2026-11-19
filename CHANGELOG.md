@@ -40,6 +40,9 @@ From the second session on the device:
 - Screens where you choose a PIN (new, change, wipe, duress, bypass) now say
   **4-16 letters, numbers or symbols**: PINs were never digits only, and a
   longer mixed one is far harder to guess from a copied card.
+- Removed a widely copied example address (bc1qxy2kgd...) from an unused
+  preview drawing: it belongs to someone and holds coins people sent by
+  mistake. A test now fails if any real mainnet address appears in the app.
 - There's a secret on the UNLOCK screen. (Reviewers: `ui/egg.py`. It's
   checked before the PIN, spends no try, opens nothing, and its key
   sequence is refused as any kind of PIN.)

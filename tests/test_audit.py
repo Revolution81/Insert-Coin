@@ -231,3 +231,28 @@ def test_f4_share_serves_paper_from_the_private_folder(monkeypatch):
     assert f["paper"] == "/var/lib/czwallet/paper"
     svc = open(os.path.join(os.path.dirname(__file__), "..", "deploy", "czshare.service")).read()
     assert "BindPaths=-/var/lib/czwallet/paper" in svc and "InsertCoin-paper" not in svc
+
+
+def test_no_real_addresses_in_the_app():
+    """Example addresses copied from tutorials belong to someone (one well-known
+    one holds coins people sent by mistake). Only tests may contain real
+    mainnet ones; testnet examples (worthless coins) are fine in the tools."""
+    import os
+    import re
+    from embit.script import address_to_scriptpubkey
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pat = re.compile(r"\bbc1[02-9ac-hj-np-z]{38,58}\b|\b[13][1-9A-HJ-NP-Za-km-z]{25,34}\b")
+    found = []
+    for top in ("core", "ui", "app.py", "sim.py", "deploy", "tools", "site"):
+        base = os.path.join(root, top)
+        paths = [base] if os.path.isfile(base) else [
+            os.path.join(d, f) for d, _, fs in os.walk(base) for f in fs
+            if f.endswith((".py", ".html", ".js", ".sh"))]
+        for p in paths:
+            for m in pat.findall(open(p, encoding="utf-8", errors="replace").read()):
+                try:
+                    address_to_scriptpubkey(m)
+                    found.append((os.path.relpath(p, root), m))
+                except Exception:  # noqa: BLE001
+                    pass                    # not a valid address: fine
+    assert found == []

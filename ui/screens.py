@@ -99,7 +99,9 @@ def send_confirm(frame=0, selected=1):
     return img
 
 
-def receive(address="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", index=7):
+def receive(address="bc1qexamplepreviewonlynotarealaddress0000", index=7):
+    # A deliberately invalid placeholder: never put a real address in code,
+    # even for a preview. Someone controls every real one.
     img, d = t.new_canvas()
     t.sky(img, d, hills=False)
     t.status_bar(img, d, mode="VAULT")
