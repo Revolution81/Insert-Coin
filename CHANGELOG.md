@@ -2,6 +2,16 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.24: steadier outbox screen
+
+From the second session on the device:
+- After signing in Vault mode the screen is now **SAVED TO OUTBOX** and says
+  plainly that the payment sends itself when you go Online. A small payment
+  shows one steady QR instead of flipping through parts (bigger ones still
+  animate). OK closes it; the payment stays in the outbox either way.
+- The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
+  merge sends nothing to an outside address.
+
 ## 0.8.23: savings and spending editions
 
 Insert Coin now comes in two clearly labelled editions, so nobody puts

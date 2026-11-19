@@ -643,12 +643,27 @@ def sign_and_send(app, built):
                                              "TXID", txid[:32], txid[32:]], big="QUEST DONE"))
         else:
             raw = open(os.path.join(app.outbox_dir, f"{txid}.hex")).read().strip()
-            app.push(AnimatedQRScreen("SIGNED TX", bbqr_encode(bytes.fromhex(raw), "T"),
-                                      ["Saved to the outbox:", "it broadcasts when you", "go Online.",
-                                       "", "Or scan this with", "any wallet to send it", "from there."]))
+            app.push(outbox_qr_screen(raw))
 
     app.prompt("sign_prompt", signed_by_signer, on_cancel=lambda app: app.home(),
                psbt=built["psbt"])
+
+
+# A small signed transaction fits one BBQr frame, which is easier to scan
+# than an animation; bigger ones go out as animated BBQr parts.
+SINGLE_QR_CHARS = 560
+
+
+def outbox_qr_screen(raw_hex: str):
+    """After signing in Vault mode: the tx waits in the outbox, and its QR
+    lets another wallet broadcast it now. OK closes; nothing is lost."""
+    raw = bytes.fromhex(raw_hex)
+    frames = bbqr_encode(raw, "T", max_chars=SINGLE_QR_CHARS)
+    if len(frames) > 1:
+        frames = bbqr_encode(raw, "T")
+    return AnimatedQRScreen("SAVED TO OUTBOX", frames,
+                            ["Sends itself when you go Online.", "",
+                             "Or scan this QR with another wallet to send it now."])
 
 
 # ======================================================= history, coins

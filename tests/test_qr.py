@@ -196,7 +196,7 @@ def test_vault_send_shows_tx_qr(app):  # noqa: F811
     press(app, "KEY_Z")
     enter(app)
     scr = app.visible
-    assert isinstance(scr, AnimatedQRScreen) and scr.title == "SIGNED TX"
+    assert isinstance(scr, AnimatedQRScreen) and scr.title == "SAVED TO OUTBOX"
     c = Collector()
     for i in range(len(scr.frames)):
         for t in decode(scr._qr_img(i).convert("L")):
@@ -246,3 +246,23 @@ def test_no_camera_shows_error(app):  # noqa: F811
     app.render(0)
     press(app, "KEY_ESC")
     assert isinstance(app.visible, HomeScreen)
+
+
+def test_small_signed_tx_is_one_qr(app):  # noqa: F811
+    """A one-in, one-out send fits a single, steady QR (no flipping)."""
+    create_wallet(app)
+    fund(app.wallet, 100_000)
+    press(app, "KEY_S")
+    type_text(app, DEST)
+    enter(app)
+    type_text(app, "20000")
+    enter(app)
+    enter(app)
+    press(app, "KEY_Z")
+    enter(app)
+    scr = app.visible
+    assert scr.title == "SAVED TO OUTBOX" and len(scr.frames) == 1
+    c = Collector()
+    for t in decode(scr._qr_img(0).convert("L")):
+        c.add(t)
+    assert c.result.kind == "tx"

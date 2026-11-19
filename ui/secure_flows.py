@@ -68,6 +68,8 @@ class ConfirmSendScreen(Screen):
             self.sel ^= 1
         elif ev.kind is Kind.TAB or (ev.kind is Kind.HOTKEY and ev.value == "A"):
             sends = [o for o in self.s["outputs"] if o["kind"] != "change"]
+            if not sends:                  # a merge: no address leaves the wallet
+                return
             lines = []
             for o in sends:
                 lines += [" ".join(groups(o["address"])), f"{fmt_sats(o['sats'])} sats", ""]
@@ -114,7 +116,7 @@ class ConfirmSendScreen(Screen):
             note = s["warnings"][0].upper()
         if note:
             t.text(d, (14, 98), note[:52], TINY, "red")
-        else:
+        elif any(o["kind"] != "change" for o in s["outputs"]):
             t.text(d, (14, 98), "TAB: SHOW FULL ADDRESS", TINY, "grey")
         t.dialog(img, d, [self.question], box=(4, 120, 214, H - 4))
         labels = ["YES", "NO"] if s["cap_ok"] else ["--", "NO"]

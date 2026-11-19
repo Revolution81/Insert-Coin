@@ -311,7 +311,7 @@ def finish_pending(app, scanned_psbt: bytes) -> bool:
         app.refresh_balance()
         app.push(MessageScreen("SENT!" if kind == "sent" else "FULLY SIGNED",
                                (["Broadcast to the network."] if kind == "sent" else
-                                ["Saved to the outbox: it", "broadcasts when you go Online."])
+                                ["Saved to the outbox.", "Sends itself when you go Online."])
                                + ["", "TXID", txid[:32], txid[32:]], big="QUEST DONE"))
     app.job("FINISHING...", work, done)
     return True

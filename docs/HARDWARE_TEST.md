@@ -245,7 +245,7 @@ App mode (from M5Stack's image, over SSH):
 Merge coins:
 - [ ] With 3+ coins: COINS, M (nothing picked) merges all; MERGE FEE lists
       the cheapest first; the signer's screen says MERGE n COINS INTO 1.
-- [ ] Pick two with OK, then M: only those two merge.
+- [x] Pick two with OK, then M: only those two merge. *Done 11-18: MERGE 2 COINS INTO 1, fee and YOU KEEP correct.*
 
 Wallet image:
 - [ ] Burn the release's `.img.xz` with M5 Imager (custom image) after

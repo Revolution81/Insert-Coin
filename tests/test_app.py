@@ -129,7 +129,7 @@ def test_create_receive_send_lock(app):
     enter(app)
     press(app, "KEY_Z")                            # move to YES
     enter(app)
-    assert app.visible.title == "SIGNED TX"            # Vault mode: saved + shown as QR
+    assert app.visible.title == "SAVED TO OUTBOX"      # Vault mode: saved + shown as QR
     assert app.outbox_count() == 1
     fee = s["fee"]
     assert app.balance["total"] == 100_000 - 30_000 - fee
