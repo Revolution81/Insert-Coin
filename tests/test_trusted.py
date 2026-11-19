@@ -222,3 +222,32 @@ def test_screen_link_drops_garbage():
         pytest.fail("signer kept a connection that sent garbage")
     assert srv.frame() is None
     assert FRAME == t.W * t.H * 3
+
+
+def test_konami_code_on_unlock_shows_the_secret(app):  # noqa: F811
+    from ui.egg import EggScreen
+    create_wallet(app)
+    app.lock(full=True)
+    settle(app)
+    enter(app)                                      # the signer's UNLOCK screen
+    before = app.signer.status()
+    type_text(app, "ffxxzczcba")                    # UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A
+    enter(app)                                      # START
+    assert isinstance(app.visible, EggScreen)
+    app.visible.render(app, 0)
+    after = app.signer.status()                     # no try spent, nothing opened
+    assert {k: v for k, v in after.items() if k != "cap"} == \
+        {k: v for k, v in before.items() if k != "cap"}
+    press(app, "KEY_A")                             # any key: back to the PIN
+    assert app.visible.title == "UNLOCK"
+    type_text(app, "1234")
+    enter(app)
+    assert isinstance(app.visible, HomeScreen)
+
+
+def test_konami_code_cant_be_a_pin(tmp_path):
+    import pytest
+    from core.vault import Vault, VaultError
+    v = Vault(str(tmp_path))
+    with pytest.raises(VaultError):
+        v.create("FFXXZCZCBA", "abandon " * 11 + "about", "signet")

@@ -601,6 +601,8 @@ class Signer:
     def set_bypass(self, pin: str, new_bypass: str, bypass_pin: str | None = None) -> dict:
         rules = spolicy.load(self.policy_path)
         self._check_bypass(rules, bypass_pin)
+        from .vault import _not_reserved
+        _not_reserved(new_bypass)
         if len(new_bypass) < 4 or new_bypass == pin:
             raise SignerError("bypass PIN must differ from your PIN (4+ characters)")
         self.vault.unlock(pin)

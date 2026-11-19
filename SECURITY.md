@@ -363,6 +363,14 @@ the folder's own listing. The default password (`bitcoin`) is public, so on
 shared networks change it. Paper wallets are left out unless you choose to
 include them for that session.
 
+## The UNLOCK screen's secret
+
+`ui/egg.py`: typing the Konami code with the arrow keys (the text
+`ffxxzczcba`) and OK on the UNLOCK screen shows a picture instead of
+checking a PIN. It's compared before any vault work, costs no try, changes
+nothing, and `vault._not_reserved` refuses that text as a PIN, duress,
+wipe or bypass PIN, so it can never shadow a real one.
+
 ## App mode
 
 App mode is the **spending edition**; the wallet image and `--dedicated`

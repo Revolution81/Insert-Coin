@@ -31,6 +31,9 @@ From the second session on the device:
   are removed: about 1.1 GB less, and less code to attack. After installing,
   the build shrinks the image (600 MB kept free) to 6.4 GiB, so it fits an
   8 GB card.
+- There's a secret on the UNLOCK screen. (Reviewers: `ui/egg.py`. It's
+  checked before the PIN, spends no try, opens nothing, and its key
+  sequence is refused as any kind of PIN.)
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 

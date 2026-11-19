@@ -45,6 +45,13 @@ PAYLOAD_SIZE = 512             # every slot's plaintext is padded to this
 SLOT_SIZE = PAYLOAD_SIZE + 16  # plus the GCM tag
 
 
+
+def _not_reserved(pin: str) -> None:
+    """The unlock screen reads this one as the Konami code (ui/egg.py), so it
+    can never be a PIN of any kind."""
+    if pin.strip().lower() == "ffxxzczcba":
+        raise VaultError("That PIN is taken by a secret. Pick another")
+
 class VaultError(Exception):
     pass
 
@@ -221,6 +228,7 @@ class Vault:
                max_tries: int = DEFAULT_MAX_TRIES) -> None:
         if len(pin) < 4:
             raise VaultError("PIN must be at least 4 characters")
+        _not_reserved(pin)
         os.makedirs(self.dir, mode=0o700, exist_ok=True)
         body = {"v": VERSION, "network": network, "max_tries": max_tries,
                 "pp_stored": passphrase is not None,
@@ -275,6 +283,7 @@ class Vault:
     # ------------------------------------------------------------ duress
     def set_duress(self, pin: str, duress_pin: str, decoy_mnemonic: str,
                    erase_real: bool = False) -> None:
+        _not_reserved(duress_pin)
         if duress_pin == pin or len(duress_pin) < 4:
             raise VaultError("duress PIN must differ from your PIN (4+ characters)")
         u = self.unlock(pin)
@@ -317,6 +326,7 @@ class Vault:
     # ---------------------------------------------------------- wipe PIN
     def set_wipe_pin(self, pin: str, wipe_pin: str) -> None:
         """A PIN that erases everything when entered at unlock."""
+        _not_reserved(wipe_pin)
         if len(wipe_pin) < 4 or wipe_pin == pin:
             raise VaultError("wipe PIN must differ from your PIN (4+ characters)")
         u = self.unlock(pin)
@@ -342,6 +352,7 @@ class Vault:
 
     # -------------------------------------------------------- change pin
     def change_pin(self, old_pin: str, new_pin: str) -> None:
+        _not_reserved(new_pin)
         if len(new_pin) < 4:
             raise VaultError("PIN must be at least 4 characters")
         u = self.unlock(old_pin)
