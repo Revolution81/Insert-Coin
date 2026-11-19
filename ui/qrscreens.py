@@ -133,7 +133,7 @@ class AnimatedQRScreen(Screen):
     animated = True
 
     def __init__(self, title: str, frames: list[str], lines: list[str] | None = None,
-                 then: Callable | None = None, fps: float = 3.0,
+                 then: Callable | None = None, fps: float = 2.0,
                  views: list[tuple] | None = None):
         """views: optional [(tab_label, title, frames, lines), ...] that TAB
         cycles through (e.g. descriptor vs xpub)."""
@@ -141,12 +141,14 @@ class AnimatedQRScreen(Screen):
         self.view = 0
         self.then = then
         self.fps = fps
+        self.paused: int | None = None     # frame shown while stepping by hand
         self._cache: dict[int, Image.Image] = {}
         self._load()
 
     def _load(self):
         _, self.title, self.frames, self.lines = self.views[self.view]
         self._cache.clear()
+        self.paused = None
 
     def _qr_img(self, i: int) -> Image.Image:
         if i not in self._cache:
@@ -171,10 +173,18 @@ class AnimatedQRScreen(Screen):
 
     @property
     def index(self) -> int:
+        if self.paused is not None:
+            return self.paused
         return int(time.monotonic() * self.fps) % len(self.frames)
 
     def handle(self, ev, app):
-        if ev.kind is Kind.TAB or (ev.kind is Kind.NAV and ev.value in ("LEFT", "RIGHT")):
+        n = len(self.frames)
+        if ev.kind is Kind.NAV and n > 1:
+            # Parts play by themselves so a camera can collect them; the
+            # arrows stop it and step through one part at a time.
+            step = -1 if ev.value in ("LEFT", "UP") else 1
+            self.paused = (self.index + step) % n
+        elif ev.kind is Kind.TAB or (ev.kind is Kind.NAV and ev.value in ("LEFT", "RIGHT")):
             if len(self.views) > 1:
                 self.view = (self.view + 1) % len(self.views)
                 self._load()
@@ -200,11 +210,15 @@ class AnimatedQRScreen(Screen):
                 t.text(d, (x, y), part, BODY, "light")
                 y += 11
         if len(self.frames) > 1:
-            t.text(d, (x, 118), f"PART {i + 1}/{len(self.frames)}", BODY, "gold")
+            t.text(d, (x, 118), f"PART {i + 1}/{len(self.frames)}"
+                   + ("  PAUSED" if self.paused is not None else ""), BODY, "gold")
             t.bar(d, (x, 130, W - 16, 136), (i + 1) / len(self.frames), "gold", segments=False)
         nxt = self.views[(self.view + 1) % len(self.views)][0]
-        hint = getattr(self, "done_hint", "OK DONE") + (
-            f"  < > {nxt}" if len(self.views) > 1 else "")
+        if len(self.frames) > 1:
+            hint = getattr(self, "done_hint", "OK DONE") + "  < > STEP"
+        else:
+            hint = getattr(self, "done_hint", "OK DONE") + (
+                f"  < > {nxt}" if len(self.views) > 1 else "")
         t.text(d, (x, 146), hint, TINY, "grey")
         return img
 

@@ -9,6 +9,8 @@ From the second session on the device:
   plainly that the payment sends itself when you go Online. A small payment
   shows one steady QR instead of flipping through parts (bigger ones still
   animate). OK closes it; the payment stays in the outbox either way.
+- Animated QR codes play slower (2 parts a second), and the arrow keys
+  pause them and step one part at a time; PART n/N shows PAUSED.
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 

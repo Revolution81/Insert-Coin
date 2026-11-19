@@ -266,3 +266,18 @@ def test_small_signed_tx_is_one_qr(app):  # noqa: F811
     for t in decode(scr._qr_img(0).convert("L")):
         c.add(t)
     assert c.result.kind == "tx"
+
+
+def test_animated_qr_steps_by_hand():
+    from ui.input import Event, Kind
+    scr = AnimatedQRScreen("T", ["A", "B", "C"])
+    assert scr.paused is None and scr.fps == 2.0
+    class _App:  # noqa: N801
+        def pop(self):
+            pass
+    start = scr.index
+    scr.handle(Event(Kind.NAV, "RIGHT"), _App())
+    assert scr.paused == (start + 1) % 3
+    scr.handle(Event(Kind.NAV, "RIGHT"), _App())
+    scr.handle(Event(Kind.NAV, "LEFT"), _App())
+    assert scr.index == (start + 1) % 3          # stays put until the next arrow
