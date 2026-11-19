@@ -9,18 +9,26 @@
 #                                          nothing else
 #   ... --image                            building a disk image (in a chroot):
 #                                          skip steps that need a running system
+#   ... --full                             redo every step, even ones an earlier
+#                                          run already finished
+#
+# Running it again is how you update. Steps that are already done (system
+# packages, Python packages with the same lock file, interface setup) are
+# skipped, so an update mostly just copies the new code.
 #
 # deploy/uninstall.sh undoes either.
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 MODE=""
 IMAGE=0
+FULL=0
 for a in "$@"; do
   case "$a" in
     --app) MODE=app ;;
     --dedicated) MODE=dedicated ;;
     --image) IMAGE=1 ;;
-    *) echo "usage: install.sh [--app|--dedicated] [--image]" >&2; exit 2 ;;
+    --full) FULL=1 ;;
+    *) echo "usage: install.sh [--app|--dedicated] [--image] [--full]" >&2; exit 2 ;;
   esac
 done
 if [ -z "$MODE" ]; then
@@ -39,11 +47,19 @@ VENV=/opt/czwallet-venv
 RELEASE=/opt/czwallet-releases/$VERSION
 LINK=/opt/czwallet          # -> the active release; updates switch this link
 
+DONE=/etc/czwallet/install-done     # marks steps an earlier run finished
+mkdir -p "$DONE"
+[ "$FULL" = 1 ] && rm -f "$DONE"/*
+
+NEED="python3-venv python3-pip python3-setuptools python3-wheel python3-evdev tor rfkill network-manager sudo alsa-utils"
+have_all() { for p in $NEED; do dpkg -s "$p" >/dev/null 2>&1 || return 1; done; }
+if [ -f "$DONE/packages" ] && have_all; then
+echo "== packages: already installed (--full to check again)"
+else
 echo "== packages"
 apt-get update
 # python3-evdev, picamera2 and the build tools come from apt (signed), not PyPI
-apt-get install -y python3-venv python3-pip python3-setuptools python3-wheel \
-    python3-evdev tor rfkill network-manager sudo alsa-utils
+apt-get install -y $NEED
 # Names differ between Raspberry Pi OS and plain Debian 13 (trixie's 64-bit
 # time renames, e.g. libzbar0t64); these are needed only for add-ons.
 apt-get install -y libzbar0t64 2>/dev/null || apt-get install -y libzbar0 2>/dev/null \
@@ -54,6 +70,8 @@ apt-get install -y python3-spidev 2>/dev/null || echo "!! spidev not installed: 
 raspi-config nonint do_spi 0 2>/dev/null || true
 # Optional: native secp256k1 makes signing much faster than embit's pure-Python fallback
 apt-get install -y libsecp256k1-1 2>/dev/null || apt-get install -y libsecp256k1-2 2>/dev/null || true
+touch "$DONE/packages"
+fi
 
 echo "== users"
 id czsigner >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin czsigner
@@ -97,8 +115,15 @@ ln -sfn "$RELEASE" "$LINK"
 # Every PyPI file must match a SHA-256 in requirements.lock or pip refuses
 # it. Wheels only (no install-time code), except embit, which is pure
 # Python source built with apt's setuptools (no build tools downloaded).
-"$VENV/bin/pip" install --require-hashes --no-deps --only-binary :all: \
-    --no-binary embit --no-build-isolation -r "$SRC/requirements.lock"
+LOCKSUM="$(sha256sum "$SRC/requirements.lock" | cut -d' ' -f1)"
+# the mark lives in the venv itself, so a fresh venv always gets its packages
+if [ "$(cat "$VENV/.insert-coin-lock" 2>/dev/null)" = "$LOCKSUM" ]; then
+  echo "== python packages: unchanged since last install"
+else
+  "$VENV/bin/pip" install --require-hashes --no-deps --only-binary :all: \
+      --no-binary embit --no-build-isolation -r "$SRC/requirements.lock"
+  echo "$LOCKSUM" > "$VENV/.insert-coin-lock"
+fi
 chown -R root:root /opt/czwallet-releases "$VENV"
 chmod -R go-w /opt/czwallet-releases "$VENV"
 
@@ -139,11 +164,16 @@ if [ "$MODE" = dedicated ]; then
   fi
 fi
 
+if [ -f "$DONE/interfaces" ]; then
+echo "== interfaces for add-ons: already set up"
+else
 echo "== interfaces for add-ons"
 # I2C for the secure chip; the UART (without a login console) for the fingerprint sensor
 raspi-config nonint do_i2c 0 || true
 raspi-config nonint do_serial_hw 0 || true
 raspi-config nonint do_serial_cons 1 || true
+touch "$DONE/interfaces"
+fi
 getent group i2c >/dev/null && usermod -aG i2c czsigner
 
 echo "== services"

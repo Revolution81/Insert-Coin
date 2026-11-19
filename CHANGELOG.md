@@ -13,6 +13,10 @@ From the second session on the device:
   pause them and step one part at a time; PART n/N shows PAUSED.
 - **SETUP › DISPLAY & SOUND › CLOCK**: 24H (21:56) or 12H (9:56PM) on every
   status bar, the signer's screens included. The signer keeps the setting.
+- **Faster updates**: running `deploy/install.sh` again skips system
+  packages that are already installed, Python packages when
+  `requirements.lock` hasn't changed, and the interface setup, so an update
+  mostly just copies the new code. `--full` redoes everything.
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 

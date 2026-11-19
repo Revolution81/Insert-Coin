@@ -150,6 +150,8 @@ cd Insert-Coin && sudo sh deploy/install.sh --app
 ```
 Opening the icon starts the wallet in Vault mode; SETUP › EXIT TO MENU locks
 it, stops every wallet service and puts Wi-Fi back as it was.
+To update: `cd ~/Insert-Coin && git pull && sudo sh deploy/install.sh --app`
+(quick after the first time: steps already done are skipped).
 `sudo sh deploy/uninstall.sh` removes it. Keep only spending money on it.
 
 The installer creates the service users, installs the code under
