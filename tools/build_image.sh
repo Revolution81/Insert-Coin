@@ -115,6 +115,12 @@ in_root awk -F: '($3 == 0 || $3 >= 1000) && $3 != 65534 {print $1, $3, $7}' /etc
   echo "  $who $uid $sh ${st:-?}"
 done
 
+echo "== space"
+df -h "$ROOT" | tail -1
+echo "largest installed packages (MB):"
+in_root dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -rn | head -40 | awk '{printf "  %6.0f  %s\n", $1/1024, $2}'
+du -xsh "$ROOT"/usr/share/APPLaunch "$ROOT"/opt/* "$ROOT"/home/* "$ROOT"/var/cache "$ROOT"/usr/lib/firmware "$ROOT"/usr/lib/modules 2>/dev/null || true
+
 echo "== tidy"
 in_root apt-get clean
 rm -rf "$ROOT/opt/insert-coin-src" "$ROOT/usr/sbin/policy-rc.d" "$ROOT/var/lib/apt/lists/"*
