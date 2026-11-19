@@ -187,6 +187,12 @@ python3 tools/leakcheck.py                  # long-running memory loops
 python3 tools/shots.py shots/               # screenshots of the real app
 ```
 
+**Developer image** (for debugging the Savings image; never released): run
+the *Build wallet image* workflow with **developer** ticked and your SSH
+public key. It's the Savings image with SSH on for that one key (no
+passwords) and DEVELOPER: NOT FOR REAL MONEY on the title screen, and it's a
+download on the workflow run's page for 7 days.
+
 <details>
 <summary>Source layout</summary>
 

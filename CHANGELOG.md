@@ -31,6 +31,12 @@ From the second session on the device:
   are removed: about 1.1 GB less, and less code to attack. After installing,
   the build shrinks the image (600 MB kept free) to 6.4 GiB, so it fits an
   8 GB card.
+- **Developer image** for debugging the Savings image: the image workflow's
+  *developer* switch keeps SSH on for one SSH key (never a password), puts
+  DEVELOPER: NOT FOR REAL MONEY on the title, and is only a download on the
+  run's page, never a release.
+- Update signing keys can now live in the repository
+  (`deploy/release_keys.txt`), so every install and the image trust them.
 - There's a secret on the UNLOCK screen. (Reviewers: `ui/egg.py`. It's
   checked before the PIN, spends no try, opens nothing, and its key
   sequence is refused as any kind of PIN.)

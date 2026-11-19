@@ -149,7 +149,10 @@ install -d -o czapp -g czapp -m 700 /var/lib/czwallet/app
 install -d -o root -g czshare -m 2770 /var/lib/czwallet/paper
 install -d -m 755 /etc/czwallet
 echo "CZ_APP_UID=$(id -u czapp)" > /etc/czwallet/signer.env
-if [ ! -f /etc/czwallet/release_keys.txt ]; then
+if [ -f "$SRC/deploy/release_keys.txt" ]; then
+  # the project's update-signing keys, public and in the repository
+  install -m 644 "$SRC/deploy/release_keys.txt" /etc/czwallet/release_keys.txt
+elif [ ! -f /etc/czwallet/release_keys.txt ]; then
   printf '%s\n' "# Ed25519 public keys (hex), one per line, trusted to sign updates." \
                  "# Get yours from: python3 tools/release.py keygen" > /etc/czwallet/release_keys.txt
 fi
