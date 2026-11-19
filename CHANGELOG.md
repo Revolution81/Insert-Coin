@@ -26,8 +26,11 @@ From the second session on the device:
 - **Wallet image locked down and smaller.** The Savings image now has SSH
   switched off (including the boot-partition switch), every account's
   password locked and cloud-init disabled, so nothing can log in over the
-  network or be added from files on the card. After installing, the build
-  shrinks the image back down (600 MB kept free), so it fits an 8 GB card.
+  network or be added from files on the card. Browsers (Firefox, Chromium),
+  VLC, the RealVNC and wayvnc remote-desktop servers, Thonny and the Imager
+  are removed: about 1.1 GB less, and less code to attack. After installing,
+  the build shrinks the image (600 MB kept free) to 6.4 GiB, so it fits an
+  8 GB card.
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 
