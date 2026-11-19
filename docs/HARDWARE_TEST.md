@@ -45,7 +45,7 @@ Also verified 11-17: your own Electrum server set by scanning its QR
 ## Where testing stands
 
 Ticked boxes below were confirmed on the device, run by hand over SSH. Not
-yet tried on hardware: the wallet image, merging coins, Vault signing through the Outbox, the PIN timing and power-cut tests, animated
+yet tried on hardware: the wallet image, the PIN timing and power-cut tests, animated
 PSBTs from Sparrow, the Savings account refusal online, card backup, SHARE
 FILES, printing, the wipe PIN, countdown and spending policy, and **every
 add-on** (secure chip, fingerprint, NFC Cap). Still to check from the first
@@ -133,7 +133,7 @@ in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
       PENDING, then confirm.
 - [x] Send some back: the confirm screen is the signer's (gold shield), the *Done 11-18 on mainnet: MAX send to a phone wallet, broadcast, PENDING in HISTORY.*
       payment broadcasts, and it shows in HISTORY.
-- [ ] Sign a send in Vault mode → it waits in the Outbox → go Online → it's
+- [x] Sign a send in Vault mode → it waits in the Outbox → go Online → it's *Done 11-18: Vault send of one picked coin, broadcast on going Online.*
       offered for broadcast.
 - [ ] `date` shows the right date and time once online (the daily spend cap
       resets by date).
