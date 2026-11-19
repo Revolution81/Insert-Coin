@@ -45,7 +45,7 @@ Also verified 11-17: your own Electrum server set by scanning its QR
 ## Where testing stands
 
 Ticked boxes below were confirmed on the device, run by hand over SSH. Not
-yet tried on hardware: the installed app (`--app`), the wallet image, sending
+yet tried on hardware: the wallet image, sending
 (fee from amount, merge coins), the PIN timing and power-cut tests, animated
 PSBTs from Sparrow, the Savings account refusal online, card backup, SHARE
 FILES, printing, the wipe PIN, countdown and spending policy, and **every
@@ -233,9 +233,9 @@ Run `sudo python3 tools/hwtest.py` with everything plugged in, and send the outp
 ## App mode, merge, image (0.8.22)
 
 App mode (from M5Stack's image, over SSH):
-- [ ] `sudo sh deploy/install.sh --app` finishes; the **Insert Coin** coin icon
+- [x] `sudo sh deploy/install.sh --app` finishes; the **Insert Coin** coin icon *Done 11-18.*
       appears on the home carousel (reopen the carousel if it doesn't).
-- [ ] Open it: the title screen comes up, OK plays the fanfare (PipeWire is
+- [x] Open it: the title screen comes up, OK plays the fanfare (PipeWire is *Done 11-18.*
       paused for the session), the status bar says VAULT.
 - [ ] MODE › Online works; SETUP › NETWORK shows your Wi-Fi.
 - [ ] SETUP › EXIT TO MENU: back on M5Stack's home screen within a few
