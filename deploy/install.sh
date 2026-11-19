@@ -102,6 +102,22 @@ if [ "$MODE" = app ]; then
   if [ "$BLG" != root ] && getent group "$BLG" >/dev/null; then usermod -aG "$BLG" czsigner; fi
 fi
 
+# Keep going if the SSH connection drops halfway (Wi-Fi blips, the wallet
+# turning radios off): a half-finished install is worse than a slow one.
+trap '' HUP
+
+# Never swap the code under a running wallet: close the session first, the
+# same way EXIT TO MENU does (the signer forgets the seed, Wi-Fi and the
+# backlight go back as they were).
+if [ "$IMAGE" = 0 ] && systemctl is-active -q czwallet 2>/dev/null; then
+  echo "== Insert Coin is open: closing it first"
+  systemctl stop czwallet 2>/dev/null || true
+  if [ -e /run/cz-session.lock ]; then
+    flock -w 20 /run/cz-session.lock true 2>/dev/null || true   # wait for the session to tidy up
+  fi
+  systemctl stop czshare czprint czscan cznet czsigner 2>/dev/null || true
+fi
+
 echo "== code ($VERSION)"
 rm -rf "$RELEASE"
 mkdir -p "$RELEASE"
