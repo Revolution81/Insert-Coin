@@ -70,8 +70,6 @@ apt-get install -y libzbar0t64 2>/dev/null || apt-get install -y libzbar0 2>/dev
     || echo "!! zbar not installed: QR scanning won't work"
 apt-get install -y python3-picamera2 2>/dev/null || echo "!! picamera2 not installed: no camera"
 apt-get install -y python3-spidev 2>/dev/null || echo "!! spidev not installed: no NFC Cap"
-# SPI for the Cap CC1101 & NFC
-raspi-config nonint do_spi 0 2>/dev/null || true
 # Optional: native secp256k1 makes signing much faster than embit's pure-Python fallback
 apt-get install -y libsecp256k1-1 2>/dev/null || apt-get install -y libsecp256k1-2 2>/dev/null || true
 touch "$DONE/packages"
@@ -180,15 +178,20 @@ if [ "$MODE" = dedicated ]; then
   fi
 fi
 
-if [ -f "$DONE/interfaces" ]; then
-echo "== interfaces for add-ons: already set up"
+# Interfaces for add-ons (SPI: NFC Cap; I2C: secure chip; UART: fingerprint).
+# Only when building an image, where raspi-config just edits files. On a
+# running Cardputer Zero the screen and keyboard already sit on SPI and I2C,
+# and raspi-config switching them on again live can freeze the screen; there
+# they're already on, and the add-on steps in docs/HARDWARE_TEST.md say what
+# (if anything) to change, followed by a reboot.
+if [ "$IMAGE" = 1 ]; then
+  echo "== interfaces for add-ons"
+  raspi-config nonint do_spi 0 || true
+  raspi-config nonint do_i2c 0 || true
+  raspi-config nonint do_serial_hw 0 || true
+  raspi-config nonint do_serial_cons 1 || true
 else
-echo "== interfaces for add-ons"
-# I2C for the secure chip; the UART (without a login console) for the fingerprint sensor
-raspi-config nonint do_i2c 0 || true
-raspi-config nonint do_serial_hw 0 || true
-raspi-config nonint do_serial_cons 1 || true
-touch "$DONE/interfaces"
+  echo "== interfaces for add-ons: left as they are (no live changes)"
 fi
 getent group i2c >/dev/null && usermod -aG i2c czsigner
 

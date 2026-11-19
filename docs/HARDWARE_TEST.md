@@ -141,6 +141,10 @@ in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
 ## 8. Add-ons (each one you have)
 
 Run `sudo python3 tools/hwtest.py` with everything plugged in, and send the output.
+Since 0.8.24 the installer no longer switches SPI/I2C/UART on by itself on a
+running device (doing it live froze M5Stack's screen). First check
+`ls /dev/spidev* /dev/i2c-* /dev/serial0`; if the one an add-on needs is
+missing, we change the boot config and reboot.
 
 - [ ] **Secure chip:** SETUP › HARDWARE › SECURE CHIP › USE. Lock and unlock:
       note the new unlock time. Unplug the chip: unlocking must say the chip

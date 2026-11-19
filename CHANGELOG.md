@@ -18,6 +18,11 @@ From the second session on the device:
   packages that are already installed, Python packages when
   `requirements.lock` hasn't changed, and the interface setup, so an update
   mostly just copies the new code. `--full` redoes everything.
+- **Fixed: the screen froze after an install or update** (M5Stack's menu
+  stopped responding). The installer ran raspi-config to switch on SPI and
+  I2C for add-ons, live, on the buses the screen and keyboard already use.
+  It now does that only when building the wallet image; a running device is
+  left as it is.
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 
