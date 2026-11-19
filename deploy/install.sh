@@ -18,6 +18,10 @@
 #
 # deploy/uninstall.sh undoes either.
 set -eu
+# Keep going if the SSH connection drops halfway (Wi-Fi blips, the wallet
+# turning radios off): a half-finished install is worse than a slow one.
+trap '' HUP
+
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 MODE=""
 IMAGE=0
@@ -101,10 +105,6 @@ if [ "$MODE" = app ]; then
   BLG="$(stat -c %G /sys/class/backlight/backlight/brightness 2>/dev/null || echo root)"
   if [ "$BLG" != root ] && getent group "$BLG" >/dev/null; then usermod -aG "$BLG" czsigner; fi
 fi
-
-# Keep going if the SSH connection drops halfway (Wi-Fi blips, the wallet
-# turning radios off): a half-finished install is worse than a slow one.
-trap '' HUP
 
 # Never swap the code under a running wallet: close the session first, the
 # same way EXIT TO MENU does (the signer forgets the seed, Wi-Fi and the
