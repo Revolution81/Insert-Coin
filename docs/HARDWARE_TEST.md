@@ -256,6 +256,9 @@ Wallet image:
       checking `sha256sum` against the `.sha256` file.
 - [ ] First boot ends on the INSERT COIN title, not M5Stack's wizard or
       launcher. How long from power-on?
+- [ ] It fits and boots from an 8 GB card.
+- [ ] Online, from a PC on the same Wi-Fi: `ssh pi@<the device's address>`
+      is refused (no SSH at all).
 - [ ] Sound, keys, camera, Wi-Fi join, Tor sync as in the sections above.
 
 ## Editions (0.8.23)

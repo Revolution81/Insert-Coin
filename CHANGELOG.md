@@ -23,6 +23,11 @@ From the second session on the device:
   I2C for add-ons, live, on the buses the screen and keyboard already use.
   It now does that only when building the wallet image; a running device is
   left as it is.
+- **Wallet image locked down and smaller.** The Savings image now has SSH
+  switched off (including the boot-partition switch), every account's
+  password locked and cloud-init disabled, so nothing can log in over the
+  network or be added from files on the card. After installing, the build
+  shrinks the image back down (600 MB kept free), so it fits an 8 GB card.
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 

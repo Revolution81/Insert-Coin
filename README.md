@@ -134,7 +134,9 @@ details.
 with M5 Imager or Raspberry Pi Imager (*Use custom*), after checking its
 SHA-256. It's M5Stack's CardputerZero OS with Insert Coin installed in
 dedicated mode by `tools/build_image.sh`, built in public by the *Build
-wallet image* workflow, so anyone can see what went in.
+wallet image* workflow, so anyone can see what went in. It fits an 8 GB card
+or bigger. It takes **no logins at all**: SSH is off and every account's
+password is locked, so the screen and keyboard are the only way in.
 
 **Or on the card you already have:** `sudo sh deploy/install.sh --dedicated`,
 then `sudo reboot`. `sudo sh deploy/uninstall.sh` brings the launcher back.

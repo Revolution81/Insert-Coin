@@ -16,7 +16,9 @@ BASE_URL="${BASE_URL:-https://cardputer-zero-repo.oss-cn-shenzhen.aliyuncs.com/c
 # The M5Stack image this was last built and checked against (2026-09-29 "latest").
 # If M5Stack publishes a new one, the build stops: look it over, then pass its hash.
 BASE_SHA256="${BASE_SHA256:-1b1002f7def184d6ca18d973f8b94622ccbe6552f3159cf1789ea955e833ed0a}"
-GROW="${GROW:-2G}"
+GROW="${GROW:-2G}"            # working room while installing; shrunk away after
+SPARE_MB="${SPARE_MB:-600}"   # free space left on the wallet's partition
+MAX_BYTES="${MAX_BYTES:-7300000000}"   # must fit an "8 GB" card (about 7.4-7.9 GB real)
 VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$SRC/core/version.py")"
 WORK="${WORK:-$SRC/work}"
 OUT="${OUT:-$SRC/out}"
@@ -90,6 +92,29 @@ for f in "$ROOT"/usr/lib/systemd/user/* "$ROOT"/etc/systemd/user/*; do
   esac
 done
 
+echo "== lock down logins (the screen and keyboard are the only way in)"
+# M5Stack's image ships with SSH on and users meant to be set up by its
+# first-boot wizard, which is switched off above. A savings wallet takes no
+# logins at all: SSH off (and the boot-partition switch that turns it on),
+# every account's password locked, cloud-init (which could add users and
+# keys from files on the card) disabled.
+for u in ssh.service ssh.socket sshd.service sshswitch.service; do
+  if in_root systemctl list-unit-files --no-legend "$u" 2>/dev/null | grep -q .; then
+    echo "mask $u"; in_root systemctl mask "$u" || true
+  fi
+done
+in_root awk -F: '($3 == 0 || $3 >= 1000) && $3 != 65534 {print $1}' /etc/passwd | while read -r who; do
+  in_root passwd -l "$who" >/dev/null 2>&1 && echo "locked password: $who"
+done
+if [ -d "$ROOT/etc/cloud" ]; then
+  touch "$ROOT/etc/cloud/cloud-init.disabled"; echo "cloud-init disabled"
+fi
+echo "accounts (name uid shell password-state):"
+in_root awk -F: '($3 == 0 || $3 >= 1000) && $3 != 65534 {print $1, $3, $7}' /etc/passwd | while read -r who uid sh; do
+  st="$(in_root passwd -S "$who" 2>/dev/null | awk '{print $2}')"
+  echo "  $who $uid $sh ${st:-?}"
+done
+
 echo "== tidy"
 in_root apt-get clean
 rm -rf "$ROOT/opt/insert-coin-src" "$ROOT/usr/sbin/policy-rc.d" "$ROOT/var/lib/apt/lists/"*
@@ -103,10 +128,40 @@ rm -f "$ROOT/etc/resolv.conf"
 } > "$ROOT/etc/insert-coin-image"
 cat "$ROOT/etc/insert-coin-image"
 
-echo "== unmount and compress"
+echo "== unmount"
 cleanup
 trap - EXIT
 LOOP=""
+
+echo "== shrink to fit small cards"
+# The install needed working room; give it back so the image fits an 8 GB
+# card, keeping $SPARE_MB MB free for the wallet's data and logs.
+START="$(sfdisk -d "$WORK/image.img" | sed -n 's/^.*image\.img2 : start= *\([0-9]*\),.*/\1/p')"   # 512-byte sectors
+[ -n "$START" ] || { echo "!! can't read partition 2's start" >&2; exit 1; }
+LOOP="$(losetup -fP --show "$WORK/image.img")"
+trap cleanup EXIT
+e2fsck -fy "${LOOP}p2" || true
+BS="$(dumpe2fs -h "${LOOP}p2" 2>/dev/null | awk -F: '/^Block size/ {gsub(/ /,"",$2); print $2}')"
+MIN="$(resize2fs -P "${LOOP}p2" 2>/dev/null | awk -F': ' '/minimum/ {print $2}')"
+BLOCKS=$(( MIN + SPARE_MB * 1024 * 1024 / BS ))
+echo "block size $BS, minimum $MIN blocks, keeping $BLOCKS"
+resize2fs "${LOOP}p2" "$BLOCKS"
+losetup -d "$LOOP"; LOOP=""; trap - EXIT
+SECTORS=$(( BLOCKS * BS / 512 ))
+printf '%s,%s\n' "$START" "$SECTORS" | sfdisk --no-reread --no-tell-kernel -N 2 "$WORK/image.img"
+SIZE=$(( (START + SECTORS) * 512 ))
+truncate -s "$SIZE" "$WORK/image.img"
+echo "image size: $SIZE bytes ($(( SIZE / 1024 / 1024 )) MiB)"
+if [ "$SIZE" -gt "$MAX_BYTES" ]; then
+  echo "!! the image is bigger than an 8 GB card holds ($MAX_BYTES bytes)" >&2
+  exit 1
+fi
+# check the shrunk filesystem is whole
+LOOP="$(losetup -fP --show "$WORK/image.img")"; trap cleanup EXIT
+e2fsck -fn "${LOOP}p2"
+losetup -d "$LOOP"; LOOP=""; trap - EXIT
+
+echo "== compress"
 xz -T0 -6 -c "$WORK/image.img" > "$OUT/$NAME.img.xz"
 (cd "$OUT" && sha256sum "$NAME.img.xz" > "$NAME.img.xz.sha256" && cat "$NAME.img.xz.sha256")
 ls -lh "$OUT"
