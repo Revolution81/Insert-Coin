@@ -45,8 +45,7 @@ Also verified 11-17: your own Electrum server set by scanning its QR
 ## Where testing stands
 
 Ticked boxes below were confirmed on the device, run by hand over SSH. Not
-yet tried on hardware: the wallet image, sending
-(fee from amount, merge coins), the PIN timing and power-cut tests, animated
+yet tried on hardware: the wallet image, merging coins, Vault signing through the Outbox, the PIN timing and power-cut tests, animated
 PSBTs from Sparrow, the Savings account refusal online, card backup, SHARE
 FILES, printing, the wipe PIN, countdown and spending policy, and **every
 add-on** (secure chip, fingerprint, NFC Cap). Still to check from the first
@@ -132,7 +131,7 @@ in Vault mode with Wi-Fi off, so SSH only works once you switch it Online.
       How long does the first sync take?
 - [x] Get signet coins from a faucet to a RECEIVE address; they show as *Done on mainnet: 2,000 sats received.*
       PENDING, then confirm.
-- [ ] Send some back: the confirm screen is the signer's (gold shield), the
+- [x] Send some back: the confirm screen is the signer's (gold shield), the *Done 11-18 on mainnet: MAX send to a phone wallet, broadcast, PENDING in HISTORY.*
       payment broadcasts, and it shows in HISTORY.
 - [ ] Sign a send in Vault mode → it waits in the Outbox → go Online → it's
       offered for broadcast.
@@ -237,11 +236,11 @@ App mode (from M5Stack's image, over SSH):
       appears on the home carousel (reopen the carousel if it doesn't).
 - [x] Open it: the title screen comes up, OK plays the fanfare (PipeWire is *Done 11-18.*
       paused for the session), the status bar says VAULT.
-- [ ] MODE › Online works; SETUP › NETWORK shows your Wi-Fi.
-- [ ] SETUP › EXIT TO MENU: back on M5Stack's home screen within a few
+- [x] MODE › Online works; SETUP › NETWORK shows your Wi-Fi. *Done 11-18.*
+- [x] SETUP › EXIT TO MENU: back on M5Stack's home screen within a few *Done 11-18.*
       seconds, Wi-Fi back on if it was on before, launcher sounds work.
 - [ ] `systemctl status czsigner czwallet` afterwards: both inactive.
-- [ ] HOME on the LOCKED screen also offers EXIT.
+- [x] HOME on the LOCKED screen also offers EXIT. *Done 11-18.*
 
 Merge coins:
 - [ ] With 3+ coins: COINS, M (nothing picked) merges all; MERGE FEE lists
