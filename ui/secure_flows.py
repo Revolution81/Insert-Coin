@@ -28,6 +28,9 @@ from .widgets import (ConfirmScreen, MenuScreen, MessageScreen, PinScreen, Scree
                       groups, short_addr, wrap)
 
 
+PIN_HINT = "4-16 letters, numbers or symbols"   # shown where a new PIN is chosen
+
+
 class BadRequest(Exception):
     pass
 
@@ -317,7 +320,8 @@ def wipe_pin(c, action):
                 return None
             c.push(SecurePinScreen("WIPE PIN", again, words=c.words, prompt="REPEAT IT"))
             return None
-        c.push(SecurePinScreen("WIPE PIN", first, words=c.words, prompt="NEW WIPE PIN"))
+        c.push(SecurePinScreen("WIPE PIN", first, words=c.words, prompt="NEW WIPE PIN",
+                               note=PIN_HINT))
 
     _pin_job(c, "WIPE PIN", "CHECKING PIN...", lambda pin: c.signer.check_pin(pin=pin) and pin,
              got_pin, note="Your PIN first")
@@ -397,7 +401,8 @@ def bypass(c, action):
                 return None
             c.push(SecurePinScreen("BYPASS PIN", again, words=c.words, prompt="REPEAT IT"))
             return None
-        c.push(SecurePinScreen("BYPASS PIN", first, words=c.words, prompt="NEW BYPASS PIN"))
+        c.push(SecurePinScreen("BYPASS PIN", first, words=c.words, prompt="NEW BYPASS PIN",
+                               note=PIN_HINT))
 
     if locked:
         def got_old(c, bp):
@@ -781,7 +786,7 @@ def _set_pin(c, mnemonic, network, passphrase, store):
         return None
 
     c.push(SecurePinScreen("SET PIN", first, words=c.words, prompt="NEW PIN",
-                           note="Real PIN screens show these words"))
+                           note=PIN_HINT))
 
 
 # ============================================================ signing
@@ -1000,7 +1005,8 @@ def change_pin(c):
                 return None
             c.push(SecurePinScreen("CHANGE PIN", again, words=c.words, prompt="REPEAT PIN"))
             return None
-        c.push(SecurePinScreen("CHANGE PIN", first, words=c.words, prompt="NEW PIN"))
+        c.push(SecurePinScreen("CHANGE PIN", first, words=c.words, prompt="NEW PIN",
+                               note=PIN_HINT))
 
     _pin_job(c, "CHANGE PIN", "CHECKING PIN...", check_old, new, note="Your current PIN first")
 
@@ -1056,7 +1062,8 @@ def duress(c):
                     return None
                 c.push(SecurePinScreen("DURESS PIN", again, words=c.words, prompt="REPEAT IT"))
                 return None
-            c.push(SecurePinScreen("DURESS PIN", got_duress, words=c.words, prompt="DURESS PIN"))
+            c.push(SecurePinScreen("DURESS PIN", got_duress, words=c.words, prompt="DURESS PIN",
+                                   note=PIN_HINT))
 
         _pin_job(c, "DURESS PIN", "CHECKING PIN...", check, got_pin, note="Your real PIN first")
 

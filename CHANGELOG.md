@@ -37,6 +37,9 @@ From the second session on the device:
   run's page, never a release.
 - Update signing keys can now live in the repository
   (`deploy/release_keys.txt`), so every install and the image trust them.
+- Screens where you choose a PIN (new, change, wipe, duress, bypass) now say
+  **4-16 letters, numbers or symbols**: PINs were never digits only, and a
+  longer mixed one is far harder to guess from a copied card.
 - There's a secret on the UNLOCK screen. (Reviewers: `ui/egg.py`. It's
   checked before the PIN, spends no try, opens nothing, and its key
   sequence is refused as any kind of PIN.)
