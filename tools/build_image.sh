@@ -115,11 +115,31 @@ in_root awk -F: '($3 == 0 || $3 >= 1000) && $3 != 65534 {print $1, $3, $7}' /etc
   echo "  $who $uid $sh ${st:-?}"
 done
 
+echo "== remove apps a wallet never uses (browsers, media, remote desktop)"
+# Less to store, and less code that could be attacked: a browser and a
+# remote-desktop server have no place on a savings wallet. apt is asked
+# first what it would remove; if that touches anything the hardware or the
+# wallet needs, nothing is removed.
+DROP="firefox chromium chromium-l10n chromium-common vlc vlc-l10n vlc-plugin-base vlc-bin
+      rpi-userguide realvnc-vnc-server wayvnc rpi-imager mkvtoolnix pocketsphinx-en-us
+      python3-mypy"
+PRESENT=""
+for p in $DROP; do
+  if in_root dpkg -s "$p" >/dev/null 2>&1; then PRESENT="$PRESENT $p"; fi
+done
+if [ -n "$PRESENT" ]; then
+  PLAN="$(in_root apt-get -s purge $PRESENT | awk '/^Purg /{print $2}')"
+  echo "would remove:" $PLAN
+  KEEP='^(linux-|raspi-firmware|firmware-brcm|raspberrypi-|rpi-eeprom|libcamera|python3$|python3\.|python3-(evdev|picamera2|pil|numpy|libcamera)|tor$|network-manager|sudo|systemd|udev|libc6|pipewire|wireplumber|alsa|libzbar|zbar|m5|cardputer|cp0)'
+  if echo "$PLAN" | tr ' ' '\n' | grep -qiE "$KEEP"; then
+    echo "!! that would remove something the device needs; keeping everything"
+  else
+    in_root env DEBIAN_FRONTEND=noninteractive apt-get purge -y $PRESENT
+  fi
+fi
+
 echo "== space"
 df -h "$ROOT" | tail -1
-echo "largest installed packages (MB):"
-in_root dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -rn | head -40 | awk '{printf "  %6.0f  %s\n", $1/1024, $2}'
-du -xsh "$ROOT"/usr/share/APPLaunch "$ROOT"/opt/* "$ROOT"/home/* "$ROOT"/var/cache "$ROOT"/usr/lib/firmware "$ROOT"/usr/lib/modules 2>/dev/null || true
 
 echo "== tidy"
 in_root apt-get clean
