@@ -56,7 +56,6 @@ for ref, (lib, name, value, x, y, rot, flip, padnets) in PARTS.items():
         f.Flip(f.GetPosition(), False)
     fps[ref] = f
     f.Value().SetVisible(False)
-    f.Reference().SetVisible(False)
     if rot is not None:
         f.SetOrientationDegrees(rot)
     for pad in f.Pads():
@@ -155,6 +154,19 @@ for (ref, num, dx, dy) in [("U2", "4", 1.2, 0.0), ("U1", "1", -1.2, 0.0), ("C1",
     x, y = pad_xy(ref, num)
     track("GND", [(x, y), (x + dx, y + dy)], w=0.4)
     via("GND", x + dx, y + dy)
+
+# where each part's label sits (front silkscreen), clear of every pad
+REF_AT = {"U2": (12.33, 11.0), "U1": (1.3, 12.0), "C1": (5.4, 7.0), "C2": (2.0, 13.6),
+          "C3": (8.3, 7.0), "R1": (19.6, 7.3), "R2": (19.6, 9.0), "J1": (2.5, 4.4)}
+for ref, (x, y) in REF_AT.items():
+    t = fps[ref].Reference()
+    t.SetVisible(True)
+    t.SetTextSize(pcbnew.VECTOR2I(pcbnew.FromMM(0.8), pcbnew.FromMM(0.8)))
+    t.SetTextThickness(pcbnew.FromMM(0.12))
+    t.SetPosition(P(x, y))
+    # a footprint's text turns with it in KiCad 7: undo the part's rotation
+    t.SetTextAngleDegrees(-fps[ref].GetOrientationDegrees())
+    t.SetKeepUpright(True)
 
 # outline
 for (x1, y1), (x2, y2) in [((0, 0), (W, 0)), ((W, 0), (W, H)), ((W, H), (0, H)), ((0, H), (0, 0))]:
