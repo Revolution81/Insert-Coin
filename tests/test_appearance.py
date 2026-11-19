@@ -234,3 +234,14 @@ def test_clock_12h_setting(app):  # noqa: F811
     row = next(i for i in app.visible.items if i[0] == "CLOCK")
     assert row[2] == "12H" and app.signer.status()["clock_12h"] is True
     assert app._clock_12h() is True
+
+
+def test_clock_12h_reaches_sync_line(app, monkeypatch):  # noqa: F811
+    import time as _t
+    create_wallet(app)
+    app.clock_12h = True
+    class _W:  # noqa: N801
+        last_sync = _t.mktime((2026, 11, 18, 22, 8, 0, 0, 0, -1)); tip_height = 976519
+    monkeypatch.setattr(type(app), "online", property(lambda self: True))
+    app.wallet, app.net_error, app.syncing = _W(), "", False
+    assert app.net_line().startswith("SYNCED 10:08PM")

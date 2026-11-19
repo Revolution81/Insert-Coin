@@ -502,7 +502,7 @@ class App:
             return "NET ERROR: " + self.net_error[:28]
         if self.wallet and self.wallet.last_sync:
             tip = self.wallet.tip_height
-            return time.strftime("SYNCED %H:%M", time.localtime(self.wallet.last_sync)) + \
+            return "SYNCED " + t.clock_text(self._clock_12h(), time.localtime(self.wallet.last_sync)) + \
                 (f"  BLOCK {tip:,}" if tip else "")
         return "ONLINE - NOT SYNCED YET"
 

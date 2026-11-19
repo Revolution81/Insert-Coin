@@ -689,7 +689,8 @@ def tx_detail(app, tx):
     w = app.wallet
     tip = w.tip_height
     conf = (f"{tip - tx.height + 1} CONF" if tip else "CONFIRMED") if tx.confirmed else "PENDING"
-    when = time.strftime("%Y-%m-%d %H:%M", time.localtime(tx.timestamp)) if tx.timestamp else ""
+    when = (time.strftime("%Y-%m-%d ", time.localtime(tx.timestamp))
+            + t.clock_text(app._clock_12h(), time.localtime(tx.timestamp))) if tx.timestamp else ""
     label = w.tx_label(tx.txid)
     info = [f"{fmt_sats(tx.delta, True)} sats  {conf}",
             f"{when}" + (f"  FEE {fmt_sats(tx.fee)}" if tx.fee else ""),

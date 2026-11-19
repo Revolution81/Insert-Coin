@@ -12,7 +12,8 @@ From the second session on the device:
 - Animated QR codes play slower (2 parts a second), and the arrow keys
   pause them and step one part at a time; PART n/N shows PAUSED.
 - **SETUP › DISPLAY & SOUND › CLOCK**: 24H (21:56) or 12H (9:56PM) on every
-  status bar, the signer's screens included. The signer keeps the setting.
+  status bar, the signer's screens included, plus SYNCED on the home screen
+  and a transaction's time in HISTORY. The signer keeps the setting.
 - **Faster updates**: running `deploy/install.sh` again skips system
   packages that are already installed, Python packages when
   `requirements.lock` hasn't changed, and the interface setup, so an update
