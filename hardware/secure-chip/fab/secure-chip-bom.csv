@@ -1,0 +1,7 @@
+Comment,Designator,Footprint,Manufacturer Part,LCSC Part #
+"ATECC608B-SSHDA-T (blank, unprovisioned)",U2,SOIC-8_3.9x4.9mm_P1.27mm,ATECC608B-SSHDA-T,
+MCP1700T-3302E/TT 3.3V LDO,U1,SOT-23,MCP1700T-3302E/TT,
+1uF 16V X7R,"C1,C2",0603,GRM188R71C105KA12D,
+100nF 16V X7R,C3,0603,GRM188R71C104KA01D,
+4.7k 1%,"R1,R2",0603,RC0603FR-074K7L,
+"2x7 2.54mm male header, straight (hand-solder, body on the BACK)",J1,PinHeader_2x07_P2.54mm_Vertical,any 2x7 2.54mm,
