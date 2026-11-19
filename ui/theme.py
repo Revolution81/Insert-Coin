@@ -443,6 +443,15 @@ def battery(d, xy, frac, charging=False):
             d.point((x + bx, y + by), fill=PAL["gold"])
 
 
+def clock_text(h12: bool = False, when=None) -> str:
+    """The status bar's time: 21:56, or 9:56PM with the 12-hour clock."""
+    import time as _time
+    tm = _time.localtime() if when is None else when
+    if not h12:
+        return _time.strftime("%H:%M", tm)
+    return f"{(tm.tm_hour % 12) or 12}:{tm.tm_min:02d}{'AM' if tm.tm_hour < 12 else 'PM'}"
+
+
 def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=False,
                typing=None, icons=(), charging=False, own_server=False):
     """typing: None in menu mode, or the translator's indicators dict

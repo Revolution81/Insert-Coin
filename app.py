@@ -542,12 +542,23 @@ class App:
                                                         "SENT!", [f"{len(ids)} broadcast."])))))
 
     # ---------------------------------------------------------------- UI
+    def _clock_12h(self) -> bool:
+        """The CLOCK setting lives with the signer (its screens show the time
+        too); asked once, then kept until SETUP changes it."""
+        if not hasattr(self, "clock_12h"):
+            try:
+                self.clock_12h = bool(self.signer.status().get("clock_12h"))
+            except Exception:  # noqa: BLE001
+                return False
+        return self.clock_12h
+
     def status_bar(self, img, d, screen):
         from ui.hardware_flow import status_icons
         typing = self.tr.indicators if screen.mode is Mode.TEXT else None
         level, charging = power.battery()
         t.status_bar(img, d, mode="ONLINE" if self.online else "VAULT",
-                     battery_frac=level, charging=charging, clock=time.strftime("%H:%M"),
+                     battery_frac=level, charging=charging,
+                     clock=t.clock_text(self._clock_12h()),
                      online=bool(self.wallet and self.wallet.connected), typing=typing,
                      own_server=self.settings.own_server,
                      icons=status_icons(self))

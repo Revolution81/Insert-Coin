@@ -191,8 +191,15 @@ class Console:
         typing = self.tr.indicators if screen.mode is Mode.TEXT else None
         from core import power
         level, charging = power.battery()
+        now = time.monotonic()
+        if now - getattr(self, "_clock_at", -9.0) > 2.0:     # a file read, not every frame
+            self._clock_at = now
+            try:
+                self._clock12 = self.signer.clock_12h()
+            except Exception:  # noqa: BLE001
+                self._clock12 = False
         t.status_bar(img, d, mode="SIGNER", battery_frac=level, charging=charging,
-                     clock=time.strftime("%H:%M"), typing=typing)
+                     clock=t.clock_text(self._clock12), typing=typing)
 
     def post(self, fn):
         self._posted.put(fn)

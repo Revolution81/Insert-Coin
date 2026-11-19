@@ -1145,7 +1145,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
-    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
+    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "CLOCK", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
 
@@ -1236,6 +1236,12 @@ def settings_screen(app, at: str | None = None):
         app.settings.qr_format = "bbqr" if app.settings.qr_format == "ur" else "ur"
         app.settings.save()
 
+    def clock_toggle(app, step=0):
+        """24-hour (21:56) or 12-hour (9:56PM) on every status bar."""
+        on = not app._clock_12h()
+        app.signer.set_clock_12h(on=on)
+        app.clock_12h = on
+
     def sound_toggle(app, step):
         """One switch for all sound: the title fanfare and the menu boop.
         Saved, so it stays that way after a restart."""
@@ -1298,6 +1304,7 @@ def settings_screen(app, at: str | None = None):
             ("APPEARANCE", appearance, "", "grey"),
             ("SCREEN SLEEP", screen_sleep_menu, sleep_label(st.get("screen_sleep", 120)),
              "cyan" if st.get("screen_sleep", 120) else "grey"),
+            ("CLOCK", None, "12H" if st.get("clock_12h") else "24H", "cyan", clock_toggle),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
             ("PAPER WALLETS", paper_wallets),
             ("SHARE FILES", share_files, "WI-FI", "grey"),

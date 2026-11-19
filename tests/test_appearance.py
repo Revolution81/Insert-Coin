@@ -214,3 +214,23 @@ def test_appearance_digits_in_place(app):  # noqa: F811
     press(app, "KEY_RIGHT")
     assert app.visible is m and m.sel == 0 and app.settings.amount_style == "split"
     assert _shown(m, "BALANCE DIGITS") == "SMALL SATS"
+
+
+def test_clock_12h_setting(app):  # noqa: F811
+    import time as _t
+    from ui import theme as t
+    from ui.flow import settings_screen
+    assert t.clock_text(False, _t.struct_time((2026, 11, 18, 21, 56, 0, 2, 322, 0))) == "21:56"
+    assert t.clock_text(True, _t.struct_time((2026, 11, 18, 21, 56, 0, 2, 322, 0))) == "9:56PM"
+    assert t.clock_text(True, _t.struct_time((2026, 11, 18, 0, 5, 0, 2, 322, 0))) == "12:05AM"
+    assert t.clock_text(True, _t.struct_time((2026, 11, 18, 12, 0, 0, 2, 322, 0))) == "12:00PM"
+    create_wallet(app)
+    settings_screen(app, at="CLOCK")
+    settle(app)
+    row = next(i for i in app.visible.items if i[0] == "CLOCK")
+    assert row[2] == "24H"
+    enter(app)                                     # flips it
+    settle(app)
+    row = next(i for i in app.visible.items if i[0] == "CLOCK")
+    assert row[2] == "12H" and app.signer.status()["clock_12h"] is True
+    assert app._clock_12h() is True

@@ -140,4 +140,4 @@ def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
         seen += labels
         app.pop()
         assert app.visible.title == "SETUP"
-    assert len(seen) == len(set(seen)) == 28
+    assert len(seen) == len(set(seen)) == 29

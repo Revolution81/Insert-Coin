@@ -11,6 +11,8 @@ From the second session on the device:
   animate). OK closes it; the payment stays in the outbox either way.
 - Animated QR codes play slower (2 parts a second), and the arrow keys
   pause them and step one part at a time; PART n/N shows PAUSED.
+- **SETUP › DISPLAY & SOUND › CLOCK**: 24H (21:56) or 12H (9:56PM) on every
+  status bar, the signer's screens included. The signer keeps the setting.
 - The merge confirm screen no longer offers TAB: SHOW FULL ADDRESS, since a
   merge sends nothing to an outside address.
 

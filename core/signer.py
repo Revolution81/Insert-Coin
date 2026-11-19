@@ -142,6 +142,7 @@ class Signer:
         st["quick_hours"] = self._quick_hours()
         st["lock_after"] = self.lock_after()
         st["screen_sleep"] = self.screen_sleep()
+        st["clock_12h"] = self.clock_12h()
         st["countdown_s"] = self.countdown_s()
         st["policy"] = spolicy.public(spolicy.load(self.policy_path))
         return st
@@ -1004,6 +1005,22 @@ class Signer:
         except (FileNotFoundError, ValueError, KeyError, TypeError):
             pass
         return self.SLEEP_DEFAULT_S
+
+    def clock_12h(self) -> bool:
+        """SETUP › DISPLAY & SOUND › CLOCK: 12-hour time (with AM/PM) on
+        every status bar, the signer's own screens included."""
+        try:
+            with open(os.path.join(self.dir, "clock.json")) as f:
+                return json.load(f).get("h12") is True
+        except (FileNotFoundError, ValueError, AttributeError, TypeError):
+            return False
+
+    def set_clock_12h(self, on: bool) -> bool:
+        if not isinstance(on, bool):
+            raise SignerError("clock setting must be on or off")
+        os.makedirs(self.dir, mode=0o700, exist_ok=True)
+        _atomic_write(os.path.join(self.dir, "clock.json"), json.dumps({"h12": on}).encode())
+        return on
 
     def set_screen_sleep(self, seconds: int) -> int:
         if isinstance(seconds, bool) or not isinstance(seconds, int) or \
