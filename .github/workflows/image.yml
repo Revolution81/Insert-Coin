@@ -10,14 +10,6 @@ on:
         description: "Expected SHA-256 of M5Stack's base image (blank: the one pinned in tools/build_image.sh)"
         required: false
         default: ""
-      developer:
-        description: "Developer image: SSH on for one key, DEVELOPER on the title, never released"
-        type: boolean
-        default: false
-      ssh_key:
-        description: "Developer image only: SSH public key(s), ssh-ed25519 ...; several separated by ;"
-        required: false
-        default: ""
 
 permissions:
   contents: write
@@ -37,21 +29,10 @@ jobs:
       - name: Build
         env:
           BASE_SHA256: ${{ inputs.base_sha256 }}
-          DEV: ${{ inputs.developer && '1' || '0' }}
-          DEV_SSH_KEY: ${{ inputs.ssh_key }}
         run: |
           [ -n "$BASE_SHA256" ] || unset BASE_SHA256
           sudo -E sh tools/build_image.sh
-      - name: Developer image (a download on this run's page, never a release)
-        if: ${{ inputs.developer }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: insert-coin-developer-image
-          path: out/*
-          retention-days: 7
-          compression-level: 0
       - name: Draft release
-        if: ${{ !inputs.developer }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

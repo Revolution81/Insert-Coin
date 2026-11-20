@@ -19,23 +19,10 @@ BASE_SHA256="${BASE_SHA256:-1b1002f7def184d6ca18d973f8b94622ccbe6552f3159cf1789e
 GROW="${GROW:-2G}"            # working room while installing; shrunk away after
 SPARE_MB="${SPARE_MB:-600}"   # free space left on the wallet's partition
 MAX_BYTES="${MAX_BYTES:-7300000000}"   # must fit an "8 GB" card (about 7.4-7.9 GB real)
-# DEV=1 with DEV_SSH_KEY="ssh-ed25519 AAAA... you@pc": a developer image for
-# debugging (several keys: separate them with ";"). Same as the savings
-# image, except SSH stays on for those keys only
-# (never a password) and the title says DEVELOPER: NOT FOR REAL MONEY. Never
-# attach one to a release.
-DEV="${DEV:-0}"
-DEV_SSH_KEY="${DEV_SSH_KEY:-}"
-if [ "$DEV" = 1 ]; then
-  case "$DEV_SSH_KEY" in ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*) ;;
-    *) echo "!! DEV=1 needs DEV_SSH_KEY, your SSH public key (ssh-ed25519 ...)" >&2; exit 1 ;;
-  esac
-fi
 VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$SRC/core/version.py")"
 WORK="${WORK:-$SRC/work}"
 OUT="${OUT:-$SRC/out}"
 NAME="Insert-Coin-Savings-$VERSION-cardputerzero"
-[ "$DEV" = 1 ] && NAME="Insert-Coin-DEVELOPER-$VERSION-cardputerzero"
 ROOT="$WORK/root"
 LOOP=""
 
@@ -111,22 +98,7 @@ echo "== lock down logins (the screen and keyboard are the only way in)"
 # logins at all: SSH off (and the boot-partition switch that turns it on),
 # every account's password locked, cloud-init (which could add users and
 # keys from files on the card) disabled.
-if [ "$DEV" = 1 ]; then
-  echo "DEVELOPER image: SSH stays on, for one key only"
-  in_root systemctl mask sshswitch.service || true
-  install -d -m 700 -o 1000 -g 1000 "$ROOT/home/pi/.ssh"
-  printf '%s\n' "$DEV_SSH_KEY" | tr ';' '\n' | sed 's/^ *//; s/ *$//; /^$/d' > "$ROOT/home/pi/.ssh/authorized_keys"
-  echo "authorized keys: $(wc -l < "$ROOT/home/pi/.ssh/authorized_keys")"
-  chown 1000:1000 "$ROOT/home/pi/.ssh/authorized_keys"; chmod 600 "$ROOT/home/pi/.ssh/authorized_keys"
-  mkdir -p "$ROOT/etc/ssh/sshd_config.d"
-  printf '%s\n' "PasswordAuthentication no" "KbdInteractiveAuthentication no" \
-      "PermitRootLogin no" "AllowUsers pi" > "$ROOT/etc/ssh/sshd_config.d/10-insert-coin-dev.conf"
-  in_root systemctl enable ssh.service || true
-  printf '[Service]\nEnvironment=CZ_EDITION=developer\n' \
-      > "$ROOT/etc/systemd/system/czwallet.service.d/savings.conf"
-fi
 for u in ssh.service ssh.socket sshd.service sshswitch.service; do
-  [ "$DEV" = 1 ] && break
   if in_root systemctl list-unit-files --no-legend "$u" 2>/dev/null | grep -q .; then
     echo "mask $u"; in_root systemctl mask "$u" || true
   fi
@@ -175,8 +147,7 @@ rm -rf "$ROOT/opt/insert-coin-src" "$ROOT/usr/sbin/policy-rc.d" "$ROOT/var/lib/a
 rm -f "$ROOT/etc/resolv.conf"
 [ -e "$ROOT/etc/resolv.conf.orig" ] || [ -L "$ROOT/etc/resolv.conf.orig" ] && mv "$ROOT/etc/resolv.conf.orig" "$ROOT/etc/resolv.conf"
 {
-  if [ "$DEV" = 1 ]; then echo "Insert Coin $VERSION, DEVELOPER image (SSH for one key; not for real money)"
-  else echo "Insert Coin $VERSION, savings edition (dedicated wallet image)"; fi
+  echo "Insert Coin $VERSION, savings edition (dedicated wallet image)"
   echo "base: $BASE_URL"
   echo "base sha256: $SHA"
   echo "source: $(cd "$SRC" && git rev-parse HEAD 2>/dev/null || echo unknown)"

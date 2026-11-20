@@ -33,14 +33,13 @@ def edition() -> str:
     """"spending" (app mode, from M5Stack's launcher), "savings" (the wallet
     image or a dedicated install), or "" (simulator, development)."""
     e = os.environ.get("CZ_EDITION", "").lower()
-    if e in ("spending", "savings", "developer"):
+    if e in ("spending", "savings"):
         return e
     return "spending" if os.environ.get("CZ_APP_MODE") == "1" else ""
 
 
 EDITION_LABEL = {"spending": ("SPENDING WALLET", "orange"),
                  "savings": ("SAVINGS WALLET", "green"),
-                 "developer": ("DEVELOPER: NOT FOR REAL MONEY", "red"),
                  "": ("BITCOIN ONLY", "dim")}
 
 

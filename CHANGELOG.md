@@ -31,10 +31,6 @@ From the second session on the device:
   are removed: about 1.1 GB less, and less code to attack. After installing,
   the build shrinks the image (600 MB kept free) to 6.4 GiB, so it fits an
   8 GB card.
-- **Developer image** for debugging the Savings image: the image workflow's
-  *developer* switch keeps SSH on for one SSH key (never a password), puts
-  DEVELOPER: NOT FOR REAL MONEY on the title, and is only a download on the
-  run's page, never a release.
 - **Signed updates are live.** The project's release key (Ed25519, key ID
   `d1b3b27e99714b0a`) is in `deploy/release_keys.txt`; every install and the
   wallet image trust it, and SETUP › UPDATE accepts only releases it signed.
