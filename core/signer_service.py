@@ -93,10 +93,19 @@ class _Server(socketserver.ThreadingMixIn, _UnixServer):
     daemon_threads = True
 
 
+def step(msg: str) -> None:
+    """One line per startup step in the journal (and the opt-in boot log),
+    so a device that won't start shows where it stopped. Nothing secret."""
+    print(f"signer: {msg}", file=sys.stderr, flush=True)
+
+
 def serve(sock_path: str = SIGNER_SOCKET, data_dir: str = SIGNER_DIR,
           allowed_uid: int | None = None, screen: bool = True) -> None:
+    step("starting")
     signer = Signer(data_dir, auto_lock_s=int(os.environ.get("CZ_AUTO_LOCK", 120)))
+    step("vault ready")
     trusted = TrustedSigner(signer)
+    step("security words and console ready")
     os.makedirs(os.path.dirname(sock_path), exist_ok=True)
     if os.path.exists(sock_path):
         os.remove(sock_path)
@@ -107,6 +116,7 @@ def serve(sock_path: str = SIGNER_SOCKET, data_dir: str = SIGNER_DIR,
         srv.serve_forever()
         return
     threading.Thread(target=srv.serve_forever, daemon=True).start()
+    step("listening for the app")
     run_screen(trusted.console, allowed_uid)
 
 
@@ -137,8 +147,12 @@ def run_screen(console, allowed_uid: int | None = None):
     link = ScreenServer(allowed_uid=allowed_uid).start()
     console.listeners.append(link.send_mode)
     from ui.display import ScreenSleep
+    step("waiting for the screen and keyboard")
     wait_for_devices()
-    disp, kb = Display("frame.png"), KeyboardDevice()
+    disp = Display("frame.png")
+    step(f"screen {disp.fb}")
+    kb = KeyboardDevice()
+    step(f"keyboard {kb.dev.path} ({kb.dev.name})")
     sleeper = ScreenSleep(console.signer.screen_sleep)
     dark = False
     frame, last_blink = 0, time.monotonic()

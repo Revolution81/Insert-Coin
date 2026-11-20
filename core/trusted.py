@@ -19,6 +19,7 @@ what that screen says.
 from __future__ import annotations
 
 import os
+import sys
 import secrets
 import threading
 
@@ -72,6 +73,8 @@ def security_words(directory: str) -> tuple[str, str]:
     except (FileNotFoundError, ValueError):
         pass
     os.makedirs(directory, exist_ok=True)
+    print("signer: making security words (may wait for the kernel's randomness)",
+          file=sys.stderr, flush=True)
     words = seedlib.WORDLIST
     a, b = secrets.choice(words), secrets.choice(words)
     _atomic_write(path, f"{a} {b}\n".encode())
