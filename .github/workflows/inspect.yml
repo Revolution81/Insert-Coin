@@ -1,0 +1,45 @@
+name: Inspect wallet image
+# Read-only look inside a built image (or M5Stack's base image): what starts
+# at boot, what draws the splash, what the LEDs are driven by.
+on:
+  workflow_dispatch:
+    inputs:
+      image_url:
+        description: "URL of an .img.xz (blank: M5Stack's base image)"
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - name: Look inside
+        env:
+          URL: ${{ inputs.image_url }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -x
+          BASE=https://cardputer-zero-repo.oss-cn-shenzhen.aliyuncs.com/cardputerzero-trixie-arm64-latest.img.xz
+          if [ -n "$URL" ]; then gh release download -R ${{ github.repository }} --pattern '*.img.xz' "$URL" -O img.xz || curl -fL "$URL" -o img.xz; else curl -fL "$BASE" -o img.xz; fi
+          xz -dc img.xz > image.img
+          L=$(sudo losetup -fP --show image.img)
+          sudo mkdir -p /mnt/r /mnt/b && sudo mount -o ro ${L}p2 /mnt/r && sudo mount -o ro ${L}p1 /mnt/b
+          set +x
+          echo "== cmdline.txt"; cat /mnt/b/cmdline.txt
+          echo "== config.txt (non-comment)"; grep -v '^#' /mnt/b/config.txt | grep -v '^$'
+          echo "== boot partition"; ls -la /mnt/b | head -60
+          echo "== default target"; readlink /mnt/r/etc/systemd/system/default.target
+          for d in /mnt/r/etc/systemd/system/*.wants /mnt/r/etc/systemd/system/*.target.wants; do echo "== $d"; ls -la $d; done 2>/dev/null
+          echo "== masked units"; find /mnt/r/etc/systemd/system -maxdepth 1 -lname /dev/null -printf '%f\n'
+          echo "== units mentioning m5/splash/led/logo/APPLaunch/userconfig/firstboot"
+          grep -rlisE "m5|splash|led|logo|applaunch|userconfig|firstboot|cardputer" /mnt/r/etc/systemd/system /mnt/r/usr/lib/systemd/system 2>/dev/null | sort -u
+          for f in $(grep -rlisE "splash|logo|m5stack|cardputer|led" /mnt/r/usr/lib/systemd/system /mnt/r/etc/systemd/system 2>/dev/null | sort -u | head -30); do echo "------ $f"; cat "$f"; done
+          echo "== initramfs / firstboot hooks"; ls /mnt/r/usr/lib/raspberrypi-sys-mods 2>/dev/null; ls /mnt/r/etc/initramfs-tools/scripts/* 2>/dev/null
+          echo "== M5 packages"; grep -E '^Package: .*(m5|cardputer|cp0|applaunch|splash|led)' -i /mnt/r/var/lib/dpkg/status
+          echo "== /etc/insert-coin-image"; cat /mnt/r/etc/insert-coin-image 2>/dev/null
+          echo "== cloud-init disabled?"; ls /mnt/r/etc/cloud 2>/dev/null
+          echo "== fstab"; cat /mnt/r/etc/fstab
+          echo "== partitions"; sudo sfdisk -d image.img
+          echo "== blkid"; sudo blkid ${L}p1 ${L}p2
