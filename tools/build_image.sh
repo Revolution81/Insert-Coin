@@ -26,13 +26,28 @@ NAME="Insert-Coin-Savings-$VERSION-cardputerzero"
 ROOT="$WORK/root"
 LOOP=""
 
-cleanup() {
+# Runs in a subshell, so its "keep going on errors" can never leak into the
+# rest of the build (it once did, and a failed shrink went out unnoticed).
+cleanup() (
   set +e
   for d in boot/firmware dev/pts dev proc sys run; do
     mountpoint -q "$ROOT/$d" && umount -l "$ROOT/$d"
   done
   mountpoint -q "$ROOT" && umount -l "$ROOT"
   [ -n "$LOOP" ] && losetup -d "$LOOP"
+  true
+)
+
+# Attach the image and wait until its partitions exist (they appear a moment
+# after losetup returns; using them too early fails with "no such file").
+attach() {
+  LOOP="$(losetup -fP --show "$WORK/image.img")"
+  i=0
+  until [ -b "${LOOP}p1" ] && [ -b "${LOOP}p2" ]; do
+    i=$((i + 1)); [ "$i" -le 50 ] || { echo "!! partitions of $LOOP never appeared" >&2; exit 1; }
+    partx -u "$LOOP" 2>/dev/null || true; sleep 0.2
+  done
+  udevadm settle 2>/dev/null || true
 }
 trap cleanup EXIT
 in_root() { chroot "$ROOT" /usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root LANG=C.UTF-8 "$@"; }
@@ -51,7 +66,7 @@ echo "== unpack and grow by $GROW"
 xz -dc -T0 "$WORK/base.img.xz" > "$WORK/image.img"
 truncate -s "+$GROW" "$WORK/image.img"
 parted -s "$WORK/image.img" resizepart 2 100%
-LOOP="$(losetup -fP --show "$WORK/image.img")"
+attach
 e2fsck -pf "${LOOP}p2" || true
 resize2fs "${LOOP}p2"
 
@@ -164,9 +179,10 @@ echo "== shrink to fit small cards"
 # card, keeping $SPARE_MB MB free for the wallet's data and logs.
 START="$(sfdisk -d "$WORK/image.img" | sed -n 's/^.*image\.img2 : start= *\([0-9]*\),.*/\1/p')"   # 512-byte sectors
 [ -n "$START" ] || { echo "!! can't read partition 2's start" >&2; exit 1; }
-LOOP="$(losetup -fP --show "$WORK/image.img")"
+attach
 trap cleanup EXIT
-e2fsck -fy "${LOOP}p2" || true
+# -fy fixes what it can; exit codes 0-2 mean the filesystem is fine now
+e2fsck -fy "${LOOP}p2" || [ $? -le 2 ]
 BS="$(dumpe2fs -h "${LOOP}p2" 2>/dev/null | awk -F: '/^Block size/ {gsub(/ /,"",$2); print $2}')"
 MIN="$(resize2fs -P "${LOOP}p2" 2>/dev/null | awk -F': ' '/minimum/ {print $2}')"
 BLOCKS=$(( MIN + SPARE_MB * 1024 * 1024 / BS ))
@@ -183,8 +199,14 @@ if [ "$SIZE" -gt "$MAX_BYTES" ]; then
   exit 1
 fi
 # check the shrunk filesystem is whole
-LOOP="$(losetup -fP --show "$WORK/image.img")"; trap cleanup EXIT
+attach; trap cleanup EXIT
 e2fsck -fn "${LOOP}p2"
+# and the size the filesystem claims must fit the partition it now lives in
+FSB="$(dumpe2fs -h "${LOOP}p2" 2>/dev/null | awk -F: '/^Block count/ {gsub(/ /,"",$2); print $2}')"
+DEVB=$(( $(blockdev --getsize64 "${LOOP}p2") / BS ))
+echo "filesystem $FSB blocks, partition $DEVB blocks"
+[ "$FSB" -le "$DEVB" ] || { echo "!! filesystem is bigger than its partition" >&2; exit 1; }
+mkdir -p "$WORK/check" && mount -o ro "${LOOP}p2" "$WORK/check" && ls "$WORK/check/etc/insert-coin-image" && umount "$WORK/check"
 losetup -d "$LOOP"; LOOP=""; trap - EXIT
 
 echo "== compress"

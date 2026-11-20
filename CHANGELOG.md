@@ -23,6 +23,12 @@ From the second session on the device:
   I2C for add-ons, live, on the buses the screen and keyboard already use.
   It now does that only when building the wallet image; a running device is
   left as it is.
+- **Fixed: the first 0.8.24 wallet images couldn't boot** (stuck on M5Stack's
+  logo). The build's shrink step ran before the partition was ready, failed,
+  and a cleanup helper had switched off stop-on-error, so the build carried
+  on and cut the partition shorter than its filesystem. The build now waits
+  for the partitions, stops on any error, and refuses to finish unless the
+  shrunk filesystem checks clean, fits its partition and mounts.
 - **Wallet image locked down and smaller.** The Savings image now has SSH
   switched off (including the boot-partition switch), every account's
   password locked and cloud-init disabled, so nothing can log in over the
