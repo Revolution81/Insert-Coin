@@ -1,4 +1,6 @@
 [Unit]
+# never give up restarting: at boot a service can fail while devices settle
+StartLimitIntervalSec=0
 Description=Insert Coin signer (holds the keys, owns screen and keyboard, no network)
 Before=czwallet.service
 
@@ -13,6 +15,7 @@ RuntimeDirectory=czwallet
 RuntimeDirectoryMode=0750
 UMask=0007
 Restart=always
+RestartSec=2
 
 # The signer gets no network: it may only create Unix sockets.
 # (Not PrivateNetwork=yes: the signer must see the real interfaces in

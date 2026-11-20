@@ -1,4 +1,6 @@
 [Unit]
+# never give up restarting: at boot a service can fail while devices settle
+StartLimitIntervalSec=0
 Description=Insert Coin QR scanner (camera + zbar, sandboxed)
 Before=czwallet.service
 
@@ -13,6 +15,7 @@ RuntimeDirectory=czscan
 RuntimeDirectoryMode=0750
 UMask=0007
 Restart=always
+RestartSec=2
 
 # It reads camera pixels with zbar and libcamera, so assume it can be
 # exploited by a crafted QR. It gets the camera and nothing else:

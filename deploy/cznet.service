@@ -1,4 +1,6 @@
 [Unit]
+# never give up restarting: at boot a service can fail while devices settle
+StartLimitIntervalSec=0
 Description=Insert Coin network relay (Electrum over Tor; no keys, no data)
 After=network.target tor.service
 Before=czwallet.service
@@ -14,6 +16,7 @@ RuntimeDirectory=cznet
 RuntimeDirectoryMode=0750
 UMask=0007
 Restart=always
+RestartSec=2
 
 # Internet yes; everything else no. It can't read the wallet's files, the
 # signer's files, the keyboard, the camera or the screen.

@@ -1,4 +1,6 @@
 [Unit]
+# never give up restarting: at boot a service can fail while devices settle
+StartLimitIntervalSec=0
 Description=Insert Coin wallet app (menus, watch-only wallet)
 Requires=czsigner.service cznet.service
 Wants=czscan.service czprint.service
@@ -17,6 +19,7 @@ Environment=CZ_DATA=/var/lib/czwallet CZ_SIGNER_SOCK=/run/czwallet/signer.sock
 Environment=CZ_NET_SOCK=/run/cznet/net.sock CZ_SCREEN_SOCK=/run/czwallet/screen.sock CZ_SCAN_SOCK=/run/czscan/scan.sock
 ExecStart=/opt/czwallet-venv/bin/python app.py
 Restart=always
+RestartSec=2
 ProtectSystem=strict
 ReadWritePaths=/var/lib/czwallet/app
 ProtectHome=yes

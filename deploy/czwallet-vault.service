@@ -6,6 +6,9 @@ Before=czwallet.service
 
 [Service]
 Type=oneshot
+# a oneshot has no start timeout unless given one; never let this step hold
+# up the wallet (cz-radio cuts the radios with rfkill first, in a moment)
+TimeoutStartSec=30
 ExecStart=/usr/local/sbin/cz-radio vault
 # Grove port in UART mode (GPIO4 low) for the fingerprint sensor
 ExecStart=-/usr/bin/pinctrl set 4 op dl

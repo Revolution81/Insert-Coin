@@ -79,3 +79,18 @@ def test_signer_keeps_the_sleep_setting(tmp_path):
         with pytest.raises(SignerError):
             s.set_screen_sleep(bad)
     assert s.status()["screen_sleep"] == 0
+
+
+def test_signer_waits_for_screen_and_keyboard(monkeypatch):
+    """At boot the panel/keyboard may appear after the signer starts: it
+    waits, then gives a clear error instead of crashing straight away."""
+    import pytest
+    import ui.display as display
+    from core import signer_service
+    t = [0.0]
+    calls = []
+    monkeypatch.setattr(display, "_find_fb", lambda: None)
+    with pytest.raises(SystemExit, match="screen or keyboard"):
+        signer_service.wait_for_devices(timeout=5, clock=lambda: t[0],
+                                        sleep=lambda s: (calls.append(s), t.__setitem__(0, t[0] + s)))
+    assert len(calls) >= 10          # it kept trying for the whole timeout

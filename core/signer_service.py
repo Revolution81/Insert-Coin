@@ -110,6 +110,25 @@ def serve(sock_path: str = SIGNER_SOCKET, data_dir: str = SIGNER_DIR,
     run_screen(trusted.console, allowed_uid)
 
 
+def wait_for_devices(timeout: float = 90.0, clock=time.monotonic, sleep=time.sleep) -> None:
+    """At boot the signer can start before Linux has set up the panel and the
+    keyboard (and given them the wallet's groups). Wait for both to be
+    usable instead of crashing, which once made systemd give up on it."""
+    from ui.display import _find_fb
+    import glob as _glob
+    end = clock() + timeout
+    while True:
+        fb = _find_fb()
+        kbd = "/dev/input/cardputer-zero-internal"
+        kbd_ok = os.access(kbd, os.R_OK) if os.path.exists(kbd) else any(
+            os.access(p, os.R_OK) for p in _glob.glob("/dev/input/event*"))
+        if fb and os.access(fb, os.W_OK) and kbd_ok:
+            return
+        if clock() > end:
+            raise SystemExit(f"screen or keyboard not available (fb={fb}, keyboard={kbd_ok})")
+        sleep(0.5)
+
+
 def run_screen(console, allowed_uid: int | None = None):
     """The signer's display loop: keyboard in, frames out."""
     from ui.display import Display
@@ -118,6 +137,7 @@ def run_screen(console, allowed_uid: int | None = None):
     link = ScreenServer(allowed_uid=allowed_uid).start()
     console.listeners.append(link.send_mode)
     from ui.display import ScreenSleep
+    wait_for_devices()
     disp, kb = Display("frame.png"), KeyboardDevice()
     sleeper = ScreenSleep(console.signer.screen_sleep)
     dark = False

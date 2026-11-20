@@ -29,6 +29,13 @@ From the second session on the device:
   on and cut the partition shorter than its filesystem. The build now waits
   for the partitions, stops on any error, and refuses to finish unless the
   shrunk filesystem checks clean, fits its partition and mounts.
+- **Fixed: the wallet image stopped at a text screen** after Linux started.
+  The radios-off step called NetworkManager, which can block forever early in
+  boot, and the wallet waited behind it (a oneshot has no timeout). Now the
+  kernel's rfkill cuts the radios first, NetworkManager gets 10 seconds, and
+  the step 30. The signer also waits for the panel and keyboard instead of
+  crashing when it starts before them, and the wallet's services never stop
+  being restarted.
 - **Opt-in boot log** for the wallet image, which has no logins: an empty
   `insert-coin-debug.txt` on the card's boot partition makes it write its
   startup log there (`insert-coin-bootlog.txt`) 1, 3 and 10 minutes after

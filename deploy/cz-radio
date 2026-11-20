@@ -1,14 +1,17 @@
 #!/bin/sh
 # Root helper: the only privileged thing the wallet app may do.
+# rfkill is the real switch (the kernel cuts the radios); NetworkManager is
+# then told too, but never waited on for long: at boot it may not be ready,
+# and an nmcli that blocks forever once kept the wallet from starting.
 case "$1" in
   vault)
-    nmcli networking off 2>/dev/null
     rfkill block wifi; rfkill block bluetooth
-    ip link set eth0 down 2>/dev/null ;;
+    ip link set eth0 down 2>/dev/null
+    timeout 10 nmcli networking off 2>/dev/null ;;
   online)
     rfkill unblock wifi
     ip link set eth0 up 2>/dev/null
-    nmcli networking on 2>/dev/null ;;
+    timeout 10 nmcli networking on 2>/dev/null ;;
   *) echo "usage: cz-radio vault|online" >&2; exit 2 ;;
 esac
 exit 0
