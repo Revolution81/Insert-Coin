@@ -10,7 +10,8 @@ ConditionPathExists=/boot/firmware/insert-coin-debug.txt
 
 [Service]
 Type=simple
-ExecStart=/bin/sh -c 'for wait in 60 120 420; do sleep $wait; { echo "== $(date)  up $(cut -d" " -f1 /proc/uptime)s"; systemctl --failed --no-pager; echo; systemctl list-jobs --no-pager; echo; journalctl -b --no-pager -o short-monotonic | tail -n 4000; } > /boot/firmware/insert-coin-bootlog.txt 2>&1; sync; done'
+# (systemd expands $NAME itself: "$$" passes a literal "$" to the shell)
+ExecStart=/bin/sh -c 'for w in 60 120 420; do sleep $$w; F=/boot/firmware/insert-coin-bootlog.txt; { echo "== $$(date)  up $$(cut -d" " -f1 /proc/uptime)s"; systemctl --failed --no-pager; echo; systemctl list-jobs --no-pager; echo; journalctl -b --no-pager -o short-monotonic | tail -n 4000; } > $$F.new 2>&1; mv -f $$F.new $$F; sync -f $$F; sync; done'
 
 [Install]
 WantedBy=sysinit.target
