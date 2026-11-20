@@ -35,8 +35,9 @@ From the second session on the device:
   *developer* switch keeps SSH on for one SSH key (never a password), puts
   DEVELOPER: NOT FOR REAL MONEY on the title, and is only a download on the
   run's page, never a release.
-- Update signing keys can now live in the repository
-  (`deploy/release_keys.txt`), so every install and the image trust them.
+- **Signed updates are live.** The project's release key (Ed25519, key ID
+  `d1b3b27e99714b0a`) is in `deploy/release_keys.txt`; every install and the
+  wallet image trust it, and SETUP › UPDATE accepts only releases it signed.
 - Screens where you choose a PIN (new, change, wipe, duress, bypass) now say
   **4-16 letters, numbers or symbols**: PINs were never digits only, and a
   longer mixed one is far harder to guess from a copied card.

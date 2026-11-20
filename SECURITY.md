@@ -88,7 +88,8 @@ descriptor, which only exists after unlocking. A copied card shows no
 balances, addresses or labels.
 
 **Updates** (`core/update.py`, `tools/apply_update.py`): Ed25519 signatures
-from keys pinned in `/etc/czwallet/release_keys.txt`; reproducible
+from keys pinned in `/etc/czwallet/release_keys.txt`, installed from
+`deploy/release_keys.txt` (the project's key, ID `d1b3b27e99714b0a`); reproducible
 tarballs; downgrades refused; the root helper copies the files before
 verifying (no swap mid-check) and unpacks only plain files under the
 release's own folder.

@@ -247,3 +247,17 @@ def test_lock_matches_pins_and_requirements():
     with open(os.path.join(root, "deploy", "install.sh")) as f:
         sh = f.read()
     assert "--require-hashes" in sh and "install --upgrade pip" not in sh
+
+
+def test_project_release_key_is_valid():
+    """deploy/release_keys.txt holds the key every install trusts for updates."""
+    import os
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from core import update
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "deploy", "release_keys.txt")
+    keys = update.load_keys(path)
+    assert len(keys) >= 1
+    for k in keys:
+        Ed25519PublicKey.from_public_bytes(k)
+    assert update.key_id(keys[0]) == "d1b3b27e99714b0a"

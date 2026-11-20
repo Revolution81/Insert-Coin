@@ -1,0 +1,4 @@
+# Ed25519 public keys trusted to sign Insert Coin updates, one per line (hex).
+# Revolution81's release key, made 2026-11-19 with tools/release.py keygen.
+# Check a release with: python3 tools/release.py verify FILE.tar.gz
+a9d2d4c8a47698262dbd1a4f097abbde859a9e1f382cb894fc8f14394f85dcf2
