@@ -9,7 +9,7 @@ on:
         required: false
         default: ""
 permissions:
-  contents: read
+  contents: write   # drafts are only visible to a token that can write
 jobs:
   inspect:
     runs-on: ubuntu-24.04-arm
