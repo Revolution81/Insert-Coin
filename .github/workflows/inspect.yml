@@ -47,6 +47,13 @@ jobs:
           echo "== M5 packages"; grep -E '^Package: .*(m5|cardputer|cp0|applaunch|splash|led)' -i /mnt/r/var/lib/dpkg/status
           echo "== /etc/insert-coin-image"; cat /mnt/r/etc/insert-coin-image 2>/dev/null
           echo "== cloud-init disabled?"; ls /mnt/r/etc/cloud 2>/dev/null
+          echo "== udev rules touching fb / graphics / backlight / input / keyboard"
+          for f in /mnt/r/etc/udev/rules.d/* /mnt/r/usr/lib/udev/rules.d/*; do
+            if grep -qiE "fb|graphics|backlight|cardputer|tca8418|input" "$f" 2>/dev/null; then
+              echo "------ $f"; grep -iE "fb|graphics|backlight|cardputer|tca8418|SUBSYSTEM==\"input|KERNEL==\"event" "$f" | head -12
+            fi
+          done
+          echo "== groups"; grep -E "^(video|input|czscreen|render|gpio|i2c|spi):" /mnt/r/etc/group
           echo "== fstab"; cat /mnt/r/etc/fstab
           echo "== partitions"; sudo sfdisk -d image.img
           echo "== blkid"; sudo blkid ${L}p1 ${L}p2
