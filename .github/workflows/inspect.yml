@@ -25,8 +25,15 @@ jobs:
           if [ -n "$URL" ]; then gh release download -R ${{ github.repository }} --pattern '*.img.xz' "$URL" -O img.xz || curl -fL "$URL" -o img.xz; else curl -fL "$BASE" -o img.xz; fi
           xz -dc img.xz > image.img
           L=$(sudo losetup -fP --show image.img)
-          sudo mkdir -p /mnt/r /mnt/b && sudo mount -o ro ${L}p2 /mnt/r && sudo mount -o ro ${L}p1 /mnt/b
           set +x
+          echo "== image file"; ls -l image.img
+          echo "== partitions"; sudo sfdisk -d image.img
+          echo "== p2 device size"; sudo blockdev --getsize64 ${L}p2
+          echo "== p2 superblock"; sudo dumpe2fs -h ${L}p2 2>&1 | grep -E "Block count|Block size|Filesystem state|magic|features" || true
+          echo "== fsck (read-only)"; sudo e2fsck -fn ${L}p2 2>&1 | tail -8 || true
+          sudo mkdir -p /mnt/r /mnt/b
+          sudo mount -o ro ${L}p2 /mnt/r || { sudo dmesg | tail -8; exit 1; }
+          sudo mount -o ro ${L}p1 /mnt/b
           echo "== cmdline.txt"; cat /mnt/b/cmdline.txt
           echo "== config.txt (non-comment)"; grep -v '^#' /mnt/b/config.txt | grep -v '^$'
           echo "== boot partition"; ls -la /mnt/b | head -60
