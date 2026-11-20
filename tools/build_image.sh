@@ -20,7 +20,8 @@ GROW="${GROW:-2G}"            # working room while installing; shrunk away after
 SPARE_MB="${SPARE_MB:-600}"   # free space left on the wallet's partition
 MAX_BYTES="${MAX_BYTES:-7300000000}"   # must fit an "8 GB" card (about 7.4-7.9 GB real)
 # DEV=1 with DEV_SSH_KEY="ssh-ed25519 AAAA... you@pc": a developer image for
-# debugging. Same as the savings image, except SSH stays on for that one key
+# debugging (several keys: separate them with ";"). Same as the savings
+# image, except SSH stays on for those keys only
 # (never a password) and the title says DEVELOPER: NOT FOR REAL MONEY. Never
 # attach one to a release.
 DEV="${DEV:-0}"
@@ -114,7 +115,8 @@ if [ "$DEV" = 1 ]; then
   echo "DEVELOPER image: SSH stays on, for one key only"
   in_root systemctl mask sshswitch.service || true
   install -d -m 700 -o 1000 -g 1000 "$ROOT/home/pi/.ssh"
-  printf '%s\n' "$DEV_SSH_KEY" > "$ROOT/home/pi/.ssh/authorized_keys"
+  printf '%s\n' "$DEV_SSH_KEY" | tr ';' '\n' | sed 's/^ *//; s/ *$//; /^$/d' > "$ROOT/home/pi/.ssh/authorized_keys"
+  echo "authorized keys: $(wc -l < "$ROOT/home/pi/.ssh/authorized_keys")"
   chown 1000:1000 "$ROOT/home/pi/.ssh/authorized_keys"; chmod 600 "$ROOT/home/pi/.ssh/authorized_keys"
   mkdir -p "$ROOT/etc/ssh/sshd_config.d"
   printf '%s\n' "PasswordAuthentication no" "KbdInteractiveAuthentication no" \

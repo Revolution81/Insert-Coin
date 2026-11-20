@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       ssh_key:
-        description: "Developer image only: your SSH public key (ssh-ed25519 ...)"
+        description: "Developer image only: SSH public key(s), ssh-ed25519 ...; several separated by ;"
         required: false
         default: ""
 
