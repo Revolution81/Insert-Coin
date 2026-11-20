@@ -29,6 +29,10 @@ From the second session on the device:
   on and cut the partition shorter than its filesystem. The build now waits
   for the partitions, stops on any error, and refuses to finish unless the
   shrunk filesystem checks clean, fits its partition and mounts.
+- **Opt-in boot log** for the wallet image, which has no logins: an empty
+  `insert-coin-debug.txt` on the card's boot partition makes it write its
+  startup log there (`insert-coin-bootlog.txt`) 1, 3 and 10 minutes after
+  power-on. Without that file it does nothing.
 - **Wallet image locked down and smaller.** The Savings image now has SSH
   switched off (including the boot-partition switch), every account's
   password locked and cloud-init disabled, so nothing can log in over the

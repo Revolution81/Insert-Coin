@@ -234,6 +234,8 @@ fi
 install -m 644 "$SRC/deploy/czwallet-savings.conf" /etc/systemd/system/czwallet.service.d/savings.conf
 systemctl daemon-reload || true
 systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
+# opt-in boot log for when the device won't start (see the unit's comments)
+systemctl enable czwallet-bootlog 2>/dev/null || true
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
 # M5Stack's launcher (a user service) and its desktop audio would fight the

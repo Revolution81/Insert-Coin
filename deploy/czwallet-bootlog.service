@@ -1,0 +1,16 @@
+[Unit]
+Description=Insert Coin boot log, only when insert-coin-debug.txt is on the card
+# For finding out why a wallet image won't start, with no logins to look
+# around with. Opt-in: create an empty insert-coin-debug.txt on the card's
+# boot partition (the part Windows and macOS can read). The log is written
+# next to it 1, 3 and 10 minutes after power-on. Delete both files after.
+DefaultDependencies=no
+After=local-fs.target
+ConditionPathExists=/boot/firmware/insert-coin-debug.txt
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c 'for wait in 60 120 420; do sleep $wait; { echo "== $(date)  up $(cut -d" " -f1 /proc/uptime)s"; systemctl --failed --no-pager; echo; systemctl list-jobs --no-pager; echo; journalctl -b --no-pager -o short-monotonic | tail -n 4000; } > /boot/firmware/insert-coin-bootlog.txt 2>&1; sync; done'
+
+[Install]
+WantedBy=sysinit.target

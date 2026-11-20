@@ -9,7 +9,7 @@
 # Make sure you have your seed words before using --purge.
 set -u
 echo "== stopping Insert Coin"
-for s in czwallet czprint czscan cznet czsigner czwallet-vault czshare; do
+for s in czwallet czprint czscan cznet czsigner czwallet-vault czshare czwallet-bootlog; do
   systemctl disable --now "$s" 2>/dev/null || true
 done
 echo "== radios back on"

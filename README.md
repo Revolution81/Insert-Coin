@@ -139,6 +139,12 @@ or bigger. It takes **no logins at all**: SSH is off and every account's
 password is locked, so the screen and keyboard are the only way in. Browsers,
 media players and remote-desktop servers are removed from it.
 
+*If the image won't start:* put the card in a PC, create an empty file named
+`insert-coin-debug.txt` on its boot partition (the part Windows can read),
+put it back and power on for 10 minutes. The device then writes its startup
+log to `insert-coin-bootlog.txt` on the same partition. Delete both files
+afterwards: the log can name your Wi-Fi network.
+
 **Or on the card you already have:** `sudo sh deploy/install.sh --dedicated`,
 then `sudo reboot`. `sudo sh deploy/uninstall.sh` brings the launcher back.
 
