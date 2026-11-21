@@ -146,19 +146,32 @@ DEFAULT = "fanfare"
 # moment to wake, which clipped the start of the fanfare on the Cardputer
 # Zero. A short silence in front gives it time. CZ_SOUND_LEAD overrides.
 LEAD_IN = float(os.environ.get("CZ_SOUND_LEAD", "0.25"))
+# Straight to the codec (the Savings image has no sound server): the codec and
+# speaker amp power up with each sound and swallowed ~0.7 s of the fanfare, so
+# it gets a longer silence in front. Nothing turns the volume down there
+# either (it's at the codec's maximum), so the sounds themselves are made
+# quieter: about a quarter. CZ_SOUND_LEVEL overrides (0..1).
+DIRECT_LEAD_IN = float(os.environ.get("CZ_SOUND_DIRECT_LEAD", "0.9"))
+DIRECT_LEVEL = float(os.environ.get("CZ_SOUND_LEVEL", "0.25"))
 
 
-def wav(name: str) -> bytes:
+def wav(name: str, direct: bool = False) -> bytes:
+    """The sound as a WAV. direct: for playing straight to the codec (longer
+    lead-in, quieter); otherwise a sound server sets the volume."""
     if name not in SOUNDS and name not in UI_SOUNDS:
         name = DEFAULT
-    if name not in _cache:
+    key = f"{name}:direct" if direct else name
+    if key not in _cache:
         samples = (UI_SOUNDS.get(name) or SOUNDS[name])()
-        if name in SOUNDS and LEAD_IN > 0:
-            samples = _blank(LEAD_IN) + samples
+        lead = DIRECT_LEAD_IN if direct else LEAD_IN
+        if name in SOUNDS and lead > 0:
+            samples = _blank(lead) + samples
         peak = max(1e-9, max(abs(s) for s in samples))
         k = 0.89 / peak
         if name in UI_SOUNDS:
             k = UI_LEVEL / peak
+        if direct:
+            k *= max(0.0, min(1.0, DIRECT_LEVEL))
         buf = io.BytesIO()
         with wave.open(buf, "wb") as w:
             w.setnchannels(1)
@@ -166,8 +179,8 @@ def wav(name: str) -> bytes:
             w.setframerate(RATE)
             w.writeframes(b"".join(struct.pack("<h", int(max(-1, min(1, s * k)) * 32000))
                                    for s in samples))
-        _cache[name] = buf.getvalue()
-    return _cache[name]
+        _cache[key] = buf.getvalue()
+    return _cache[key]
 
 
 def prepare(name: str) -> None:
@@ -177,9 +190,15 @@ def prepare(name: str) -> None:
     threading.Thread(target=lambda: _safe_wav(name), daemon=True).start()
 
 
+def _direct() -> bool:
+    """Playing straight to the codec with aplay (no sound server, no player
+    plugged in by the simulator, no CZ_PLAYER)."""
+    return _player is None and not os.environ.get("CZ_PLAYER") and _player_cmd()[0] == "aplay"
+
+
 def _safe_wav(name: str) -> None:
     try:
-        wav(name)
+        wav(name, _direct())
     except Exception:  # noqa: BLE001 - it'll be made when played instead
         pass
 
@@ -230,7 +249,7 @@ def play(name: str, enabled: bool = True) -> None:
     if name not in SOUNDS and name not in UI_SOUNDS:
         name = DEFAULT
     try:
-        data = wav(name)
+        data = wav(name, _direct())
         if _player is not None:
             _player(name, data)
             return

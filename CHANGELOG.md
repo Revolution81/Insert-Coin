@@ -49,6 +49,12 @@ From the second session on the device:
   does); the Linux console's blinking cursor no longer shows over the
   screen; sounds play on the speaker instead of HDMI; and the code is
   compiled once at install and update, so screens open without a delay.
+- The fanfare plays in full on the wallet image: the codec and speaker
+  amp wake up with each sound and swallowed all but the last note, so it
+  now starts after a longer silence. With no sound server to set the volume
+  there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
+- The battery shows the charging bolt only while it's really charging: the
+  fuel gauge also says "Full" on battery, which showed the bolt unplugged.
 - **Opt-in boot log** for the wallet image, which has no logins: an empty
   `insert-coin-debug.txt` on the card's boot partition makes it write its
   startup log there (`insert-coin-bootlog.txt`) 1, 3 and 10 minutes after

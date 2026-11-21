@@ -22,8 +22,9 @@ def test_reads_level_and_charging(tmp_path):
 def test_discharging_and_full(tmp_path):
     supply(tmp_path, "bq27220-0", type="Battery", capacity="80", status="Discharging")
     assert power.read(str(tmp_path)) == (0.8, False)
+    # the gauge says "Full" on battery too: no charging bolt for that
     (tmp_path / "bq27220-0" / "status").write_text("Full\n")
-    assert power.read(str(tmp_path)) == (0.8, True)
+    assert power.read(str(tmp_path)) == (0.8, False)
 
 
 def test_usb_online_counts_as_plugged_in(tmp_path):

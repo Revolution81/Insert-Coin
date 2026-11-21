@@ -160,3 +160,18 @@ def test_menu_sounds_are_soft_and_low():
         assert n / 44100 <= 0.04                             # one short note
         assert 10000 < max(abs(x) for x in data) < 16000      # under half the coin sound
         assert abs(data[0]) < 200                            # no click at the front
+
+
+def test_direct_fanfare_is_quieter_with_a_longer_lead_in():
+    """Straight to the codec (Savings image): a lead-in long enough for the
+    amp to wake (it swallowed all but the last note) and about 1/4 level."""
+    import array
+    def frames(b):
+        with wave.open(io.BytesIO(b)) as w:
+            return array.array("h", w.readframes(w.getnframes())), w.getnframes()
+    loud, n1 = frames(sound.wav("fanfare"))
+    quiet, n2 = frames(sound.wav("fanfare", direct=True))
+    assert n2 - n1 == int(sound.DIRECT_LEAD_IN * sound.RATE) - int(sound.LEAD_IN * sound.RATE)
+    assert sound.DIRECT_LEAD_IN >= 0.8
+    ratio = max(abs(x) for x in quiet) / max(abs(x) for x in loud)
+    assert 0.2 < ratio < 0.3

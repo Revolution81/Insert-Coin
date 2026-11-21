@@ -34,7 +34,10 @@ def read(root: str = ROOT) -> tuple[float, bool]:
             except (OSError, ValueError):
                 pass
             try:
-                charging = charging or _read(os.path.join(d, "status")) in ("Charging", "Full")
+                # "Charging" only, as M5Stack's launcher does: the gauge also
+                # says "Full" on battery when it's topped up, which showed the
+                # charging bolt with the cable out
+                charging = charging or _read(os.path.join(d, "status")) == "Charging"
             except OSError:
                 pass
         elif kind in ("USB", "Mains"):
