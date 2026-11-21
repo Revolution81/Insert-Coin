@@ -6,6 +6,8 @@ stays that way after a restart.
   FANFARE   the title screen's OK: a chiptune treasure fanfare,
             "da-da-da-DAAA", two square-wave voices and a triangle bass with
             noise hats, the last note holding with a wobble
+  SECRET    the title screen's Konami code (ui/egg.py): a climbing
+            arpeggio with an echo and a trill, about a second long
   BOOP      one short, low note (35 ms) for moving, OK and BACK in menus.
             A gentle 2 ms start (no click), under half the fanfare's level.
             A 1 W speaker can't play much below ~300 Hz, so the note also
@@ -116,6 +118,25 @@ def _fanfare() -> list[float]:
     return _fade(out, 0.15)
 
 
+def _secret() -> list[float]:
+    """The title screen's secret: a quick climbing arpeggio (C major, then up
+    a step to D, then the high C) on a thin pulse with an echo voice, ending
+    in a little trill. Original, like the fanfare: no game's tune."""
+    out = _blank(1.2)
+    step = 0.06
+    notes = [523.25, 659.26, 783.99, 1046.5, 587.33, 739.99, 880.0, 1174.66]
+    for k, f in enumerate(notes):
+        _mix(out, step * k, _voice(f, step * 0.9, "pulse", 0.125), 0.22)
+        _mix(out, step * k + 0.09, _voice(f, step * 0.9, "pulse", 0.125), 0.08)   # echo
+    at = step * len(notes)
+    for k in range(6):                                   # trill: C7 / D7
+        f = 2093.0 if k % 2 == 0 else 2349.32
+        _mix(out, at + k * 0.045, _voice(f, 0.04, "pulse", 0.25), 0.15)
+    _mix(out, at + 0.27, _voice(1046.5, 0.35, "pulse", 0.25, 0.01, 4.0), 0.2)
+    _mix(out, at + 0.27, _voice(261.63, 0.35, "tri", 0.5, 0.0, 4.0), 0.3)
+    return _fade(out, 0.1)
+
+
 def _note(freq: float, length: float = 0.035) -> list[float]:
     """One short, steady low note: no slide, no echo. 2 ms fade-in so there's
     no click at the front, a quick fall and a short tail fade."""
@@ -140,7 +161,7 @@ UI_SOUNDS = {"ui_move": _ui_move, "ui_ok": _ui_ok, "ui_back": _ui_back}
 UI_LEVEL = 0.45                 # the boop sits well under the fanfare
 _last_ui = 0.0
 
-SOUNDS = {"fanfare": _fanfare}
+SOUNDS = {"fanfare": _fanfare, "secret": _secret}
 DEFAULT = "fanfare"
 # PipeWire suspends the speaker when it's idle and the amplifier takes a
 # moment to wake, which clipped the start of the fanfare on the Cardputer

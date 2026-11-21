@@ -146,14 +146,31 @@ class TitleScreen(Screen):
     quiet = True            # OK plays the fanfare, not a menu click
 
     def __init__(self, then):
+        from .egg import KonamiWatch
         self.then = then              # then(app): what OK leads to
         self.done = False
+        self.konami = KonamiWatch()
+        self.secret = False
 
     def on_show(self, app):
+        self.konami.reset()
+        self.secret = False
         if app.settings.sound:          # make the sound now, so OK plays it at once
             sound.prepare("fanfare")
 
     def handle(self, ev, app):
+        if ev.kind is Kind.SELECT and self.secret and not self.done:
+            from .egg import EggScreen          # UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A, START
+            self.secret = False
+            self.konami.reset()
+            sound.play("secret", app.settings.sound)
+            app.push(EggScreen())
+            return
+        if ev.kind is not Kind.SELECT:
+            self.secret = self.konami.feed(ev)
+            if self.secret and app.settings.sound:
+                sound.prepare("secret")
+            return
         if ev.kind is Kind.SELECT and not self.done:
             self.done = True
             sound.play("fanfare", app.settings.sound)

@@ -235,10 +235,6 @@ def unlock(c):
               opened, failed)
 
     def got(c, pin):
-        from .egg import EggScreen, is_konami
-        if is_konami(pin):              # the secret screen: no try spent, nothing opened
-            c.push(EggScreen())
-            return None
         if st.get("passphrase_stored", True):
             run(c, pin, None)
         else:

@@ -1,8 +1,8 @@
-"""A secret screen. On the UNLOCK screen, type the Konami code with the
-Cardputer's arrow keys: UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A, then OK
-(START). On the PIN screen the arrows type their letters, so the code
-arrives as the text "ffxxzczcba". It's checked before the PIN is, costs no
-try, opens nothing, and can't be chosen as a real PIN."""
+"""A secret screen. On the title screen (PRESS OK), enter the Konami code
+with the Cardputer's arrow keys: UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A,
+then OK (START). A secret jingle plays instead of the fanfare and the
+heroes show up. Any key goes back to the title. It's all in the app, before
+any wallet is opened: nothing to do with keys or PINs."""
 from __future__ import annotations
 
 from PIL import Image
@@ -11,11 +11,22 @@ from . import theme as t
 from .input import Kind
 from .widgets import Screen
 
-KONAMI = "ffxxzczcba"
+KONAMI = ("UP", "UP", "DOWN", "DOWN", "LEFT", "RIGHT", "LEFT", "RIGHT", "B", "A")
 
 
-def is_konami(text: str) -> bool:
-    return text.strip().lower() == KONAMI
+class KonamiWatch:
+    """Fed every key on the title screen; true once the whole code is in."""
+
+    def __init__(self):
+        self.recent: list[str] = []
+
+    def feed(self, ev) -> bool:
+        tok = ev.value if ev.kind in (Kind.NAV, Kind.HOTKEY) else "?"
+        self.recent = (self.recent + [tok])[-len(KONAMI):]
+        return tuple(self.recent) == KONAMI
+
+    def reset(self) -> None:
+        self.recent = []
 
 
 # The heroes from the instruction booklet, 16x16 each: Sir Signer, Sats, Cardy.
@@ -52,13 +63,14 @@ def sprite(name: str, scale: int) -> Image.Image:
 
 
 class EggScreen(Screen):
-    """ALL YOUR KEYS ARE BELONG TO YOU. Any key goes back to the PIN."""
+    """ALL YOUR KEYS ARE BELONG TO YOU. Any key goes back to the title."""
     title = "???"
     animated = True
 
+    quiet = True            # no menu boop on the way out
+
     def handle(self, ev, c):
-        if ev.kind is not Kind.CURSOR:
-            c.pop()
+        c.pop()
 
     def render(self, c, frame):
         W, H = t.W, t.H

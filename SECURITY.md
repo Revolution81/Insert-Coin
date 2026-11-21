@@ -364,13 +364,22 @@ the folder's own listing. The default password (`bitcoin`) is public, so on
 shared networks change it. Paper wallets are left out unless you choose to
 include them for that session.
 
-## The UNLOCK screen's secret
+## The title screen's secret
 
-`ui/egg.py`: typing the Konami code with the arrow keys (the text
-`ffxxzczcba`) and OK on the UNLOCK screen shows a picture instead of
-checking a PIN. It's compared before any vault work, costs no try, changes
-nothing, and `vault._not_reserved` refuses that text as a PIN, duress,
-wipe or bypass PIN, so it can never shadow a real one.
+`ui/egg.py`: the Konami code with the arrow keys (UP UP DOWN DOWN LEFT
+RIGHT LEFT RIGHT B A) and OK on the title screen plays a jingle and shows a
+picture. It lives in the app's title screen, before any wallet is opened,
+and has nothing to do with PINs or keys (it used to be on the UNLOCK
+screen; it moved off the PIN path in 0.8.24).
+
+## Power switch (wallet image)
+
+`deploy/cz-power` (root, `czwallet-power.service`): the switch is read by
+the M5IOE1 chip, which keeps power on for OFF_TIME after switch-off and then
+cuts it. The service sets OFF_TIME to 20 s and runs `systemctl poweroff`
+after three OFF readings in a row, only after it has seen the switch ON and
+only if the chip answers with its ID. Without it the power was simply cut
+2 s after switching off.
 
 ## App mode
 

@@ -205,3 +205,49 @@ def test_direct_stream_keeps_the_amp_awake_for_boops(monkeypatch, tmp_path):
         time.sleep(0.02)
     assert s.proc is None                     # closed after going idle
     assert (tmp_path / "out.raw").stat().st_size >= 2 * int(sound.DIRECT_LEAD_IN * sound.RATE)
+
+
+def test_konami_code_on_the_title_plays_the_secret(tmp_path, monkeypatch):
+    """UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A, then OK (START) on the
+    title: the secret jingle and the heroes; any key back to the title, and
+    a plain OK then carries on as usual."""
+    from ui.egg import EggScreen
+    played = []
+    sound.set_player(lambda name, data: played.append(name))
+    try:
+        app = make(tmp_path, monkeypatch)
+        app.start(title=True)
+        for k in ("KEY_F", "KEY_F", "KEY_X", "KEY_X", "KEY_Z", "KEY_C", "KEY_Z", "KEY_C",
+                  "KEY_B", "KEY_A"):
+            press(app, k)
+        assert isinstance(app.visible, TitleScreen) and not played
+        enter(app)
+        assert played == ["secret"] and isinstance(app.visible, EggScreen)
+        app.render(0)
+        press(app, "KEY_A")
+        assert isinstance(app.visible, TitleScreen)
+        enter(app)
+        assert played == ["secret", "fanfare"]
+        assert not isinstance(app.visible, TitleScreen)
+    finally:
+        sound.set_player(None)
+
+
+def test_almost_the_konami_code_is_just_ok(tmp_path, monkeypatch):
+    played = []
+    sound.set_player(lambda name, data: played.append(name))
+    try:
+        app = make(tmp_path, monkeypatch)
+        app.start(title=True)
+        for k in ("KEY_F", "KEY_F", "KEY_X", "KEY_X", "KEY_Z", "KEY_C", "KEY_Z", "KEY_C", "KEY_A"):
+            press(app, k)
+        enter(app)
+        assert played == ["fanfare"]
+    finally:
+        sound.set_player(None)
+
+
+def test_secret_jingle_is_a_good_wav():
+    with wave.open(io.BytesIO(sound.wav("secret"))) as w:
+        assert w.getframerate() == sound.RATE and 0.5 < w.getnframes() / w.getframerate() < 2.0
+    assert sound.wav("secret") != sound.wav("fanfare")

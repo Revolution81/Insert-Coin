@@ -163,6 +163,7 @@ chmod 644 /etc/czwallet/release_keys.txt
 
 echo "== root helpers (radios, updates, card copies, file sharing)"
 install -o root -g root -m 755 "$SRC/deploy/cz-radio" /usr/local/sbin/cz-radio
+install -o root -g root -m 755 "$SRC/deploy/cz-power" /usr/local/sbin/cz-power
 install -o root -g root -m 755 "$SRC/deploy/cz-update" /usr/local/sbin/cz-update
 install -o root -g root -m 755 "$SRC/deploy/cz-backup" /usr/local/sbin/cz-backup
 install -o root -g root -m 755 "$SRC/deploy/cz-share" /usr/local/sbin/cz-share
@@ -214,7 +215,7 @@ if [ "$MODE" = app ]; then
   # Nothing starts at boot: the launcher's Insert Coin icon runs a session
   install -m 644 "$SRC/deploy/czwallet-appmode.conf" /etc/systemd/system/czwallet.service.d/appmode.conf
   systemctl daemon-reload || true
-  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet czwallet-ioe-ready czwallet-console-off 2>/dev/null || true
+  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet czwallet-ioe-ready czwallet-console-off czwallet-power 2>/dev/null || true
   install -o root -g root -m 755 "$SRC/deploy/cz-session" /usr/local/sbin/cz-session
   install -o root -g root -m 755 "$SRC/deploy/insert-coin" /usr/local/bin/insert-coin
   install -d /usr/share/APPLaunch/applications /usr/share/APPLaunch/share/images
@@ -243,7 +244,7 @@ systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 systemctl enable czwallet-bootlog 2>/dev/null || true
 # M5's launcher (off here) normally ends the keyboard lights' boot walk and
 # owns the screen; these two do just those parts
-systemctl enable czwallet-ioe-ready czwallet-console-off
+systemctl enable czwallet-ioe-ready czwallet-console-off czwallet-power
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
 # M5Stack's launcher (a user service) and its desktop audio would fight the

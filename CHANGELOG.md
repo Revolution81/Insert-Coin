@@ -55,6 +55,12 @@ From the second session on the device:
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
 - Typing "fi" no longer leaves a gap before the cursor (the text was drawn
   with ligatures on the device, so "fi" became one narrower glyph).
+- **Power switch shuts down cleanly** on the wallet image: switching off
+  used to cut the power 2 s later with no warning to Linux. A small root
+  service now gives it 20 s and shuts Linux down properly first.
+- **The Konami code moved to the title screen**, with its own secret
+  jingle: UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A, then OK. It's no
+  longer on the PIN screen, so no PIN text is reserved for it.
 - Menu boops play on the wallet image: the speaker amp woke too slowly
   for a 35 ms sound. Sound now goes through one stream kept open while
   sounds are in use (closed after 90 s of quiet), and the title screen

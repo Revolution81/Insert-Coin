@@ -1,0 +1,42 @@
+#!/bin/sh
+# Insert Coin: a clean shutdown when the power switch goes off.
+#
+# The Cardputer Zero's power switch is read by the M5IOE1 I/O expander
+# (I2C1, 0x4F). When it goes off the chip keeps the power on for OFF_TIME
+# (register 0xB2/0xB3, ms; 2 s after every power-on) and then cuts it, with
+# no word to Linux. On M5Stack's OS their launcher handles this; the wallet
+# image switches that off, so here: OFF_TIME is raised to 20 s, the switch
+# bit (0xB9 bit 0) is read every half second, and when it reads off Linux
+# shuts down properly (files closed, card synced) before the power goes.
+#
+# Careful on purpose: nothing is done unless the chip answers with its ID
+# (REV 0x02 = 0x5A); it only acts after first seeing the switch ON, and only
+# on three OFF readings in a row, so a misread can never shut down a device
+# that's switched on.
+BUS=1 ADDR=0x4f
+get() { i2cget -f -y $BUS $ADDR "$1" 2>/dev/null; }
+
+i=0
+until [ "$(get 0x02)" = 0x5a ]; do
+  i=$((i + 1)); [ $i -ge 30 ] && { echo "power switch: chip not found, not watching"; exec sleep infinity; }
+  sleep 1
+done
+
+# OFF_TIME = 20000 ms (0x4E20), both bytes in one write as the chip expects
+i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x20 0x4e 2>/dev/null \
+  && echo "power switch: 20 s to shut down after switching off"
+
+seen_on=0 off=0
+while :; do
+  s=$(get 0xb9)
+  if [ -n "$s" ]; then
+    if [ $((s & 1)) = 1 ]; then seen_on=1; off=0
+    elif [ $seen_on = 1 ]; then off=$((off + 1))
+    fi
+  fi
+  if [ $off -ge 3 ]; then
+    echo "power switch: off, shutting down"
+    exec systemctl poweroff
+  fi
+  sleep 0.5
+done
