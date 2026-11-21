@@ -57,7 +57,8 @@ From the second session on the device:
   with ligatures on the device, so "fi" became one narrower glyph).
 - **Updates without reburning**: every release now includes the small
   update file (czwallet-X.Y.Z.tar.gz), and `tools/release.py sign FILE`
-  signs a downloaded one. Copy it and its .sig to `czwallet-update` on the
+  signs a downloaded one, and on Windows `sign-update.bat` does it all in
+  one double-click (finds the download, signs it, copies it to the card). Copy it and its .sig to `czwallet-update` on the
   card's boot partition, then SETUP > UPDATE. New workflow "Build wallet
   update" makes those drafts.
 - **Power switch shuts down cleanly** on the wallet image: switching off
