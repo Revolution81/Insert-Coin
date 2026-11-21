@@ -32,12 +32,13 @@ jobs:
         run: |
           [ -n "$BASE_SHA256" ] || unset BASE_SHA256
           sudo -E sh tools/build_image.sh
+          python3 tools/release.py build
       - name: Draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' core/version.py)
           TAG="image-v$VERSION-$(date -u +%Y%m%d%H%M)"
-          gh release create "$TAG" out/*.img.xz out/*.sha256 --draft --prerelease \
+          gh release create "$TAG" out/*.img.xz out/*.sha256 dist/czwallet-$VERSION.tar.gz --draft --prerelease \
             --title "Insert Coin $VERSION Savings edition: wallet image (test build)" \
-            --notes "SAVINGS EDITION. The device boots straight into Insert Coin and runs nothing else. For spending money there is also the Spending edition (an app in M5Stack's launcher, deploy/install.sh --app); keep savings here, not there. Burn with M5 Imager or Raspberry Pi Imager (Use custom). Check the SHA-256 before burning. Built by this workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --notes "SAVINGS EDITION. The device boots straight into Insert Coin and runs nothing else. For spending money there is also the Spending edition (an app in M5Stack's launcher, deploy/install.sh --app); keep savings here, not there. Burn with M5 Imager or Raspberry Pi Imager (Use custom). Check the SHA-256 before burning. czwallet-$VERSION.tar.gz is the same version as a signed update for SETUP > UPDATE (sign it on your PC: py tools\\release.py sign FILE). Built by this workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

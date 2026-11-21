@@ -7,3 +7,4 @@ shots/
 *.wav.tmp
 .venv/
 venv/
+dist/

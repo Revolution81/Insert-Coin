@@ -3,10 +3,16 @@ Build, sign and check Insert Coin releases.
 
   python3 tools/release.py keygen                 # once: make your signing key
   python3 tools/release.py build                  # dist/czwallet-X.Y.Z.tar.gz + its SHA-256
-  python3 tools/release.py sign                   # dist/czwallet-X.Y.Z.tar.gz.sig
+  python3 tools/release.py sign [FILE]            # FILE.sig (default: dist/czwallet-X.Y.Z.tar.gz)
   python3 tools/release.py verify FILE [KEYHEX]   # anyone: check a release
 
-Reproducible: run `build` on the same source and you get the same SHA-256.
+Every GitHub release also carries the ready-built czwallet-X.Y.Z.tar.gz: download
+it and run `sign` on it (FILE can be anywhere, e.g. your Downloads folder).
+Then copy FILE and FILE.sig to the czwallet-update folder on the microSD's
+boot partition and use SETUP > UPDATE.
+
+Reproducible: run `build` on the same source and you get the same SHA-256,
+so you can check a downloaded file against your own build before signing.
 The private key is stored encrypted with a passphrase; keep it off the
 device and backed up. Put the public key (hex) in
 /etc/czwallet/release_keys.txt on each device you update.
@@ -43,10 +49,16 @@ def main(argv):
         path, digest = update.build(ROOT, DIST, VERSION)
         print(f"{path}\nsha256 {digest}")
     elif cmd == "sign":
-        path = os.path.join(DIST, f"czwallet-{VERSION}.tar.gz")
+        import re
+        path = argv[2] if len(argv) > 2 else os.path.join(DIST, f"czwallet-{VERSION}.tar.gz")
+        m = re.fullmatch(r"czwallet-(\d+\.\d+\.\d+)\.tar\.gz", os.path.basename(path))
+        if not m or not os.path.isfile(path):
+            sys.exit(f"not a release file: {path} (expected czwallet-X.Y.Z.tar.gz)")
+        version = m.group(1)
+        print(f"Signing Insert Coin {version}\nsha256 {update.sha256_file(path)}")
         pw = getpass.getpass("Key passphrase: ").encode()
         with open(KEY, "rb") as f:
-            print(update.sign(path, VERSION, f.read(), pw))
+            print(update.sign(path, version, f.read(), pw))
     elif cmd == "verify" and len(argv) >= 3:
         keys = [bytes.fromhex(argv[3])] if len(argv) > 3 else update.load_keys()
         info = update.verify(argv[2], argv[2] + ".sig", keys, current="0.0.0")

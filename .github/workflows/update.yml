@@ -1,0 +1,41 @@
+name: Build wallet update
+# The small signed-update file for SETUP > UPDATE (no image burn needed).
+# GitHub builds it (reproducibly: the same source gives the same SHA-256);
+# only you can sign it, on your PC, with your private key.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: python3 tools/release.py build | tee build.txt
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' core/version.py)
+          SHA=$(sed -n 's/^sha256 //p' build.txt)
+          TAG="update-v$VERSION-$(date -u +%Y%m%d%H%M)"
+          cat > notes.md <<NOTES
+          Signed update for wallets already set up (Savings image or Spending app): no image burn, your wallet stays.
+
+          1. Download **czwallet-$VERSION.tar.gz** below.
+          2. Sign it on your PC: \`py tools\\release.py sign %USERPROFILE%\\Downloads\\czwallet-$VERSION.tar.gz\` (makes the .sig next to it).
+          3. On the microSD's boot partition, make a folder **czwallet-update** and copy in both files.
+          4. On the device: SETUP > UPDATE.
+
+          SHA-256: \`$SHA\` (the same as \`py tools\\release.py build\` on this commit).
+          Updates replace the wallet's code; changes to the system around it need the wallet image.
+          Built by: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          NOTES
+          sed -i 's/^          //' notes.md
+          gh release create "$TAG" dist/czwallet-$VERSION.tar.gz --draft --prerelease \
+            --title "Insert Coin $VERSION update (SETUP > UPDATE)" --notes-file notes.md
