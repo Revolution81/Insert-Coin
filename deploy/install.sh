@@ -172,6 +172,8 @@ install -o root -g root -m 755 "$SRC/deploy/cz-share" /usr/local/sbin/cz-share
 visudo -cf /etc/sudoers.d/czwallet
 chmod 440 /etc/sudoers.d/czwallet
 install -m 644 "$SRC/deploy/50-czwallet-nm.rules" /etc/polkit-1/rules.d/
+# a fixed name for the built-in keyboard (M5's image has one; ours may not)
+install -m 644 "$SRC/deploy/62-czwallet-keyboard.rules" /etc/udev/rules.d/
 if [ "$MODE" = dedicated ]; then
   # only the signer may draw on the panel or set the backlight
   install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/

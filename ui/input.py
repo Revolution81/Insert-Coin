@@ -307,6 +307,36 @@ class TextBuffer:
 # ---------------------------------------------------------------------------
 # Device backend
 # ---------------------------------------------------------------------------
+KBD_LINK = "/dev/input/cardputer-zero-internal"
+
+
+def find_keyboard(ev=None) -> str | None:
+    """The built-in keyboard's device path, or None if it isn't there yet.
+
+    Read-only search: the signer may only read input devices (DeviceAllow
+    char-input r), and evdev's default listing hides anything it can't also
+    write to, which once hid the keyboard on the Savings image."""
+    if ev is None:
+        import evdev as ev
+    # M5Stack's image and our own udev rule (62-czwallet-keyboard) name it
+    if os.path.exists(KBD_LINK):
+        return os.path.realpath(KBD_LINK)
+    for p in sorted(ev.list_devices(writable=False)):
+        try:
+            d = ev.InputDevice(p)
+        except OSError:
+            continue
+        try:
+            name = d.name.lower()
+            caps = d.capabilities().get(ev.ecodes.EV_KEY, [])
+        finally:
+            d.close()
+        if ("tca8418" in name or "keypad" in name or "cardputer" in name
+                or "keyboard" in name) and ev.ecodes.KEY_A in caps:
+            return p
+    return None
+
+
 class KeyboardDevice:
     """Reads the built-in keyboard through evdev and grabs it exclusively,
     so typed passphrases never also reach a console or another program."""
@@ -328,18 +358,10 @@ class KeyboardDevice:
         self.symbols = load_driver_symbols() if "tca8418" in self.dev.name.lower() else {}
 
     def _find(self) -> str:
-        ev = self._evdev
-        # The Cardputer Zero's own udev rule names its keyboard
-        if os.path.exists("/dev/input/cardputer-zero-internal"):
-            return os.path.realpath("/dev/input/cardputer-zero-internal")
-        for p in ev.list_devices():
-            d = ev.InputDevice(p)
-            name = d.name.lower()
-            caps = d.capabilities().get(ev.ecodes.EV_KEY, [])
-            if ("tca8418" in name or "keypad" in name or "cardputer" in name
-                    or "keyboard" in name) and ev.ecodes.KEY_A in caps:
-                return p
-        raise RuntimeError("Built-in keyboard not found; set CZ_KBD=/dev/input/eventN")
+        p = find_keyboard(self._evdev)
+        if p is None:
+            raise RuntimeError("Built-in keyboard not found; set CZ_KBD=/dev/input/eventN")
+        return p
 
     def name_of(self, code: int) -> str:
         if code in self.symbols:

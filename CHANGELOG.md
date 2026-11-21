@@ -36,6 +36,13 @@ From the second session on the device:
   the step 30. The signer also waits for the panel and keyboard instead of
   crashing when it starts before them, and the wallet's services never stop
   being restarted.
+- **Fixed: the wallet image still didn't reach the title screen**: the
+  signer couldn't find the keyboard. M5Stack's own OS gives it a fixed name
+  that the image lacks, and the fallback search asked for devices it could
+  also write to, while the signer is (on purpose) only allowed to read the
+  keyboard. The search is now read-only, our own udev rule gives the keyboard
+  that fixed name, and the signer waits for the keyboard itself, not just any
+  input device. The new boot log found it.
 - **Opt-in boot log** for the wallet image, which has no logins: an empty
   `insert-coin-debug.txt` on the card's boot partition makes it write its
   startup log there (`insert-coin-bootlog.txt`) 1, 3 and 10 minutes after

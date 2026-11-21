@@ -94,3 +94,30 @@ def test_signer_waits_for_screen_and_keyboard(monkeypatch):
         signer_service.wait_for_devices(timeout=5, clock=lambda: t[0],
                                         sleep=lambda s: (calls.append(s), t.__setitem__(0, t[0] + s)))
     assert len(calls) >= 10          # it kept trying for the whole timeout
+
+
+def test_keyboard_found_read_only(monkeypatch):
+    """The signer may only read input devices, so the search must not ask
+    evdev for writable ones (that hid the keyboard on the Savings image)."""
+    import types
+    import ui.input as uin
+    monkeypatch.setattr(uin.os.path, "exists", lambda p: False)
+    asked = {}
+
+    class Dev:
+        def __init__(self, p):
+            self.name = {"/dev/input/event0": "gpio_ir_recv",
+                         "/dev/input/event3": "tca8418c"}[p]
+        def capabilities(self):
+            return {1: [30] if self.name == "tca8418c" else [2]}
+        def close(self):
+            pass
+
+    def list_devices(writable=True):
+        asked["writable"] = writable
+        return [] if writable else ["/dev/input/event0", "/dev/input/event3"]
+
+    ev = types.SimpleNamespace(list_devices=list_devices, InputDevice=Dev,
+                               ecodes=types.SimpleNamespace(EV_KEY=1, KEY_A=30))
+    assert uin.find_keyboard(ev) == "/dev/input/event3"
+    assert asked["writable"] is False

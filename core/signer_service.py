@@ -125,13 +125,15 @@ def wait_for_devices(timeout: float = 90.0, clock=time.monotonic, sleep=time.sle
     keyboard (and given them the wallet's groups). Wait for both to be
     usable instead of crashing, which once made systemd give up on it."""
     from ui.display import _find_fb
-    import glob as _glob
+    from ui.input import find_keyboard
     end = clock() + timeout
     while True:
         fb = _find_fb()
-        kbd = "/dev/input/cardputer-zero-internal"
-        kbd_ok = os.access(kbd, os.R_OK) if os.path.exists(kbd) else any(
-            os.access(p, os.R_OK) for p in _glob.glob("/dev/input/event*"))
+        try:
+            kbd = find_keyboard()
+        except Exception:      # evdev missing or a device vanished mid-scan
+            kbd = None
+        kbd_ok = bool(kbd) and os.access(kbd, os.R_OK)
         if fb and os.access(fb, os.W_OK) and kbd_ok:
             return
         if clock() > end:

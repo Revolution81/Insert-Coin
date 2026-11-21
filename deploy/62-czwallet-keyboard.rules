@@ -1,0 +1,4 @@
+# Give the built-in keyboard a fixed name, like M5Stack's own image does,
+# so the signer finds it even where that rule isn't installed (the Savings
+# image). Group and mode come from 99-ignore-i2c-key / 50-udev-default.
+SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="tca8418*", SYMLINK+="input/cardputer-zero-internal"
