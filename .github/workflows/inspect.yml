@@ -74,6 +74,14 @@ jobs:
           echo "== cpu governor settings"; sudo grep -rIsE "scaling_governor|cpufreq" /mnt/r/etc /mnt/r/usr/local /mnt/r/usr/share/APPLaunch 2>/dev/null | head -10
           echo "== cmdline cursor / console"; grep -o "console=[^ ]*\|vt\.[^ ]*\|fbcon[^ ]*\|logo[^ ]*" /mnt/b/cmdline.txt
           echo "== leds in device tree overlays"; ls /mnt/b/overlays 2>/dev/null | grep -iE "m5|cardputer|cp0" 
+          echo "== launcher binary: device paths and commands it uses"
+          for b in /mnt/r/usr/share/APPLaunch/bin/M5CardputerZero-APPLaunch /mnt/r/usr/share/APPLaunch/lib/nihao.so; do
+            echo "------ $b"; sudo strings -n 5 "$b" | grep -E "/sys/|/dev/|/proc/|amixer|aplay|pactl|wpctl|systemctl|gpio|pwm|i2c|[Ll][Ee][Dd]|ioe|IOE|volume|Volume|cpufreq|governor|brightness|setterm|cursor|tty" | sort -u | head -120
+          done
+          echo "== overlays: LEDs and expander"
+          sudo apt-get install -y -qq device-tree-compiler >/dev/null 2>&1
+          for o in m5ioe1-overlay cardputerzero-overlay tca8418_m5stack; do echo "------ $o"; dtc -I dtb -O dts /mnt/b/overlays/$o.dtbo 2>/dev/null | grep -iE -B2 -A8 "led|trigger|pwm|gpio-line|keypad|backlight" | head -120; done
+          echo "== dtoverlay lines"; grep -E "^dtoverlay|^dtparam" /mnt/b/config.txt
           echo "== home dirs"; sudo ls -la /mnt/r/home/* 2>/dev/null | head -30
           echo "== partitions"; sudo sfdisk -d image.img
           echo "== blkid"; sudo blkid ${L}p1 ${L}p2
