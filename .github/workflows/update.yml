@@ -28,7 +28,7 @@ jobs:
           Signed update for wallets already set up (Savings image or Spending app): no image burn, your wallet stays.
 
           1. Download **czwallet-$VERSION.tar.gz** below.
-          2. Sign it on your PC: \`py tools\\release.py sign %USERPROFILE%\\Downloads\\czwallet-$VERSION.tar.gz\` (makes the .sig next to it).
+          2. Sign it on your PC: \`py tools\\release.py sign \$HOME\\Downloads\\czwallet-$VERSION.tar.gz\` (makes the .sig next to it).
           3. On the microSD's boot partition, make a folder **czwallet-update** and copy in both files.
           4. On the device: SETUP > UPDATE.
 
