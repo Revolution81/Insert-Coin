@@ -55,6 +55,9 @@ From the second session on the device:
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
 - Typing "fi" no longer leaves a gap before the cursor (the text was drawn
   with ligatures on the device, so "fi" became one narrower glyph).
+- After setting the PIN on a new or restored wallet, the 12/24 WORDS menu
+  no longer flashes up before READY!: the app shows ONE MOMENT... while it
+  opens the wallet.
 - Entering recovery words waits 10 minutes before the prompt cancels itself
   (other signer prompts still cancel after 2 minutes left alone).
 - The battery shows the charging bolt only while it's really charging: the

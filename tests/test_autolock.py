@@ -141,3 +141,11 @@ def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
         app.pop()
         assert app.visible.title == "SETUP"
     assert len(seen) == len(set(seen)) == 29
+
+
+def test_restore_shows_one_moment_not_the_menu_after_the_signer():
+    """After the PIN is set the signer hands the screen back: the app shows
+    ONE MOMENT... until the wallet opens, not the 12/24 WORDS menu."""
+    import app as appmod
+    assert "restore_prompt" in appmod.HOLD_PROMPTS
+    assert "unlock_prompt" not in appmod.HOLD_PROMPTS

@@ -31,6 +31,11 @@ from ui.flow import HomeScreen, LockedScreen, locked_screen, unlock, welcome
 from ui.input import Mode, Translator
 from ui.widgets import BusyScreen, ConfirmScreen, MessageScreen, Screen
 
+# Prompts that end with the app setting up a wallet: "ONE MOMENT..." sits
+# under the signer's screens meanwhile (see App.prompt)
+HOLD_PROMPTS = {"create_prompt", "restore_prompt", "import_prompt", "shares_prompt",
+                "restore_backup_prompt"}
+
 SYNC_EVERY_S = 60
 DEFAULT_FEES = {"fast": 10, "normal": 5, "slow": 2}
 
@@ -324,17 +329,27 @@ class App:
         blocks until you finish there, so it runs on its own thread; this
         app keeps drawing, but nothing it draws is shown meanwhile."""
         self.prompting += 1
+        # Underneath the signer's screens: when the signer hands the screen
+        # back, this shows until the result is handled, not the menu the
+        # prompt was started from (which flashed up after setting a PIN)
+        hold = BusyScreen("ONE MOMENT...") if method in HOLD_PROMPTS else None
+        if hold is not None and self.stack:
+            self.push(hold)
 
         def work():
             try:
                 r, e = getattr(self.signer, method)(**params), None
             except Exception as ex:  # noqa: BLE001
                 r, e = None, ex
-            self._prompt_results.put((r, e, on_done, on_cancel, on_error))
+            self._prompt_results.put((r, e, on_done, on_cancel, on_error, hold))
         threading.Thread(target=work, daemon=True).start()
 
-    def _prompt_done(self, result, err, on_done, on_cancel, on_error):
+    def _prompt_done(self, result, err, on_done, on_cancel, on_error, hold=None):
         self.prompting -= 1
+        if hold is not None and hold in self.stack:
+            self.stack.remove(hold)
+            if self.stack:
+                self._shown()
         self.last_input = time.monotonic()
         kind = getattr(err, "kind", "")
         if err is None:
