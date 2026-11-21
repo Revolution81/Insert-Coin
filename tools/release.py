@@ -6,11 +6,6 @@ Build, sign and check Insert Coin releases.
   python3 tools/release.py sign [FILE]            # FILE.sig (default: dist/czwallet-X.Y.Z.tar.gz)
   python3 tools/release.py verify FILE [KEYHEX]   # anyone: check a release
 
-Every GitHub release also carries the ready-built czwallet-X.Y.Z.tar.gz: download
-it and run `sign` on it (FILE can be anywhere, e.g. your Downloads folder).
-Then copy FILE and FILE.sig to the czwallet-update folder on the microSD's
-boot partition and use SETUP > UPDATE.
-
 Reproducible: run `build` on the same source and you get the same SHA-256,
 so you can check a downloaded file against your own build before signing.
 The private key is stored encrypted with a passphrase; keep it off the

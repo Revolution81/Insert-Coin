@@ -55,12 +55,6 @@ From the second session on the device:
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
 - Typing "fi" no longer leaves a gap before the cursor (the text was drawn
   with ligatures on the device, so "fi" became one narrower glyph).
-- **Updates without reburning**: every release now includes the small
-  update file (czwallet-X.Y.Z.tar.gz), and `tools/release.py sign FILE`
-  signs a downloaded one, and on Windows `sign-update.bat` does it all in
-  one double-click (finds the download, signs it, copies it to the card). Copy it and its .sig to `czwallet-update` on the
-  card's boot partition, then SETUP > UPDATE. New workflow "Build wallet
-  update" makes those drafts.
 - **Power switch shuts down cleanly** on the wallet image: switching off
   used to cut the power 2 s later with no warning to Linux. A small root
   service now gives it 20 s and shuts Linux down properly first.
