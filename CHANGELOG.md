@@ -53,6 +53,10 @@ From the second session on the device:
   amp wake up with each sound and swallowed all but the last note, so it
   now starts after a longer silence. With no sound server to set the volume
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
+- Typing "fi" no longer leaves a gap before the cursor (the text was drawn
+  with ligatures on the device, so "fi" became one narrower glyph).
+- Entering recovery words waits 10 minutes before the prompt cancels itself
+  (other signer prompts still cancel after 2 minutes left alone).
 - The battery shows the charging bolt only while it's really charging: the
   fuel gauge also says "Full" on battery, which showed the bolt unplugged.
 - **Opt-in boot log** for the wallet image, which has no logins: an empty

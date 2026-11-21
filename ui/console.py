@@ -269,7 +269,8 @@ class Console:
             poll = getattr(self.top, "poll", None)
             if poll and poll(self):
                 changed = True
-            if not self.jobs and time.monotonic() - self.last_input > self.idle_s:
+            idle_s = max(self.idle_s, getattr(self.top, "idle_s", 0) or 0)
+            if not self.jobs and time.monotonic() - self.last_input > idle_s:
                 self.cancel()
                 changed = True
         return changed

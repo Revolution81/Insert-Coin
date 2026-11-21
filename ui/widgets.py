@@ -373,6 +373,10 @@ class WordEntryScreen(Screen):
     """Type BIP39 words with autocomplete. positions: 1-based word numbers."""
     mode = Mode.TEXT
 
+    # Typing 12 or 24 words takes a while (looking at the paper, checking
+    # spelling): a prompt left alone cancels itself, but not after 2 minutes
+    idle_s = 600
+
     def __init__(self, title: str, positions: list[int], on_done: Callable,
                  initial: list[str] | None = None, complete: Callable | None = None):
         """complete: prefix -> matching words (default: the BIP39 list)."""

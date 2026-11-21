@@ -114,7 +114,10 @@ class Font:
 
 
 def _load(name: str, size: int) -> Font:
-    face = ImageFont.truetype(os.path.join(FONT_DIR, name), size)
+    # BASIC layout: no ligatures. With libraqm (the device's Pillow has it)
+    # "fi" became one glyph, which left a gap before the typing cursor.
+    face = ImageFont.truetype(os.path.join(FONT_DIR, name), size,
+                              layout_engine=ImageFont.Layout.BASIC)
     top = face.getbbox("A")[1]
     bot = face.getbbox("A")[3]
     return Font(face, -top, bot - top)

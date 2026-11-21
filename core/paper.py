@@ -193,7 +193,8 @@ def page(w: dict):
                          "ui", "fonts")
 
     def font(name, size):
-        return ImageFont.truetype(os.path.join(fonts, name), size)
+        return ImageFont.truetype(os.path.join(fonts, name), size,
+                                  layout_engine=ImageFont.Layout.BASIC)
 
     W, H = 1275, 1650
     ink, red, gold, grey = (17, 17, 17), (184, 40, 48), (168, 116, 0), (110, 110, 120)

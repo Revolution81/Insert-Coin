@@ -131,3 +131,15 @@ def test_sound_goes_to_the_speaker_not_hdmi():
              "                      simple-card\n")
     assert sound.speaker_card(cards) == 1
     assert sound.speaker_card(" 0 [vc4hdmi ]: vc4-hdmi - x\n") is None
+
+
+def test_no_ligatures_in_typed_text():
+    """"fi" stays two letters wide (a ligature left a gap before the cursor)."""
+    from ui import theme as t
+    for f in (t.BODY, t.BIG, t.TINY):
+        assert f.width("fi") == f.width("f") + f.width("i")
+
+
+def test_word_entry_waits_longer_before_cancelling():
+    from ui.widgets import WordEntryScreen
+    assert WordEntryScreen.idle_s >= 600
