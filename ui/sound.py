@@ -177,7 +177,7 @@ LEAD_IN = float(os.environ.get("CZ_SOUND_LEAD", "0.25"))
 DIRECT_LEAD_IN = float(os.environ.get("CZ_SOUND_DIRECT_LEAD", "0.9"))
 DIRECT_LEVEL = float(os.environ.get("CZ_SOUND_LEVEL", "0.3"))
 
-# The volume keys (Fn+A down, Fn+D up, Fn+S mute): 0..10 steps. None = the
+# The volume keys (Fn+D up, Fn+S down, Fn+A mute): 0..10 steps. None = the
 # default for where the sound goes: 3 straight to the codec (nothing else
 # turns it down there), 10 through a sound server (its own volume applies).
 VOLUME_STEPS = 10

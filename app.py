@@ -596,7 +596,7 @@ class App:
             self.top.handle(ev, self)
 
     def change_volume(self, how: str) -> None:
-        """Fn+D louder, Fn+A quieter, Fn+S sound off/on (the same switch as
+        """Fn+D louder, Fn+S quieter, Fn+A sound off/on (the same switch as
         SETUP › SOUND). Saved, and shown in the middle of the screen."""
         from ui import sound
         steps = sound.volume()

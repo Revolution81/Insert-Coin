@@ -48,7 +48,7 @@ class Kind(enum.Enum):
     BACKSPACE = "backspace"
     SUBMIT = "submit"
     CANCEL = "cancel"
-    VOLUME = "volume"    # value: "+", "-" or "mute" (Fn+D, Fn+A, Fn+S)
+    VOLUME = "volume"    # value: "+", "-" or "mute" (Fn+D, Fn+S, Fn+A)
 
 
 @dataclass(frozen=True)
@@ -84,11 +84,11 @@ REAL_ARROWS = {"KEY_UP": "UP", "KEY_LEFT": "LEFT", "KEY_DOWN": "DOWN",
 FN_LAYER = {"KEY_F": "UP", "KEY_Z": "LEFT", "KEY_X": "DOWN", "KEY_C": "RIGHT",
             "KEY_K": "START", "KEY_N": "END", "KEY_L": "PAGE_UP", "KEY_M": "PAGE_DOWN"}
 
-# Volume: the keyboard driver sends these for Fn+D / Fn+A / Fn+S (M5Stack's
+# Volume: the keyboard driver sends these for Fn+D up / Fn+S down / Fn+A mute (M5Stack's
 # launcher listens for the same codes); if Fn reaches us as a modifier
-# instead, Fn+D / A / S do it too.
+# instead, Fn+D / S / A do it too.
 VOLUME_KEYS = {"KEY_VOLUMEUP": "+", "KEY_VOLUMEDOWN": "-", "KEY_MUTE": "mute"}
-FN_VOLUME = {"KEY_D": "+", "KEY_A": "-", "KEY_S": "mute"}
+FN_VOLUME = {"KEY_D": "+", "KEY_S": "-", "KEY_A": "mute"}
 
 LETTERS = {f"KEY_{c}": c.lower() for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
 DIGITS = {f"KEY_{d}": d for d in "1234567890"}

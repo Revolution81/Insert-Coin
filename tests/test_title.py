@@ -276,7 +276,7 @@ def test_volume_steps_scale_the_sound():
 
 
 def test_volume_keys_change_save_and_show(tmp_path, monkeypatch):
-    """Fn+D / Fn+A step the volume, Fn+S is the sound switch; saved, and the
+    """Fn+D / Fn+S step the volume, Fn+A is the sound switch; saved, and the
     pop-up shows in the middle of the screen. Works from any screen."""
     from core.config import Settings
     played = []
@@ -305,3 +305,9 @@ def test_volume_keys_change_save_and_show(tmp_path, monkeypatch):
     finally:
         sound.set_player(None)
         sound.set_volume(None)
+
+
+def test_fn_letter_volume_keys_match_the_keycaps():
+    """If Fn reaches us as a modifier: Fn+D up, Fn+S down, Fn+A mute."""
+    from ui.input import FN_VOLUME
+    assert FN_VOLUME == {"KEY_D": "+", "KEY_S": "-", "KEY_A": "mute"}

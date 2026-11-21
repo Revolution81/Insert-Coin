@@ -60,7 +60,7 @@ From the second session on the device:
   to Linux. Now the card is synced at once, the wallet and signer stop,
   Sir Signer counts down to the power cut, and Linux shuts down properly
   first (services get 4 s each to stop instead of 90).
-- **Volume keys**: Fn+D louder, Fn+A quieter, Fn+S sound off/on, with a
+- **Volume keys**: Fn+D louder, Fn+S quieter, Fn+A sound off/on, with a
   volume bar in the middle of the screen; saved. The menu boop is now
   pitched for the Cardputer's little speaker (it played a note too low
   for it to make, so it was silent).

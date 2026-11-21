@@ -1,5 +1,5 @@
 """The volume pop-up: a box in the middle of the screen for a moment after
-Fn+A / Fn+D / Fn+S, like a console's volume bar."""
+Fn+D / Fn+S / Fn+A, like a console's volume bar."""
 from __future__ import annotations
 
 from PIL import Image, ImageDraw
