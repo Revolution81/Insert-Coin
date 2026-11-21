@@ -12,6 +12,7 @@ so the app user may run them.
 from __future__ import annotations
 
 import os
+import time
 import subprocess
 import sys
 
@@ -60,6 +61,7 @@ def _apply(mode: str) -> None:
         _run("rfkill", "unblock", "wifi", check=False)
         _run("ip", "link", "set", ETH, "up", check=False)
         _run("nmcli", "networking", "on", check=False)
+        _run("nmcli", "radio", "wifi", "on", check=False)
 
 
 def vault_mode() -> None:
@@ -75,8 +77,15 @@ def wifi_scan() -> list[dict]:
     if SIM:
         return [{"ssid": "Simulated Wi-Fi", "signal": 88, "secure": True},
                 {"ssid": "Coffee Shop", "signal": 41, "secure": False}]
-    _run("nmcli", "device", "wifi", "rescan", check=False)
-    out = _run("nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list")
+    # --rescan yes waits for a fresh scan (a plain "rescan" then "list" right
+    # after going Online came back empty: the radio had only just woken)
+    out = ""
+    for attempt in range(3):           # the radio may still be waking up
+        out = _run("nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list",
+                   "--rescan", "yes", check=False)
+        if out.strip():
+            break
+        time.sleep(2)
     nets: dict[str, dict] = {}
     for line in out.splitlines():
         parts = line.replace("\\:", "\x00").split(":")

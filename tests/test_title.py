@@ -171,7 +171,37 @@ def test_direct_fanfare_is_quieter_with_a_longer_lead_in():
             return array.array("h", w.readframes(w.getnframes())), w.getnframes()
     loud, n1 = frames(sound.wav("fanfare"))
     quiet, n2 = frames(sound.wav("fanfare", direct=True))
-    assert n2 - n1 == int(sound.DIRECT_LEAD_IN * sound.RATE) - int(sound.LEAD_IN * sound.RATE)
+    assert n1 - n2 == int(sound.LEAD_IN * sound.RATE)     # direct: the stream warms up
     assert sound.DIRECT_LEAD_IN >= 0.8
     ratio = max(abs(x) for x in quiet) / max(abs(x) for x in loud)
     assert 0.2 < ratio < 0.3
+
+
+def test_direct_stream_keeps_the_amp_awake_for_boops(monkeypatch, tmp_path):
+    """One aplay stays open: it starts with a warm-up silence, later sounds
+    (the 35 ms boops) go into the same stream, mixed, no new aplay each."""
+    import subprocess
+    started = []
+
+    class FakeProc:
+        def __init__(self, cmd, **kw):
+            started.append(cmd)
+            self.stdin = open(tmp_path / "out.raw", "wb")
+        def wait(self, timeout=None):
+            return 0
+
+    monkeypatch.setattr(subprocess, "Popen", FakeProc)
+    s = sound._Stream(["aplay", "-"])
+    s.IDLE_STOP = 0.05
+    boop = sound._pcm(sound.wav("ui_move", direct=True))
+    s.add(boop)
+    s.add(boop)
+    assert len(started) == 1
+    assert len(s.pending) >= int(sound.DIRECT_LEAD_IN * sound.RATE)
+    import time
+    for _ in range(200):
+        if s.proc is None:
+            break
+        time.sleep(0.02)
+    assert s.proc is None                     # closed after going idle
+    assert (tmp_path / "out.raw").stat().st_size >= 2 * int(sound.DIRECT_LEAD_IN * sound.RATE)

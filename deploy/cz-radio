@@ -11,7 +11,11 @@ case "$1" in
   online)
     rfkill unblock wifi
     ip link set eth0 up 2>/dev/null
-    timeout 10 nmcli networking on 2>/dev/null ;;
+    timeout 10 nmcli networking on 2>/dev/null
+    # NetworkManager keeps its own Wi-Fi switch, separate from rfkill: on the
+    # wallet image it starts off (M5Stack's first-boot wizard, switched off
+    # there, normally turns it on), so no networks ever showed up
+    timeout 10 nmcli radio wifi on 2>/dev/null ;;
   *) echo "usage: cz-radio vault|online" >&2; exit 2 ;;
 esac
 exit 0

@@ -55,6 +55,14 @@ From the second session on the device:
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
 - Typing "fi" no longer leaves a gap before the cursor (the text was drawn
   with ligatures on the device, so "fi" became one narrower glyph).
+- Menu boops play on the wallet image: the speaker amp woke too slowly
+  for a 35 ms sound. Sound now goes through one stream kept open while
+  sounds are in use (closed after 90 s of quiet), and the title screen
+  wakes it so the fanfare starts at once.
+- Wi-Fi networks show up in Online mode on the wallet image: going Online
+  now also turns on NetworkManager's own Wi-Fi switch (off on M5Stack's
+  base image until its setup wizard runs), and the scan waits for fresh
+  results instead of reading an empty list right after the radio wakes.
 - After setting the PIN on a new or restored wallet, the 12/24 WORDS menu
   no longer flashes up before READY!: the app shows ONE MOMENT... while it
   opens the wallet.

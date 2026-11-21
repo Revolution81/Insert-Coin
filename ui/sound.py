@@ -163,7 +163,7 @@ def wav(name: str, direct: bool = False) -> bytes:
     key = f"{name}:direct" if direct else name
     if key not in _cache:
         samples = (UI_SOUNDS.get(name) or SOUNDS[name])()
-        lead = DIRECT_LEAD_IN if direct else LEAD_IN
+        lead = 0.0 if direct else LEAD_IN       # direct: the stream warms up instead
         if name in SOUNDS and lead > 0:
             samples = _blank(lead) + samples
         peak = max(1e-9, max(abs(s) for s in samples))
@@ -188,6 +188,11 @@ def prepare(name: str) -> None:
     this, so pressing OK plays at once even on the device's slower CPU)."""
     import threading
     threading.Thread(target=lambda: _safe_wav(name), daemon=True).start()
+    try:                                     # straight to the codec: wake the amp now,
+        if _direct() and os.environ.get("CZ_SOUND") != "0":   # so OK plays at once
+            _stream().add(b"")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _direct() -> bool:
@@ -243,15 +248,107 @@ def speaker_card(cards: str | None = None) -> int | None:
     return None
 
 
+class _Stream:
+    """Straight to the codec, one aplay kept open while sounds are in use.
+
+    The codec and speaker amp power up with every new playback and swallow
+    the first ~0.7 s: that cut the fanfare short and the 35 ms menu boops
+    entirely. So in direct mode one aplay stays open, fed silence between
+    sounds; the first time it opens it plays DIRECT_LEAD_IN of silence while
+    the amp wakes. After IDLE_STOP seconds without a sound it closes and the
+    amp sleeps again (battery)."""
+
+    IDLE_STOP = 90.0
+    CHUNK = RATE // 50                      # 20 ms per write
+
+    def __init__(self, cmd: list[str]):
+        import threading
+        self.cmd = cmd
+        self.lock = threading.Lock()
+        self.pending: list[int] = []
+        self.proc = None
+        self.last = 0.0
+
+    def add(self, pcm: bytes) -> None:
+        import array
+        import threading
+        import time
+        new = array.array("h")
+        new.frombytes(pcm)
+        with self.lock:
+            p = self.pending
+            for i, v in enumerate(new):     # mix with whatever is still playing
+                if i < len(p):
+                    p[i] = max(-32767, min(32767, p[i] + v))
+                else:
+                    p.append(v)
+            self.last = time.monotonic()
+            start = self.proc is None
+            if start:
+                self.pending = [0] * int(DIRECT_LEAD_IN * RATE) + self.pending
+                self.proc = subprocess.Popen(
+                    self.cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, start_new_session=True)
+        if start:
+            threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        import array
+        import time
+        proc = self.proc
+        try:
+            while True:
+                with self.lock:
+                    if not self.pending and time.monotonic() - self.last > self.IDLE_STOP:
+                        self.proc = None
+                        break
+                    chunk = self.pending[:self.CHUNK]
+                    del self.pending[:self.CHUNK]
+                chunk += [0] * (self.CHUNK - len(chunk))
+                proc.stdin.write(array.array("h", chunk).tobytes())   # blocks: paces us
+                proc.stdin.flush()
+        except Exception:  # noqa: BLE001 - aplay gone: start a new one next time
+            with self.lock:
+                if self.proc is proc:
+                    self.proc = None
+        try:
+            proc.stdin.close()
+            proc.wait(timeout=2)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+_stream_obj: _Stream | None = None
+
+
+def _stream() -> _Stream:
+    global _stream_obj
+    if _stream_obj is None:
+        card = speaker_card()
+        _stream_obj = _Stream(["aplay", "-q"] + (["-D", f"plughw:{card}"] if card is not None else [])
+                              + ["-t", "raw", "-f", "S16_LE", "-r", str(RATE), "-c", "1",
+                                 "--buffer-time=100000", "-"])
+    return _stream_obj
+
+
+def _pcm(data: bytes) -> bytes:
+    with wave.open(io.BytesIO(data)) as w:
+        return w.readframes(w.getnframes())
+
+
 def play(name: str, enabled: bool = True) -> None:
     if not enabled or os.environ.get("CZ_SOUND") == "0":
         return
     if name not in SOUNDS and name not in UI_SOUNDS:
         name = DEFAULT
     try:
-        data = wav(name, _direct())
+        direct = _direct()
+        data = wav(name, direct)
         if _player is not None:
             _player(name, data)
+            return
+        if direct:
+            _stream().add(_pcm(data))
             return
         import hashlib                              # new version, new file: never a stale one
         tag = hashlib.sha256(data).hexdigest()[:8]
