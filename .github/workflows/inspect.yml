@@ -45,7 +45,7 @@ jobs:
           for f in $(grep -rlisE "splash|logo|m5stack|cardputer|led" /mnt/r/usr/lib/systemd/system /mnt/r/etc/systemd/system 2>/dev/null | sort -u | head -30); do echo "------ $f"; cat "$f"; done
           echo "== initramfs / firstboot hooks"; ls /mnt/r/usr/lib/raspberrypi-sys-mods 2>/dev/null; ls /mnt/r/etc/initramfs-tools/scripts/* 2>/dev/null
           echo "== M5 packages"; grep -E '^Package: .*(m5|cardputer|cp0|applaunch|splash|led)' -i /mnt/r/var/lib/dpkg/status
-          echo "== /etc/insert-coin-image"; cat /mnt/r/etc/insert-coin-image 2>/dev/null
+          echo "== /etc/insert-coin-image"; cat /mnt/r/etc/insert-coin-image 2>/dev/null || true
           echo "== cloud-init disabled?"; ls /mnt/r/etc/cloud 2>/dev/null
           echo "== udev rules touching fb / graphics / backlight / input / keyboard"
           for f in /mnt/r/etc/udev/rules.d/* /mnt/r/usr/lib/udev/rules.d/*; do
@@ -55,6 +55,9 @@ jobs:
           done
           echo "== groups"; grep -E "^(video|input|czscreen|render|gpio|i2c|spi):" /mnt/r/etc/group
           echo "== fstab"; cat /mnt/r/etc/fstab
+          set +e
+          echo "== applaunch package files"; grep -vE "\.(png|jpg|ttf|wav|mp3|bmp|gif)$" /mnt/r/var/lib/dpkg/info/applaunch.list | head -80
+          echo "== applaunch maintainer scripts"; for f in /mnt/r/var/lib/dpkg/info/applaunch.*inst /mnt/r/var/lib/dpkg/info/applaunch.*rm; do [ -f "$f" ] && { echo "------ $f"; cat "$f"; }; done
           echo "== M5 launcher files"; ls -la /mnt/r/usr/share/APPLaunch /mnt/r/opt/APPLaunch /mnt/r/usr/local/bin 2>/dev/null | head -60
           for f in /mnt/r/usr/lib/systemd/user/* /mnt/r/etc/systemd/user/* /mnt/r/usr/lib/systemd/system/*; do
             case "$(basename "$f")" in *[Aa][Pp][Pp]*|*m5*|*M5*|*cardputer*|*led*|*kbd*|*key*|*audio*|*sound*|*gov*|*cpufreq*|*userconfig*) echo "------ $f"; cat "$f" 2>/dev/null | head -40;; esac
