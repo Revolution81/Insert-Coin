@@ -5,9 +5,11 @@
 # (I2C1, 0x4F). When it goes off the chip keeps the power on for OFF_TIME
 # (register 0xB2/0xB3, ms; 2 s after every power-on) and then cuts it, with
 # no word to Linux. On M5Stack's OS their launcher handles this; the wallet
-# image switches that off, so here: OFF_TIME is raised to 20 s, the switch
-# bit (0xB9 bit 0) is read every half second, and when it reads off Linux
-# shuts down properly (files closed, card synced) before the power goes.
+# image switches that off, so here: OFF_TIME is set to 10 s, the switch
+# bit (0xB9 bit 0) is read every half second, and when it reads off: the
+# card is synced at once, the wallet and signer stop (keys locked), a
+# countdown to the power cut shows on the screen (ui/goodbye.py), and Linux
+# shuts down properly (services get 4 s each, not 90) before the power goes.
 #
 # Careful on purpose: nothing is done unless the chip answers with its ID
 # (REV 0x02 = 0x5A); it only acts after first seeing the switch ON, and only
@@ -22,9 +24,10 @@ until [ "$(get 0x02)" = 0x5a ]; do
   sleep 1
 done
 
-# OFF_TIME = 20000 ms (0x4E20), both bytes in one write as the chip expects
-i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x20 0x4e 2>/dev/null \
-  && echo "power switch: 20 s to shut down after switching off"
+# OFF_TIME = 10000 ms (0x2710), both bytes in one write as the chip expects
+OFF_MS=10000
+i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x10 0x27 2>/dev/null \
+  && echo "power switch: 10 s to shut down after switching off"
 
 seen_on=0 off=0
 while :; do
@@ -36,6 +39,13 @@ while :; do
   fi
   if [ $off -ge 3 ]; then
     echo "power switch: off, shutting down"
+    sync                                    # whatever happens next, the card is written
+    # the chip has been counting since the switch moved (~1.2 s ago)
+    deadline=$(( $(date +%s) + OFF_MS / 1000 - 1 ))
+    systemctl stop czwallet czsigner 2>/dev/null
+    systemd-run --quiet --unit=czwallet-goodbye -p DefaultDependencies=no \
+      -p WorkingDirectory=/opt/czwallet /opt/czwallet-venv/bin/python -m ui.goodbye "$deadline" \
+      2>/dev/null || true
     exec systemctl poweroff
   fi
   sleep 0.5

@@ -376,10 +376,11 @@ screen; it moved off the PIN path in 0.8.24).
 
 `deploy/cz-power` (root, `czwallet-power.service`): the switch is read by
 the M5IOE1 chip, which keeps power on for OFF_TIME after switch-off and then
-cuts it. The service sets OFF_TIME to 20 s and runs `systemctl poweroff`
-after three OFF readings in a row, only after it has seen the switch ON and
-only if the chip answers with its ID. Without it the power was simply cut
-2 s after switching off.
+cuts it. The service sets OFF_TIME to 10 s; after three OFF readings in a
+row (only after it has seen the switch ON, and only if the chip answers with
+its ID) it syncs the card, stops the wallet and signer, shows a countdown
+(`ui/goodbye.py`) and runs `systemctl poweroff` with services given 4 s each
+to stop. Without it the power was simply cut 2 s after switching off.
 
 ## App mode
 

@@ -150,7 +150,9 @@ def _note(freq: float, length: float = 0.035) -> list[float]:
 
 
 def _ui_move() -> list[float]:
-    return _note(196.0)             # G3
+    # G5: the Cardputer's little speaker barely plays anything under ~500 Hz,
+    # so the old G3 (196 Hz) boop was silent on the device
+    return _note(784.0)
 
 
 _ui_ok = _ui_move                   # the same single boop for everything
@@ -158,7 +160,7 @@ _ui_back = _ui_move
 
 
 UI_SOUNDS = {"ui_move": _ui_move, "ui_ok": _ui_ok, "ui_back": _ui_back}
-UI_LEVEL = 0.45                 # the boop sits well under the fanfare
+UI_LEVEL = 0.55                 # the boop sits under the fanfare
 _last_ui = 0.0
 
 SOUNDS = {"fanfare": _fanfare, "secret": _secret}
@@ -173,7 +175,31 @@ LEAD_IN = float(os.environ.get("CZ_SOUND_LEAD", "0.25"))
 # either (it's at the codec's maximum), so the sounds themselves are made
 # quieter: about a quarter. CZ_SOUND_LEVEL overrides (0..1).
 DIRECT_LEAD_IN = float(os.environ.get("CZ_SOUND_DIRECT_LEAD", "0.9"))
-DIRECT_LEVEL = float(os.environ.get("CZ_SOUND_LEVEL", "0.25"))
+DIRECT_LEVEL = float(os.environ.get("CZ_SOUND_LEVEL", "0.3"))
+
+# The volume keys (Fn+A down, Fn+D up, Fn+S mute): 0..10 steps. None = the
+# default for where the sound goes: 3 straight to the codec (nothing else
+# turns it down there), 10 through a sound server (its own volume applies).
+VOLUME_STEPS = 10
+_volume: int | None = None
+
+
+def set_volume(steps: int | None) -> None:
+    global _volume
+    _volume = None if steps is None else max(0, min(VOLUME_STEPS, int(steps)))
+
+
+def volume() -> int:
+    """The current volume step, 0..10."""
+    if _volume is not None:
+        return _volume
+    return round(DIRECT_LEVEL * VOLUME_STEPS) if _direct() else VOLUME_STEPS
+
+
+def _gain(direct: bool) -> float:
+    if _volume is None:
+        return max(0.0, min(1.0, DIRECT_LEVEL)) if direct else 1.0
+    return _volume / VOLUME_STEPS
 
 
 def wav(name: str, direct: bool = False) -> bytes:
@@ -181,7 +207,8 @@ def wav(name: str, direct: bool = False) -> bytes:
     lead-in, quieter); otherwise a sound server sets the volume."""
     if name not in SOUNDS and name not in UI_SOUNDS:
         name = DEFAULT
-    key = f"{name}:direct" if direct else name
+    gain = _gain(direct)
+    key = f"{name}:{'direct' if direct else 'server'}:{gain:.2f}"
     if key not in _cache:
         samples = (UI_SOUNDS.get(name) or SOUNDS[name])()
         lead = 0.0 if direct else LEAD_IN       # direct: the stream warms up instead
@@ -191,8 +218,7 @@ def wav(name: str, direct: bool = False) -> bytes:
         k = 0.89 / peak
         if name in UI_SOUNDS:
             k = UI_LEVEL / peak
-        if direct:
-            k *= max(0.0, min(1.0, DIRECT_LEVEL))
+        k *= gain
         buf = io.BytesIO()
         with wave.open(buf, "wb") as w:
             w.setnchannels(1)
@@ -350,6 +376,13 @@ def _stream() -> _Stream:
                               + ["-t", "raw", "-f", "S16_LE", "-r", str(RATE), "-c", "1",
                                  "--buffer-time=100000", "-"])
     return _stream_obj
+
+
+def _pcm_samples(data: bytes):
+    import array
+    a = array.array("h")
+    a.frombytes(_pcm(data))
+    return a
 
 
 def _pcm(data: bytes) -> bytes:

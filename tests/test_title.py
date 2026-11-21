@@ -150,7 +150,7 @@ def test_menu_boop(tmp_path, monkeypatch):
         sound.set_player(None)
 
 
-def test_menu_sounds_are_soft_and_low():
+def test_menu_sounds_are_short_and_soft():
     import io, wave, struct
     for name in sound.UI_SOUNDS:
         w = wave.open(io.BytesIO(sound.wav(name)))
@@ -158,7 +158,7 @@ def test_menu_sounds_are_soft_and_low():
         data = struct.unpack(f"<{n}h", w.readframes(n))
         assert w.getframerate() == 44100
         assert n / 44100 <= 0.04                             # one short note
-        assert 10000 < max(abs(x) for x in data) < 16000      # under half the coin sound
+        assert 10000 < max(abs(x) for x in data) < 20000      # well under the coin sound
         assert abs(data[0]) < 200                            # no click at the front
 
 
@@ -174,7 +174,7 @@ def test_direct_fanfare_is_quieter_with_a_longer_lead_in():
     assert n1 - n2 == int(sound.LEAD_IN * sound.RATE)     # direct: the stream warms up
     assert sound.DIRECT_LEAD_IN >= 0.8
     ratio = max(abs(x) for x in quiet) / max(abs(x) for x in loud)
-    assert 0.2 < ratio < 0.3
+    assert 0.25 < ratio < 0.35
 
 
 def test_direct_stream_keeps_the_amp_awake_for_boops(monkeypatch, tmp_path):
@@ -251,3 +251,57 @@ def test_secret_jingle_is_a_good_wav():
     with wave.open(io.BytesIO(sound.wav("secret"))) as w:
         assert w.getframerate() == sound.RATE and 0.5 < w.getnframes() / w.getframerate() < 2.0
     assert sound.wav("secret") != sound.wav("fanfare")
+
+
+def test_boop_is_high_enough_for_the_little_speaker():
+    """The Cardputer's speaker plays almost nothing under ~500 Hz."""
+    import array
+    with wave.open(io.BytesIO(sound.wav("ui_move"))) as w:
+        a = array.array("h", w.readframes(w.getnframes()))
+    crossings = sum(1 for x, y in zip(a, a[1:]) if x < 0 <= y)
+    assert crossings / (len(a) / sound.RATE) > 500
+
+
+def test_volume_steps_scale_the_sound():
+    peak = lambda: max(abs(x) for x in sound._pcm_samples(sound.wav("fanfare")))
+    try:
+        sound.set_volume(10); full = peak()
+        sound.set_volume(5); half = peak()
+        sound.set_volume(0); zero = peak()
+        assert abs(half / full - 0.5) < 0.02 and zero == 0
+        sound.set_volume(42)
+        assert sound.volume() == 10
+    finally:
+        sound.set_volume(None)
+
+
+def test_volume_keys_change_save_and_show(tmp_path, monkeypatch):
+    """Fn+D / Fn+A step the volume, Fn+S is the sound switch; saved, and the
+    pop-up shows in the middle of the screen. Works from any screen."""
+    from core.config import Settings
+    played = []
+    sound.set_player(lambda name, data: played.append(name))
+    try:
+        app = make(tmp_path, monkeypatch)
+        app.start()
+        create_wallet(app)
+        sound.set_volume(3)
+        app.settings.volume = 3
+        before = app.render(0)
+        press(app, "KEY_VOLUMEUP")
+        assert sound.volume() == 4 and Settings.load().volume == 4
+        assert played[-1] == "ui_move"
+        shown = app.render(0)
+        assert shown.getpixel((160, 85)) != before.getpixel((160, 85))
+        press(app, "KEY_VOLUMEDOWN"); press(app, "KEY_VOLUMEDOWN")
+        assert sound.volume() == 2
+        press(app, "KEY_MUTE")
+        assert app.settings.sound is False and Settings.load().sound is False
+        n = len(played)
+        press(app, "KEY_VOLUMEUP")                  # louder turns it back on
+        assert app.settings.sound is True and sound.volume() == 3 and len(played) == n + 1
+        app.osd_until = 0
+        assert app.render(0).getpixel((160, 85)) == before.getpixel((160, 85))
+    finally:
+        sound.set_player(None)
+        sound.set_volume(None)

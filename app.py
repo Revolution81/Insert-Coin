@@ -45,6 +45,9 @@ class App:
         self.settings = Settings.load()
         from ui.appearance import apply as apply_look
         apply_look(self.settings)
+        from ui import sound
+        sound.set_volume(self.settings.volume)
+        self.osd_until = 0.0                # the volume pop-up (ui/osd.py)
         self.signer = signer or SignerClient()
         self.tr = Translator(Mode.MENU)
         self.stack: list[Screen] = []
@@ -248,6 +251,8 @@ class App:
             except Exception:  # noqa: BLE001 - best effort; the seed is already gone
                 pass
         self.settings = Settings.load()            # defaults
+        from ui import sound
+        sound.set_volume(self.settings.volume)
         if os.environ.get("CZ_SIM") and not os.environ.get("CZ_SIM_ALLOW_MAINNET"):
             self.settings.network = "signet"       # the simulator is a PC: test coins only
         try:
@@ -582,9 +587,32 @@ class App:
         self.last_input = time.monotonic()
         if self.console is not None and self.console.feed(name, value):
             return                         # the signer has the keyboard
+        from ui.input import Kind
         for ev in self.tr.feed(name, value):
+            if ev.kind is Kind.VOLUME:
+                self.change_volume(ev.value)
+                continue
             self.menu_sound(ev)
             self.top.handle(ev, self)
+
+    def change_volume(self, how: str) -> None:
+        """Fn+D louder, Fn+A quieter, Fn+S sound off/on (the same switch as
+        SETUP › SOUND). Saved, and shown in the middle of the screen."""
+        from ui import sound
+        steps = sound.volume()
+        if how == "mute":
+            self.settings.sound = not self.settings.sound
+        else:
+            steps = max(0, min(sound.VOLUME_STEPS, steps + (1 if how == "+" else -1)))
+            self.settings.volume = steps
+            sound.set_volume(steps)
+            if how == "+" and not self.settings.sound:
+                self.settings.sound = True          # turning it up turns it on
+        self.settings.save()
+        if self.settings.sound and steps > 0:
+            sound.play("ui_move")                  # hear the new level
+        from ui import osd
+        self.osd_until = time.monotonic() + osd.SHOW_S
 
     def menu_sound(self, ev):
         """The menu boop (SETUP › SOUND). Only for the app's own screens: the
@@ -604,6 +632,9 @@ class App:
 
     def render(self, frame: int):
         img = self.top.render(self, frame)
+        if time.monotonic() < self.osd_until:
+            from ui import osd, sound
+            img = osd.draw(img, sound.volume(), not self.settings.sound)
         if self.console is not None:       # in-process signer: it draws the final frame
             img = self.console.compose(img, frame)
         return img

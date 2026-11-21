@@ -245,6 +245,10 @@ systemctl enable czwallet-bootlog 2>/dev/null || true
 # M5's launcher (off here) normally ends the keyboard lights' boot walk and
 # owns the screen; these two do just those parts
 systemctl enable czwallet-ioe-ready czwallet-console-off czwallet-power
+# Shutting down from the power switch has 10 s before the power is cut:
+# no service gets the default 90 s to stop (the card is synced first anyway)
+mkdir -p /etc/systemd/system.conf.d
+printf '[Manager]\nDefaultTimeoutStopSec=4s\n' > /etc/systemd/system.conf.d/czwallet-shutdown.conf
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
 # M5Stack's launcher (a user service) and its desktop audio would fight the
