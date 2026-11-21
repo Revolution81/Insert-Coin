@@ -11,7 +11,7 @@ ConditionPathExists=/boot/firmware/insert-coin-debug.txt
 [Service]
 Type=simple
 # (systemd expands $NAME itself: "$$" passes a literal "$" to the shell)
-ExecStart=/bin/sh -c 'for w in 60 120 420; do sleep $$w; F=/boot/firmware/insert-coin-bootlog.txt; { echo "== $$(date)  up $$(cut -d" " -f1 /proc/uptime)s"; systemctl --failed --no-pager; echo; systemctl list-jobs --no-pager; echo; journalctl -b --no-pager -o short-monotonic | tail -n 4000; } > $$F.new 2>&1; mv -f $$F.new $$F; sync -f $$F; sync; done'
+ExecStart=/bin/sh -c 'for w in 60 120 420; do sleep $$w; F=/boot/firmware/insert-coin-bootlog.txt; { echo "== $$(date)  up $$(cut -d" " -f1 /proc/uptime)s"; systemctl --failed --no-pager; echo; systemctl list-jobs --no-pager; echo; echo "cpu: $$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null) $$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq 2>/dev/null)kHz  load $$(cat /proc/loadavg)  $$(vcgencmd get_throttled 2>/dev/null)  $$(vcgencmd measure_temp 2>/dev/null)"; echo "ioe ready=$$(i2cget -f -y 1 0x4f 0xb0 2>/dev/null) status=$$(i2cget -f -y 1 0x4f 0xb9 2>/dev/null)"; top -b -n1 -o %CPU 2>/dev/null | head -n 20; echo; journalctl -b --no-pager -o short-monotonic | tail -n 4000; } > $$F.new 2>&1; mv -f $$F.new $$F; sync -f $$F; sync; done'
 
 [Install]
 WantedBy=sysinit.target

@@ -261,3 +261,14 @@ def test_project_release_key_is_valid():
     for k in keys:
         Ed25519PublicKey.from_public_bytes(k)
     assert update.key_id(keys[0]) == "d1b3b27e99714b0a"
+
+
+def test_update_precompiles_the_new_code(tmp_path):
+    """Installed code is compiled once by the root helper, so the sandboxed
+    services don't recompile every screen each time (they can't write)."""
+    from core import update
+    src = tmp_path / "0.9.0.new"
+    (src / "ui").mkdir(parents=True)
+    (src / "ui" / "x.py").write_text("A = 1\n")
+    update.precompile(str(src), str(tmp_path / "0.9.0"))
+    assert list((src / "ui" / "__pycache__").glob("x.*.pyc"))

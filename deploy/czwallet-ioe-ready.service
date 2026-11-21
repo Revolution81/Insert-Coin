@@ -1,0 +1,18 @@
+[Unit]
+Description=Insert Coin: tell the keyboard-light chip the system is up (ends its boot LED walk)
+# The M5IOE1 I/O expander (I2C1, 0x4F) walks the Aa/Fn/Sym lights until its
+# READY register (0xB0) is 1. M5Stack's launcher does this on their OS; the
+# Savings image switches that launcher off, so the lights kept walking.
+# One documented register write, only if the chip answers with its ID (REV
+# register 0x02 = 0x5A). Nothing else on the chip is touched.
+After=systemd-modules-load.service local-fs.target
+Before=czsigner.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=45
+ExecStart=/bin/sh -c 'for i in $$(seq 30); do r=$$(i2cget -f -y 1 0x4f 0x02 2>/dev/null); if [ "$$r" = 0x5a ]; then i2cset -f -y 1 0x4f 0xb0 1 && echo "keyboard lights: READY set"; exit 0; fi; sleep 1; done; echo "keyboard lights: chip ID was \"$$r\", left alone"; exit 0'
+
+[Install]
+WantedBy=multi-user.target

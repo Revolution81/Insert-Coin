@@ -55,7 +55,7 @@ DONE=/etc/czwallet/install-done     # marks steps an earlier run finished
 mkdir -p "$DONE"
 [ "$FULL" = 1 ] && rm -f "$DONE"/*
 
-NEED="python3-venv python3-pip python3-setuptools python3-wheel python3-evdev tor rfkill network-manager sudo alsa-utils"
+NEED="python3-venv python3-pip python3-setuptools python3-wheel python3-evdev tor rfkill network-manager sudo alsa-utils i2c-tools"
 have_all() { for p in $NEED; do dpkg -s "$p" >/dev/null 2>&1 || return 1; done; }
 if [ -f "$DONE/packages" ] && have_all; then
 echo "== packages: already installed (--full to check again)"
@@ -122,6 +122,9 @@ mkdir -p "$RELEASE"
 cp -r "$SRC/app.py" "$SRC/requirements.txt" "$SRC/requirements.lock" "$SRC/core" "$SRC/ui" "$SRC/tools" "$SRC/deploy" "$RELEASE/"
 [ -f "$SRC/SECURITY.md" ] && cp "$SRC/SECURITY.md" "$RELEASE/"
 find "$RELEASE" -name __pycache__ -prune -exec rm -rf {} +
+# Compiled once here (the services may not write next to the code): without
+# it every screen's code was compiled again each time it first opened.
+python3 -m compileall -q "$RELEASE" >/dev/null 2>&1 || true
 if [ -d "$LINK" ] && [ ! -L "$LINK" ]; then mv "$LINK" "$LINK.old-layout"; fi
 ln -sfn "$RELEASE" "$LINK"
 # --system-site-packages: evdev, picamera2 and setuptools come from apt.
@@ -211,7 +214,7 @@ if [ "$MODE" = app ]; then
   # Nothing starts at boot: the launcher's Insert Coin icon runs a session
   install -m 644 "$SRC/deploy/czwallet-appmode.conf" /etc/systemd/system/czwallet.service.d/appmode.conf
   systemctl daemon-reload || true
-  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet 2>/dev/null || true
+  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet czwallet-ioe-ready czwallet-console-off 2>/dev/null || true
   install -o root -g root -m 755 "$SRC/deploy/cz-session" /usr/local/sbin/cz-session
   install -o root -g root -m 755 "$SRC/deploy/insert-coin" /usr/local/bin/insert-coin
   install -d /usr/share/APPLaunch/applications /usr/share/APPLaunch/share/images
@@ -238,6 +241,9 @@ systemctl daemon-reload || true
 systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 # opt-in boot log for when the device won't start (see the unit's comments)
 systemctl enable czwallet-bootlog 2>/dev/null || true
+# M5's launcher (off here) normally ends the keyboard lights' boot walk and
+# owns the screen; these two do just those parts
+systemctl enable czwallet-ioe-ready czwallet-console-off
 # Keep the login console off the wallet screen (the signer owns it)
 systemctl disable getty@tty1 2>/dev/null || true
 # M5Stack's launcher (a user service) and its desktop audio would fight the

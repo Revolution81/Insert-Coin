@@ -43,6 +43,12 @@ From the second session on the device:
   keyboard. The search is now read-only, our own udev rule gives the keyboard
   that fixed name, and the signer waits for the keyboard itself, not just any
   input device. The new boot log found it.
+- **Wallet image polish** from the first boot that reached the title:
+  the keyboard lights no longer keep walking Aa → Fn → Sym (the image now
+  sets the light chip's READY register, which M5Stack's launcher normally
+  does); the Linux console's blinking cursor no longer shows over the
+  screen; sounds play on the speaker instead of HDMI; and the code is
+  compiled once at install and update, so screens open without a delay.
 - **Opt-in boot log** for the wallet image, which has no logins: an empty
   `insert-coin-debug.txt` on the card's boot partition makes it write its
   startup log there (`insert-coin-bootlog.txt`) 1, 3 and 10 minutes after

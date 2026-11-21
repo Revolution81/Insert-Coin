@@ -235,6 +235,7 @@ def install(tar_path: str, sig_path: str, keys: list[bytes], current: str = VERS
         if os.path.exists(old_req) and _reqs(old_req) != _reqs(new_req):
             shutil.rmtree(staging)
             raise UpdateError("this release needs new packages: run deploy/install.sh")
+        precompile(staging, final)
         shutil.rmtree(final, ignore_errors=True)
         os.rename(staging, final)
         tmp_link = link + ".new"
@@ -246,6 +247,17 @@ def install(tar_path: str, sig_path: str, keys: list[bytes], current: str = VERS
         return info
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def precompile(src: str, ddir: str) -> None:
+    """Compile the (verified) source once, as root, so the sandboxed services
+    don't compile every module again each time they import it. Best effort:
+    the source alone still runs."""
+    import compileall
+    try:
+        compileall.compile_dir(src, ddir=ddir, quiet=2)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _reqs(path: str) -> list[str]:

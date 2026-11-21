@@ -1,0 +1,16 @@
+[Unit]
+Description=Insert Coin: release the Linux text console from the screen
+# The console shares the panel with the signer: its cursor and any kernel
+# message would draw over the wallet. Skipped when the test-only debug shell
+# is on the kernel command line, so that shell stays visible.
+After=systemd-user-sessions.service
+Before=czsigner.service
+ConditionKernelCommandLine=!systemd.debug_shell
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for c in /sys/class/vtconsole/vtcon*; do grep -q "frame buffer" "$$c/name" && echo 0 > "$$c/bind"; done; true'
+
+[Install]
+WantedBy=multi-user.target
