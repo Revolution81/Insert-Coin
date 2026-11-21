@@ -107,6 +107,15 @@ for f in "$ROOT"/usr/lib/systemd/user/* "$ROOT"/etc/systemd/user/*; do
   esac
 done
 
+echo "== no blinking text cursor over the wallet's screen"
+# The Linux console shares the panel; without this its cursor blinks in the
+# top-left corner on top of every frame the signer draws.
+CMD="$ROOT/boot/firmware/cmdline.txt"
+if [ -f "$CMD" ] && ! grep -q "vt.global_cursor_default=0" "$CMD"; then
+  sed -i '1 s/$/ vt.global_cursor_default=0/' "$CMD"
+fi
+cat "$CMD"
+
 echo "== lock down logins (the screen and keyboard are the only way in)"
 # M5Stack's image ships with SSH on and users meant to be set up by its
 # first-boot wizard, which is switched off above. A savings wallet takes no

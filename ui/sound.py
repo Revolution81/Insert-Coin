@@ -201,7 +201,27 @@ def _player_cmd() -> list[str]:
         return ["pw-play"]
     if run and os.path.exists(os.path.join(run, "pulse", "native")) and shutil.which("paplay"):
         return ["paplay"]
-    return ["aplay", "-q"]
+    card = speaker_card()
+    return ["aplay", "-q"] + (["-D", f"plughw:{card}"] if card is not None else [])
+
+
+def speaker_card(cards: str | None = None) -> int | None:
+    """The built-in speaker's ALSA card number. Without a sound server, plain
+    aplay plays to card 0, which on the Cardputer Zero is HDMI (vc4-hdmi);
+    the speaker is the other card (simple-card). None: leave it to ALSA."""
+    if cards is None:
+        try:
+            with open("/proc/asound/cards") as f:
+                cards = f.read()
+        except OSError:
+            return None
+    import re
+    found = [(int(m.group(1)), m.group(2).lower())
+             for m in re.finditer(r"^\s*(\d+)\s+\[[^\]]*\]:\s*(.*)$", cards, re.M)]
+    for n, desc in found:
+        if "hdmi" not in desc:
+            return n
+    return None
 
 
 def play(name: str, enabled: bool = True) -> None:

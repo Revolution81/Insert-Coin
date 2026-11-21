@@ -121,3 +121,13 @@ def test_keyboard_found_read_only(monkeypatch):
                                ecodes=types.SimpleNamespace(EV_KEY=1, KEY_A=30))
     assert uin.find_keyboard(ev) == "/dev/input/event3"
     assert asked["writable"] is False
+
+
+def test_sound_goes_to_the_speaker_not_hdmi():
+    from ui import sound
+    cards = (" 0 [vc4hdmi        ]: vc4-hdmi - vc4-hdmi\n"
+             "                      vc4-hdmi\n"
+             " 1 [Card           ]: simple-card - simple-card\n"
+             "                      simple-card\n")
+    assert sound.speaker_card(cards) == 1
+    assert sound.speaker_card(" 0 [vc4hdmi ]: vc4-hdmi - x\n") is None
