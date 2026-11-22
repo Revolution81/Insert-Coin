@@ -82,6 +82,11 @@ jobs:
           sudo apt-get install -y -qq device-tree-compiler >/dev/null 2>&1
           for o in m5ioe1-overlay cardputerzero-overlay tca8418_m5stack; do echo "------ $o"; dtc -I dtb -O dts /mnt/b/overlays/$o.dtbo 2>/dev/null | grep -iE -B2 -A8 "led|trigger|pwm|gpio-line|keypad|backlight" | head -120; done
           echo "== dtoverlay lines"; grep -E "^dtoverlay|^dtparam" /mnt/b/config.txt
+          echo "== keyboard: driver keymap file"; cat /mnt/r/usr/share/keymaps/tca8418_keypad_m5stack_keymap.map 2>/dev/null | head -200
+          echo "== keyboard: overlay, full"; dtc -I dtb -O dts /mnt/b/overlays/tca8418_m5stack.dtbo 2>/dev/null
+          echo "== keyboard: hwdb / udev / keymap services"; grep -rIl -i "tca8418\|keypad\|KEYBOARD_KEY" /mnt/r/etc/udev /mnt/r/usr/lib/udev/hwdb.d /mnt/r/usr/lib/udev/rules.d /mnt/r/etc/systemd /mnt/r/usr/lib/systemd/system 2>/dev/null
+          for f in $(grep -rIl -i "tca8418\|keypad" /mnt/r/etc/udev /mnt/r/usr/lib/udev/hwdb.d /mnt/r/usr/lib/udev/rules.d /mnt/r/usr/lib/systemd/system 2>/dev/null); do echo "------ $f"; cat "$f" | head -60; done
+          echo "== keyboard: kernel module"; ls /mnt/r/lib/modules/*/kernel/drivers/input/keyboard/ 2>/dev/null | grep -i tca; m=$(ls /mnt/r/lib/modules/*/kernel/drivers/input/keyboard/tca8418* 2>/dev/null | head -1); [ -n "$m" ] && { xz -dc "$m" 2>/dev/null || cat "$m"; } | strings -n 4 | grep -iE "fn|sym|table|keymap|layer|button|led|parm|=" | sort -u | head -80
           echo "== home dirs"; sudo ls -la /mnt/r/home/* 2>/dev/null | head -30
           echo "== partitions"; sudo sfdisk -d image.img
           echo "== blkid"; sudo blkid ${L}p1 ${L}p2
