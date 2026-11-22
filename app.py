@@ -569,9 +569,9 @@ class App:
         too); asked once, then kept until SETUP changes it."""
         if not hasattr(self, "clock_12h"):
             try:
-                self.clock_12h = bool(self.signer.status().get("clock_12h"))
+                self.clock_12h = self.signer.status().get("clock_12h") is not False
             except Exception:  # noqa: BLE001
-                return False
+                return True
         return self.clock_12h
 
     def status_bar(self, img, d, screen):

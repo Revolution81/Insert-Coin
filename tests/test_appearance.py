@@ -228,12 +228,12 @@ def test_clock_12h_setting(app):  # noqa: F811
     settings_screen(app, at="CLOCK")
     settle(app)
     row = next(i for i in app.visible.items if i[0] == "CLOCK")
-    assert row[2] == "24H"
-    enter(app)                                     # flips it
+    assert row[2] == "12H"                         # 12-hour by default
+    enter(app)                                     # flips it to 24-hour
     settle(app)
     row = next(i for i in app.visible.items if i[0] == "CLOCK")
-    assert row[2] == "12H" and app.signer.status()["clock_12h"] is True
-    assert app._clock_12h() is True
+    assert row[2] == "24H" and app.signer.status()["clock_12h"] is False
+    assert app._clock_12h() is False
 
 
 def test_clock_12h_reaches_sync_line(app, monkeypatch):  # noqa: F811

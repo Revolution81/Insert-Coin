@@ -1008,12 +1008,13 @@ class Signer:
 
     def clock_12h(self) -> bool:
         """SETUP › DISPLAY & SOUND › CLOCK: 12-hour time (with AM/PM) on
-        every status bar, the signer's own screens included."""
+        every status bar, the signer's own screens included. 12-hour unless
+        24-hour was chosen."""
         try:
             with open(os.path.join(self.dir, "clock.json")) as f:
-                return json.load(f).get("h12") is True
+                return json.load(f).get("h12") is not False
         except (FileNotFoundError, ValueError, AttributeError, TypeError):
-            return False
+            return True
 
     def set_clock_12h(self, on: bool) -> bool:
         if not isinstance(on, bool):

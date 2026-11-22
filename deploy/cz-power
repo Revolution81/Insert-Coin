@@ -20,7 +20,7 @@ get() { i2cget -f -y $BUS $ADDR "$1" 2>/dev/null; }
 
 # Battery: Linux has the fuel gauge (I2C1, 0x55) as a "bq27210", but it's a
 # BQ27220, so /sys/class/power_supply reads the wrong registers and its
-# percentage is nonsense. Every 10 s the BQ27220's own standard commands are
+# percentage is nonsense. Every 2 s the BQ27220's own standard commands are
 # read (StateOfCharge 0x2C, Voltage 0x08, Current 0x0C, BatteryStatus 0x0A;
 # reads only) into /run/czwallet-battery for the wallet (core/power.py).
 battery() {
@@ -36,7 +36,7 @@ battery() {
         echo "$soc $mv $ma $st" > /run/czwallet-battery.new && mv /run/czwallet-battery.new /run/czwallet-battery
       fi
     fi
-    sleep 10
+    sleep 2
   done
 }
 battery &

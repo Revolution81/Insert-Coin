@@ -72,9 +72,11 @@ From the second session on the device:
 - **Battery level from the real fuel gauge**: Linux drives the Cardputer
   Zero's BQ27220 as a "bq27210", reading the wrong registers, so its
   percentage was nonsense. The root power service now reads the BQ27220's
-  own state of charge, voltage and current every 10 s for the wallet.
+  own state of charge, voltage and current every 2 s for the wallet.
 - Test cards (insert-coin-debug.txt) log every key pressed in menus and
   save the boot log every minute for 30 minutes.
+- The clock is 12-hour (AM/PM) by default; SETUP › DISPLAY & SOUND ›
+  CLOCK switches to 24-hour.
 - The volume keys also work when the keyboard's driver reports Fn as its
   own key code (KEY_DVD), and keys the wallet doesn't use are named in the
   journal (never letters or digits), to see what a keyboard sends.
