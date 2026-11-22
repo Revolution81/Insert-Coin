@@ -87,7 +87,9 @@ def _bl_write(value: int, path: str = BACKLIGHT) -> bool:
         with open(os.path.join(path, "brightness"), "w") as f:
             f.write(str(value))
         return True
-    except OSError:
+    except OSError as e:
+        import sys
+        print(f"screen: backlight {value} not set: {e}", file=sys.stderr, flush=True)
         return False
 
 
@@ -135,6 +137,8 @@ class ScreenSleep:
         return self.asleep
 
     def sleep(self) -> None:
+        import sys
+        print(f"screen: sleeping after {self._secs} s", file=sys.stderr, flush=True)
         cur = _bl_read("brightness", self.path)
         self._level = cur if cur else None
         _bl_write(0, self.path)

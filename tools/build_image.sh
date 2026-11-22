@@ -12,10 +12,12 @@
 # what went into the image.
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
-BASE_URL="${BASE_URL:-https://cardputer-zero-repo.oss-cn-shenzhen.aliyuncs.com/cardputerzero-trixie-arm64-latest.img.xz}"
-# The M5Stack image this was last built and checked against (2026-09-29 "latest").
-# If M5Stack publishes a new one, the build stops: look it over, then pass its hash.
-BASE_SHA256="${BASE_SHA256:-1b1002f7def184d6ca18d973f8b94622ccbe6552f3159cf1789ea955e833ed0a}"
+# M5Stack's stable CardputerZero OS of 2026-11-19 (launcher 0.6.111), from
+# their os-list.json. It has the keyboard driver with the Fn layer (Fn+A mute,
+# Fn+S volume down, Fn+D up); the 2026-09-29 image had none, so Fn did nothing.
+BASE_URL="${BASE_URL:-https://cardputer-zero-repo.oss-cn-shenzhen.aliyuncs.com/cardputerzero-trixie-arm64-20261119-094529-3b0e6f6.img.xz}"
+# If the file ever differs, the build stops: look it over, then pass its hash.
+BASE_SHA256="${BASE_SHA256:-27e35401ccb8f46356f45c59f16a4cfaed8423bf61862a3fe449e55405e788b9}"
 GROW="${GROW:-2G}"            # working room while installing; shrunk away after
 SPARE_MB="${SPARE_MB:-600}"   # free space left on the wallet's partition
 MAX_BYTES="${MAX_BYTES:-7300000000}"   # must fit an "8 GB" card (about 7.4-7.9 GB real)
@@ -106,6 +108,22 @@ for f in "$ROOT"/usr/lib/systemd/user/* "$ROOT"/etc/systemd/user/*; do
     echo "mask (user) $u"; in_root systemctl --global mask "$u" || true ;;
   esac
 done
+
+echo "== keyboard: the Fn layer must be there (volume keys)"
+# The keyboard overlay in use must carry linux,keymap2 (the Fn layer) with
+# KEY_MUTE/VOLUMEDOWN/VOLUMEUP; an older M5Stack base had none and Fn+A/S/D
+# could never reach the wallet. Stop rather than ship that again.
+OVL=""
+for o in $(sed -n 's/^dtoverlay=\([^,]*\).*/\1/p' "$ROOT/boot/firmware/config.txt"); do
+  f="$ROOT/boot/firmware/overlays/$o.dtbo"
+  if [ -f "$f" ] && dtc -I dtb -O dts "$f" 2>/dev/null | grep -q "tca8418"; then OVL="$f"; fi
+done
+echo "keyboard overlay: ${OVL:-none}"
+if [ -z "$OVL" ] || ! dtc -I dtb -O dts "$OVL" 2>/dev/null | grep -q "linux,keymap2"; then
+  echo "!! this base image's keyboard has no Fn layer (linux,keymap2)" >&2
+  exit 1
+fi
+dtc -I dtb -O dts "$OVL" 2>/dev/null | grep -E "fn-button-code|sym-button-code|keymap2" | head
 
 echo "== no blinking text cursor over the wallet's screen"
 # The Linux console shares the panel; without this its cursor blinks in the

@@ -78,6 +78,11 @@ From the second session on the device:
 - **Screen sleep works**: the signer's sandbox made all of /sys
   read-only, so turning the backlight off silently failed and the screen
   never went dark. The backlight's brightness file is now writable for it.
+- **Built on M5Stack's 2026-11-19 stable CardputerZero OS** (was the
+  2026-09-29 image). Its keyboard driver has the Fn layer: Fn+A mute,
+  Fn+S volume down, Fn+D volume up. The old one had no Fn layer at all,
+  so Fn never reached the wallet; the build now stops if a base image's
+  keyboard lacks it.
 - The clock is 12-hour (AM/PM) by default; SETUP › DISPLAY & SOUND ›
   CLOCK switches to 24-hour.
 - The volume keys also work when the keyboard's driver reports Fn as its
