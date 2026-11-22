@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import enum
 import os
+import time
 from dataclasses import dataclass
 
 
@@ -89,6 +90,9 @@ FN_LAYER = {"KEY_F": "UP", "KEY_Z": "LEFT", "KEY_X": "DOWN", "KEY_C": "RIGHT",
 # instead, Fn+D / S / A do it too.
 VOLUME_KEYS = {"KEY_VOLUMEUP": "+", "KEY_VOLUMEDOWN": "-", "KEY_MUTE": "mute"}
 FN_VOLUME = {"KEY_D": "+", "KEY_S": "-", "KEY_A": "mute"}
+# What the Cardputer Zero's driver sends for Fn itself (and alike codes)
+FN_DRIVER_KEYS = {"KEY_DVD"}
+FN_ARM_S = 3.0
 
 LETTERS = {f"KEY_{c}": c.lower() for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
 DIGITS = {f"KEY_{d}": d for d in "1234567890"}
@@ -183,8 +187,12 @@ class Translator:
 
     # value: 1 = press, 0 = release, 2 = auto-repeat (evdev convention)
     def feed(self, name: str, value: int) -> list[Event]:
-        if name == "KEY_DVD":         # the Fn key as this keyboard's driver sends it
-            self.fn_down = value != 0
+        if name in FN_DRIVER_KEYS:
+            # The Fn key as this keyboard's driver sends it. It may arrive as
+            # a quick press-and-release the moment Fn goes down, not held, so
+            # a press arms Fn for the next key (within FN_ARM_S), held or not.
+            if value == 1:
+                self.fn_armed_at = time.monotonic()
             return []
         mod = self._modifier_of(name)
         if mod:
@@ -206,7 +214,11 @@ class Translator:
             self.armed.clear()
         repeat = value == 2
 
-        fn = "fn" in active or getattr(self, "fn_down", False)
+        armed_at = getattr(self, "fn_armed_at", None)
+        fn = "fn" in active or (armed_at is not None
+                                and time.monotonic() - armed_at < FN_ARM_S)
+        if value == 1:
+            self.fn_armed_at = None
         vol = VOLUME_KEYS.get(name) or (FN_VOLUME.get(name) if fn else None)
         if vol:                       # same in menus and while typing
             return [] if repeat and vol == "mute" else [Event(Kind.VOLUME, vol)]

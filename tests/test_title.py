@@ -322,3 +322,14 @@ def test_fn_as_the_driver_sends_it_works_for_volume():
     assert [(e.kind, e.value) for e in ev] == [(Kind.VOLUME, "+")]
     tr.feed("KEY_D", 0); tr.feed("KEY_DVD", 0)
     assert all(e.kind is not Kind.VOLUME for e in tr.feed("KEY_D", 1))
+
+
+def test_fn_tapped_by_the_driver_arms_the_next_key():
+    """The driver may send Fn as a quick press+release before the letter:
+    Fn+S is still quieter, not SEND; a plain S afterwards is SEND again."""
+    from ui.input import Translator, Mode, Kind
+    tr = Translator(Mode.MENU)
+    tr.feed("KEY_DVD", 1); tr.feed("KEY_DVD", 0)
+    assert [(e.kind, e.value) for e in tr.feed("KEY_S", 1)] == [(Kind.VOLUME, "-")]
+    tr.feed("KEY_S", 0)
+    assert all(e.kind is not Kind.VOLUME for e in tr.feed("KEY_S", 1))
