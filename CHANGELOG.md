@@ -78,8 +78,6 @@ From the second session on the device:
 - **Screen sleep works**: the signer's sandbox made all of /sys
   read-only, so turning the backlight off silently failed and the screen
   never went dark. The backlight's brightness file is now writable for it.
-- **SETUP › DISPLAY & SOUND › VOLUME**: LEFT/RIGHT set the volume (0-10)
-  with the same volume bar, whatever the Fn keys send.
 - The clock is 12-hour (AM/PM) by default; SETUP › DISPLAY & SOUND ›
   CLOCK switches to 24-hour.
 - The volume keys also work when the keyboard's driver reports Fn as its
