@@ -158,3 +158,15 @@ def test_signer_may_write_the_backlight():
     unit = (Path(__file__).resolve().parents[1] / "deploy" / "czsigner.service").read_text()
     assert "ProtectKernelTunables=yes" in unit
     assert "ReadWritePaths=-/sys/class/backlight/backlight/brightness" in unit
+
+
+def test_service_shell_lines_are_quoted_right():
+    """ExecStart=/bin/sh -c '...': a stray ' inside ends the argument early
+    and systemd refuses the unit (that silently stopped the boot log)."""
+    from pathlib import Path
+    import shlex
+    for unit in (Path(__file__).resolve().parents[1] / "deploy").glob("*.service"):
+        for line in unit.read_text().splitlines():
+            if line.startswith("ExecStart=") and " -c '" in line:
+                args = shlex.split(line[len("ExecStart="):])
+                assert len(args) == 3, f"{unit.name}: {len(args)} arguments"
