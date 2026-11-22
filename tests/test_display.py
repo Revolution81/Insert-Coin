@@ -149,3 +149,12 @@ def test_power_off_countdown_draws():
     from ui import goodbye
     a, c = goodbye.draw(), goodbye.draw(done=True)
     assert a.size == (320, 170) and a.tobytes() != c.tobytes()
+
+
+def test_signer_may_write_the_backlight():
+    """ProtectKernelTunables makes /sys read-only; screen sleep needs the
+    backlight's brightness file writable (it never slept without it)."""
+    from pathlib import Path
+    unit = (Path(__file__).resolve().parents[1] / "deploy" / "czsigner.service").read_text()
+    assert "ProtectKernelTunables=yes" in unit
+    assert "ReadWritePaths=-/sys/class/backlight/backlight/brightness" in unit

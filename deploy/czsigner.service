@@ -25,6 +25,10 @@ IPAddressDeny=any
 # Read-only system except its own data folder.
 ProtectSystem=strict
 ReadWritePaths=/var/lib/czwallet/signer
+# The one writable spot in /sys (ProtectKernelTunables makes it read-only):
+# the panel's backlight, for SETUP > SCREEN SLEEP. Without it the screen
+# never went dark.
+ReadWritePaths=-/sys/class/backlight/backlight/brightness
 ProtectHome=yes
 PrivateTmp=yes
 # Devices: the I2C bus (secure chip), and the panel and keyboard: the

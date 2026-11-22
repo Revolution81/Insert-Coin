@@ -75,6 +75,9 @@ From the second session on the device:
   own state of charge, voltage and current every 2 s for the wallet.
 - Test cards (insert-coin-debug.txt) log every key pressed in menus and
   save the boot log every minute for 30 minutes.
+- **Screen sleep works**: the signer's sandbox made all of /sys
+  read-only, so turning the backlight off silently failed and the screen
+  never went dark. The backlight's brightness file is now writable for it.
 - The clock is 12-hour (AM/PM) by default; SETUP › DISPLAY & SOUND ›
   CLOCK switches to 24-hour.
 - The volume keys also work when the keyboard's driver reports Fn as its
