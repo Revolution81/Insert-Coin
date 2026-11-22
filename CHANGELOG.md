@@ -83,6 +83,8 @@ From the second session on the device:
   Fn+S volume down, Fn+D volume up. The old one had no Fn layer at all,
   so Fn never reached the wallet; the build now stops if a base image's
   keyboard lacks it.
+- The signer ends M5Stack's boot splash (`fb_load`, new in their November
+  OS) when it starts; it held the screen and the wallet drew behind the logo.
 - The clock is 12-hour (AM/PM) by default; SETUP › DISPLAY & SOUND ›
   CLOCK switches to 24-hour.
 - The volume keys also work when the keyboard's driver reports Fn as its

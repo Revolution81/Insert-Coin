@@ -170,3 +170,11 @@ def test_service_shell_lines_are_quoted_right():
             if line.startswith("ExecStart=") and " -c '" in line:
                 args = shlex.split(line[len("ExecStart="):])
                 assert len(args) == 3, f"{unit.name}: {len(args)} arguments"
+
+
+def test_signer_takes_the_screen_from_m5_splash():
+    """fb_load (M5Stack's splash) holds the panel until their launcher runs;
+    the signer must end it or the wallet draws behind the logo."""
+    from pathlib import Path
+    unit = (Path(__file__).resolve().parents[1] / "deploy" / "czsigner.service").read_text()
+    assert "Conflicts=fb_load.service" in unit and "After=fb_load.service" in unit

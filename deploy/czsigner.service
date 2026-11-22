@@ -3,6 +3,11 @@
 StartLimitIntervalSec=0
 Description=Insert Coin signer (holds the keys, owns screen and keyboard, no network)
 Before=czwallet.service
+# M5Stack's boot splash (2026-11 OS on) holds the panel until their launcher
+# starts, which the wallet image never runs: the wallet drew behind the logo.
+# Starting the signer ends the splash; the logo still shows while booting.
+Conflicts=fb_load.service
+After=fb_load.service
 
 [Service]
 User=czsigner
