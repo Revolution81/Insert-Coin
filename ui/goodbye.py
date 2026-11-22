@@ -41,6 +41,7 @@ def draw(left: int, done: bool = False) -> Image.Image:
     if done:
         t.text(d, (104, 60), "ALL DONE", t.BIG, "white")
         t.text(d, (104, 104), "Your keys are locked away.", t.TINY, "dim")
+        t.text(d, (104, 118), "The power goes off by itself.", t.TINY, "dim")
     else:
         _big_number(img, str(max(0, left)), (104, 46))
         t.text(d, (104, 104), "Saving and closing safely.", t.TINY, "dim")

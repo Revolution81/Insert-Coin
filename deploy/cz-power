@@ -5,7 +5,7 @@
 # (I2C1, 0x4F). When it goes off the chip keeps the power on for OFF_TIME
 # (register 0xB2/0xB3, ms; 2 s after every power-on) and then cuts it, with
 # no word to Linux. On M5Stack's OS their launcher handles this; the wallet
-# image switches that off, so here: OFF_TIME is set to 10 s, the switch
+# image switches that off, so here: OFF_TIME is set to 7 s, the switch
 # bit (0xB9 bit 0) is read every half second, and when it reads off: the
 # card is synced at once, the wallet and signer stop (keys locked), a
 # countdown to the power cut shows on the screen (ui/goodbye.py), and Linux
@@ -24,10 +24,12 @@ until [ "$(get 0x02)" = 0x5a ]; do
   sleep 1
 done
 
-# OFF_TIME = 10000 ms (0x2710), both bytes in one write as the chip expects
-OFF_MS=10000
-i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x10 0x27 2>/dev/null \
-  && echo "power switch: 10 s to shut down after switching off"
+# OFF_TIME = 7000 ms (0x1B58), both bytes in one write as the chip expects.
+# Linux needs about 2 s here (the card is synced and the wallet stopped
+# first), so 7 s leaves room without a long wait on a finished screen.
+OFF_MS=7000
+i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x58 0x1b 2>/dev/null \
+  && echo "power switch: 7 s to shut down after switching off"
 
 seen_on=0 off=0
 while :; do
