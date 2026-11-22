@@ -176,6 +176,8 @@ def wake_panel(fb: str) -> bool:
         act = int.from_bytes(var[84:88], "little") | FB_ACTIVATE_FORCE
         var[84:88] = act.to_bytes(4, "little")               # .activate
         fcntl.ioctl(fd, FBIOPUT_VSCREENINFO, var)
+        import sys
+        print(f"screen: panel {fb} switched on", file=sys.stderr, flush=True)
         return True
     except OSError as e:
         import sys

@@ -108,6 +108,13 @@ for f in "$ROOT"/usr/lib/systemd/user/* "$ROOT"/etc/systemd/user/*; do
     echo "mask (user) $u"; in_root systemctl --global mask "$u" || true ;;
   esac
 done
+# M5Stack's splash (fb_load, 2026-11 OS on) holds the panel until their
+# launcher starts, which never happens here: the logo stayed on top of the
+# wallet for good (a Conflicts= in czsigner didn't stop it). Off entirely;
+# the signer switches the panel on itself (ui/display.wake_panel).
+if in_root systemctl list-unit-files --no-legend 2>/dev/null | grep -q '^fb_load\.service'; then
+  echo "mask fb_load.service"; in_root systemctl mask fb_load.service
+fi
 
 echo "== keyboard: the Fn layer must be there (volume keys)"
 # The keyboard overlay in use must carry linux,keymap2 (the Fn layer) with
