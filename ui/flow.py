@@ -1135,6 +1135,11 @@ def auto_lock_menu(app):
     app.push(menu)
 
 
+def _volume_now() -> int:
+    from . import sound
+    return sound.volume()
+
+
 def sound_label(settings) -> str:
     return "ON" if settings.sound else "OFF"
 
@@ -1146,7 +1151,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
-    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "CLOCK", "SOUND", "QR FORMAT"]),
+    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "CLOCK", "SOUND", "VOLUME", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
 
@@ -1253,6 +1258,12 @@ def settings_screen(app, at: str | None = None):
             sound.play("ui_move")                  # a boop to say it's back on
     sound_toggle.plays_sound = True            # no menu click on top of it
 
+    def volume_step(app, step):
+        """LEFT quieter, RIGHT (or OK) louder: the same as Fn+S / Fn+D, with
+        the volume bar."""
+        app.change_volume("-" if step < 0 else "+")
+    volume_step.plays_sound = True
+
     def auto_lock(app):
         auto_lock_menu(app)
 
@@ -1307,6 +1318,7 @@ def settings_screen(app, at: str | None = None):
              "cyan" if st.get("screen_sleep", 120) else "grey"),
             ("CLOCK", None, "12H" if st.get("clock_12h") else "24H", "cyan", clock_toggle),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
+            ("VOLUME", None, f"{_volume_now()}/10", "cyan", volume_step),
             ("PAPER WALLETS", paper_wallets),
             ("SHARE FILES", share_files, "WI-FI", "grey"),
             ("EXPLORER", explorer, s.explorer.split("//")[-1].strip("/")[:14], "grey"),

@@ -245,3 +245,27 @@ def test_clock_12h_reaches_sync_line(app, monkeypatch):  # noqa: F811
     monkeypatch.setattr(type(app), "online", property(lambda self: True))
     app.wallet, app.net_error, app.syncing = _W(), "", False
     assert app.net_line().startswith("SYNCED 10:08PM")
+
+
+def test_volume_in_setup(app):  # noqa: F811
+    """SETUP > DISPLAY & SOUND > VOLUME: RIGHT louder, LEFT quieter, saved."""
+    from ui import sound
+    from ui.flow import settings_screen
+    from core.config import Settings
+    try:
+        sound.set_volume(3)
+        create_wallet(app)
+        settings_screen(app, at="VOLUME")
+        settle(app)
+        row = next(i for i in app.visible.items if i[0] == "VOLUME")
+        assert row[2] == "3/10"
+        press(app, "KEY_C")                           # RIGHT
+        settle(app)
+        assert sound.volume() == 4 and Settings.load().volume == 4
+        row = next(i for i in app.visible.items if i[0] == "VOLUME")
+        assert row[2] == "4/10"
+        press(app, "KEY_Z"); press(app, "KEY_Z")           # LEFT twice
+        settle(app)
+        assert sound.volume() == 2
+    finally:
+        sound.set_volume(None)
