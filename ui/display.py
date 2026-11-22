@@ -151,6 +151,40 @@ class ScreenSleep:
         self.last = self.clock()
 
 
+FBIOGET_VSCREENINFO, FBIOPUT_VSCREENINFO, FBIOBLANK = 0x4600, 0x4601, 0x4611
+FB_ACTIVATE_FORCE = 128
+
+
+def wake_panel(fb: str) -> bool:
+    """Switch the panel on through its framebuffer: unblank it and force a
+    mode set. On M5Stack's November 2026 OS the panel is a DRM device whose
+    framebuffer shows nothing until something sets its mode, which their
+    splash or the text console used to do; the wallet image turns both off,
+    so the screen stayed black. Harmless where it's already on."""
+    import fcntl
+    try:
+        fd = os.open(fb, os.O_RDWR)
+    except OSError:
+        return False
+    try:
+        try:
+            fcntl.ioctl(fd, FBIOBLANK, 0)                    # FB_BLANK_UNBLANK
+        except OSError:
+            pass
+        var = bytearray(160)                                 # fb_var_screeninfo
+        fcntl.ioctl(fd, FBIOGET_VSCREENINFO, var)
+        act = int.from_bytes(var[84:88], "little") | FB_ACTIVATE_FORCE
+        var[84:88] = act.to_bytes(4, "little")               # .activate
+        fcntl.ioctl(fd, FBIOPUT_VSCREENINFO, var)
+        return True
+    except OSError as e:
+        import sys
+        print(f"screen: couldn't switch the panel on: {e}", file=sys.stderr, flush=True)
+        return False
+    finally:
+        os.close(fd)
+
+
 class Display:
     def __init__(self, preview_path: str = "frame.png"):
         self.fb = _find_fb()
@@ -164,6 +198,7 @@ class Display:
             with open(os.path.join(sysdir, "virtual_size")) as f:
                 w, _ = (int(v) for v in f.read().strip().split(","))
             self.rotate = w != W   # panel mounted portrait
+            wake_panel(self.fb)
             backlight_on()
 
     def show(self, img: Image.Image) -> None:

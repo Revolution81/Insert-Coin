@@ -178,3 +178,12 @@ def test_signer_takes_the_screen_from_m5_splash():
     from pathlib import Path
     unit = (Path(__file__).resolve().parents[1] / "deploy" / "czsigner.service").read_text()
     assert "Conflicts=fb_load.service" in unit and "After=fb_load.service" in unit
+
+
+def test_wake_panel_is_harmless_without_a_panel(tmp_path):
+    """Not a framebuffer (or none at all): it says so and carries on."""
+    from ui.display import wake_panel
+    f = tmp_path / "fb0"
+    f.write_bytes(b"\0" * 16)
+    assert wake_panel(str(f)) is False
+    assert wake_panel(str(tmp_path / "missing")) is False
