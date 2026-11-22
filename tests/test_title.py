@@ -311,3 +311,14 @@ def test_fn_letter_volume_keys_match_the_keycaps():
     """If Fn reaches us as a modifier: Fn+D up, Fn+S down, Fn+A mute."""
     from ui.input import FN_VOLUME
     assert FN_VOLUME == {"KEY_D": "+", "KEY_S": "-", "KEY_A": "mute"}
+
+
+def test_fn_as_the_driver_sends_it_works_for_volume():
+    """This keyboard's driver reports Fn as KEY_DVD: Fn+D must still be louder."""
+    from ui.input import Translator, Mode, Kind
+    tr = Translator(Mode.MENU)
+    assert tr.feed("KEY_DVD", 1) == []
+    ev = tr.feed("KEY_D", 1)
+    assert [(e.kind, e.value) for e in ev] == [(Kind.VOLUME, "+")]
+    tr.feed("KEY_D", 0); tr.feed("KEY_DVD", 0)
+    assert all(e.kind is not Kind.VOLUME for e in tr.feed("KEY_D", 1))

@@ -588,7 +588,13 @@ class App:
         if self.console is not None and self.console.feed(name, value):
             return                         # the signer has the keyboard
         from ui.input import Kind
-        for ev in self.tr.feed(name, value):
+        evs = self.tr.feed(name, value)
+        if value == 1 and not evs and not name.startswith("CHR:") and not (
+                len(name) == 5 and name.startswith("KEY_") and name[4].isalnum()):
+            # a key that does nothing here: its name (never a letter or digit,
+            # so nothing typed) goes to the journal, to learn what the keyboard sends
+            print(f"key: unused {name}", file=sys.stderr, flush=True)
+        for ev in evs:
             if ev.kind is Kind.VOLUME:
                 self.change_volume(ev.value)
                 continue

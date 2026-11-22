@@ -64,6 +64,9 @@ From the second session on the device:
   volume bar in the middle of the screen; saved. The menu boop is now
   pitched for the Cardputer's little speaker (it played a note too low
   for it to make, so it was silent).
+- The volume keys also work when the keyboard's driver reports Fn as its
+  own key code (KEY_DVD), and keys the wallet doesn't use are named in the
+  journal (never letters or digits), to see what a keyboard sends.
 - **The Konami code moved to the title screen**, with its own secret
   jingle: UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A, then OK. It's no
   longer on the PIN screen, so no PIN text is reserved for it.

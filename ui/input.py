@@ -183,6 +183,9 @@ class Translator:
 
     # value: 1 = press, 0 = release, 2 = auto-repeat (evdev convention)
     def feed(self, name: str, value: int) -> list[Event]:
+        if name == "KEY_DVD":         # the Fn key as this keyboard's driver sends it
+            self.fn_down = value != 0
+            return []
         mod = self._modifier_of(name)
         if mod:
             if value == 1:
@@ -203,7 +206,8 @@ class Translator:
             self.armed.clear()
         repeat = value == 2
 
-        vol = VOLUME_KEYS.get(name) or (FN_VOLUME.get(name) if "fn" in active else None)
+        fn = "fn" in active or getattr(self, "fn_down", False)
+        vol = VOLUME_KEYS.get(name) or (FN_VOLUME.get(name) if fn else None)
         if vol:                       # same in menus and while typing
             return [] if repeat and vol == "mute" else [Event(Kind.VOLUME, vol)]
 
