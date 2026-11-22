@@ -48,9 +48,11 @@ def main(argv: list[str]) -> int:
         stop["now"] = True
     signal.signal(signal.SIGTERM, on_term)
     disp.show(draw())
+    print(f"goodbye: SHUTTING DOWN shown on {disp.fb}", flush=True)
     while not stop["now"] and time.time() < deadline:
         time.sleep(0.1)
     disp.show(draw(done=True))
+    print("goodbye: ALL DONE shown", flush=True)
     return 0
 
 

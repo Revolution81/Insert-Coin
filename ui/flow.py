@@ -1135,6 +1135,13 @@ def auto_lock_menu(app):
     app.push(menu)
 
 
+def _zone_label() -> str:
+    from core import timezone
+    if os.environ.get("CZ_SIM"):
+        return timezone.label(os.environ.get("TZ", "UTC"))
+    return timezone.label()
+
+
 def sound_label(settings) -> str:
     return "ON" if settings.sound else "OFF"
 
@@ -1146,7 +1153,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
-    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "CLOCK", "SOUND", "QR FORMAT"]),
+    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "TIME ZONE", "CLOCK", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
 
@@ -1253,6 +1260,14 @@ def settings_screen(app, at: str | None = None):
             sound.play("ui_move")                  # a boop to say it's back on
     sound_toggle.plays_sound = True            # no menu click on top of it
 
+    def zone_step(app, step):
+        """LEFT/RIGHT (or OK) through the time zones; the clock follows."""
+        from core import timezone
+        new = timezone.step(timezone.current() if not os.environ.get("CZ_SIM")
+                            else os.environ.get("TZ", "UTC"), -1 if step < 0 else 1)
+        if not timezone.set_zone(new):
+            app.push(MessageScreen("TIME ZONE", "Couldn't change the time zone.", "red"))
+
     def auto_lock(app):
         auto_lock_menu(app)
 
@@ -1305,6 +1320,7 @@ def settings_screen(app, at: str | None = None):
             ("APPEARANCE", appearance, "", "grey"),
             ("SCREEN SLEEP", screen_sleep_menu, sleep_label(st.get("screen_sleep", 120)),
              "cyan" if st.get("screen_sleep", 120) else "grey"),
+            ("TIME ZONE", None, _zone_label(), "cyan", zone_step),
             ("CLOCK", None, "12H" if st.get("clock_12h") else "24H", "cyan", clock_toggle),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
             ("PAPER WALLETS", paper_wallets),

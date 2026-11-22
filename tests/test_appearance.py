@@ -245,3 +245,35 @@ def test_clock_12h_reaches_sync_line(app, monkeypatch):  # noqa: F811
     monkeypatch.setattr(type(app), "online", property(lambda self: True))
     app.wallet, app.net_error, app.syncing = _W(), "", False
     assert app.net_line().startswith("SYNCED 10:08PM")
+
+
+def test_time_zone_in_setup(app, monkeypatch):  # noqa: F811
+    """SETUP > DISPLAY & SOUND > TIME ZONE steps through the list and the
+    clock follows (M5Stack's OS ships with China time)."""
+    from ui.flow import settings_screen
+    monkeypatch.setenv("TZ", "UTC")
+    monkeypatch.setenv("CZ_SIM", "1")              # no root helper here
+    create_wallet(app)
+    settings_screen(app, at="TIME ZONE")
+    settle(app)
+    row = next(i for i in app.visible.items if i[0] == "TIME ZONE")
+    assert row[2] == "UTC"
+    press(app, "KEY_C")                               # RIGHT
+    settle(app)
+    row = next(i for i in app.visible.items if i[0] == "TIME ZONE")
+    assert row[2] == "HONOLULU"
+    for _ in range(2):
+        press(app, "KEY_Z")                           # LEFT twice: past UTC
+    settle(app)
+    row = next(i for i in app.visible.items if i[0] == "TIME ZONE")
+    assert row[2] == "AUCKLAND"
+
+
+def test_time_zone_names():
+    from core import timezone
+    assert timezone.label("America/New_York") == "NEW YORK"
+    assert timezone.step("America/New_York", 1) == "America/Halifax"
+    assert timezone.label("Etc/UTC") == "UTC"
+    import os
+    for _, z in timezone.ZONES:
+        assert os.path.exists(os.path.join(timezone.ZONEINFO, z)), z

@@ -68,9 +68,18 @@ while :; do
     # the chip has been counting since the switch moved (~1.2 s ago)
     deadline=$(( $(date +%s) + OFF_MS / 1000 - 1 ))
     systemctl stop czwallet czsigner 2>/dev/null
-    systemd-run --quiet --unit=czwallet-goodbye -p DefaultDependencies=no \
+    # test cards (insert-coin-debug.txt): keep a record of the goodbye screen
+    LOGP=""
+    if [ -f /boot/firmware/insert-coin-debug.txt ]; then
+      LOG=/boot/firmware/insert-coin-shutdown.txt
+      echo "== $(date) switch off" >> $LOG
+      LOGP="-p StandardOutput=append:$LOG -p StandardError=append:$LOG"
+    fi
+    # shellcheck disable=SC2086
+    systemd-run --quiet --unit=czwallet-goodbye -p DefaultDependencies=no $LOGP \
       -p WorkingDirectory=/opt/czwallet /opt/czwallet-venv/bin/python -m ui.goodbye "$deadline" \
-      2>/dev/null || true
+      2>>"${LOG:-/dev/null}" || echo "goodbye didn't start" >> "${LOG:-/dev/null}"
+    sleep 1; sync
     exec systemctl poweroff
   fi
   sleep 0.5

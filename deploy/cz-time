@@ -1,0 +1,15 @@
+#!/bin/sh
+# Insert Coin: set the time zone (root helper, allowed to the app via sudo).
+#   cz-time zone Area/City     e.g. America/New_York, Europe/London, UTC
+# Only names of real zone files are accepted. The clock itself is set by the
+# RTC and, when Online, by network time (systemd-timesyncd).
+set -eu
+[ "${1:-}" = zone ] || { echo "usage: cz-time zone Area/City" >&2; exit 2; }
+z="${2:-}"
+case "$z" in
+  ""|*..*|/*|*[!A-Za-z0-9_+/-]*) echo "bad zone" >&2; exit 2 ;;
+esac
+[ -f "/usr/share/zoneinfo/$z" ] || { echo "unknown zone: $z" >&2; exit 2; }
+ln -sf "/usr/share/zoneinfo/$z" /etc/localtime.new && mv -f /etc/localtime.new /etc/localtime
+echo "$z" > /etc/timezone
+echo "time zone: $z"
