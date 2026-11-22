@@ -33,6 +33,8 @@ from ui.widgets import BusyScreen, ConfirmScreen, MessageScreen, Screen
 
 # Prompts that end with the app setting up a wallet: "ONE MOMENT..." sits
 # under the signer's screens meanwhile (see App.prompt)
+DEBUG_KEYS = os.path.exists("/boot/firmware/insert-coin-debug.txt")
+
 HOLD_PROMPTS = {"create_prompt", "restore_prompt", "import_prompt", "shares_prompt",
                 "restore_backup_prompt"}
 
@@ -589,7 +591,12 @@ class App:
             return                         # the signer has the keyboard
         from ui.input import Kind
         evs = self.tr.feed(name, value)
-        if value == 1 and not evs and not name.startswith("CHR:") and not (
+        if DEBUG_KEYS and self.tr.mode is Mode.MENU:
+            # test cards only (insert-coin-debug.txt): every key in menus, to
+            # learn what this keyboard sends. Never while typing text.
+            print(f"key: {name} {value} -> {[(e.kind.value, e.value) for e in evs]}",
+                  file=sys.stderr, flush=True)
+        elif value == 1 and not evs and not name.startswith("CHR:") and not (
                 len(name) == 5 and name.startswith("KEY_") and name[4].isalnum()):
             # a key that does nothing here: its name (never a letter or digit,
             # so nothing typed) goes to the journal, to learn what the keyboard sends

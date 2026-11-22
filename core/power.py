@@ -43,7 +43,35 @@ def _num(d: str, name: str) -> float | None:
         return None
 
 
+GAUGE = "/run/czwallet-battery"
+
+
+def read_gauge(path: str | None = None, max_age: float = 60.0) -> tuple[float, bool] | None:
+    """The BQ27220 read directly by cz-power (root): "soc mV mA status".
+    On the Cardputer Zero, Linux drives the gauge as the wrong model, so its
+    /sys/class/power_supply numbers are wrong; this is the real reading.
+    Plugged in: current isn't going out of the battery (on battery it always
+    drains), or it's charging."""
+    path = path or GAUGE
+    try:
+        if time.time() - os.path.getmtime(path) > max_age:
+            return None
+        soc, mv, ma, *_ = (int(x) for x in _read(path).split())
+    except (OSError, ValueError):
+        return None
+    if not (0 <= soc <= 100 and 2500 < mv < 4600):
+        return None
+    return soc / 100, ma > -20
+
+
 def read(root: str = ROOT) -> tuple[float, bool]:
+    got = read_gauge()
+    if got is not None:
+        return got
+    return read_sysfs(root)
+
+
+def read_sysfs(root: str = ROOT) -> tuple[float, bool]:
     """(level 0..1, plugged in).
 
     Level: the gauge's percentage, but never more than its voltage says

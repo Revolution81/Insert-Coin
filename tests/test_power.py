@@ -6,6 +6,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core import power  # noqa: E402
 
+power.GAUGE = "/nonexistent/czwallet-battery"   # these tests read the sysfs files
+
 
 def supply(root, name, **files):
     d = root / name
@@ -70,3 +72,20 @@ def test_voltage_curve():
     assert power.level_from_voltage(3.2) == 0.0
     assert power.level_from_voltage(4.2) == 1.0
     assert 0.5 < power.level_from_voltage(3.8) < 0.7
+
+
+
+def test_direct_gauge_reading_wins(tmp_path, monkeypatch):
+    g = tmp_path / "czwallet-battery"
+    g.write_text("23 3712 -180 9\n")
+    monkeypatch.setattr(power, "GAUGE", str(g))
+    supply(tmp_path, "bq27210-0", type="Battery", capacity="100", status="Full")
+    assert power.read(str(tmp_path)) == (0.23, False)
+    g.write_text("95 4150 640 0\n")
+    assert power.read(str(tmp_path)) == (0.95, True)
+    g.write_text("95 4180 0 0\n")                    # full, on the cable
+    assert power.read(str(tmp_path)) == (0.95, True)
+    import os, time
+    old = time.time() - 300
+    os.utime(g, (old, old))                           # stale: back to sysfs
+    assert power.read(str(tmp_path)) == (1.0, False)

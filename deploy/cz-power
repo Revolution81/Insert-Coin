@@ -18,6 +18,29 @@
 BUS=1 ADDR=0x4f
 get() { i2cget -f -y $BUS $ADDR "$1" 2>/dev/null; }
 
+# Battery: Linux has the fuel gauge (I2C1, 0x55) as a "bq27210", but it's a
+# BQ27220, so /sys/class/power_supply reads the wrong registers and its
+# percentage is nonsense. Every 10 s the BQ27220's own standard commands are
+# read (StateOfCharge 0x2C, Voltage 0x08, Current 0x0C, BatteryStatus 0x0A;
+# reads only) into /run/czwallet-battery for the wallet (core/power.py).
+battery() {
+  while :; do
+    soc=$(i2cget -f -y $BUS 0x55 0x2c w 2>/dev/null)
+    mv=$(i2cget -f -y $BUS 0x55 0x08 w 2>/dev/null)
+    ma=$(i2cget -f -y $BUS 0x55 0x0c w 2>/dev/null)
+    st=$(i2cget -f -y $BUS 0x55 0x0a w 2>/dev/null)
+    if [ -n "$soc" ] && [ -n "$mv" ] && [ -n "$ma" ]; then
+      soc=$((soc)) mv=$((mv)) ma=$((ma)) st=$((${st:-0}))
+      [ $ma -gt 32767 ] && ma=$((ma - 65536))
+      if [ $soc -le 100 ] && [ $mv -gt 2500 ] && [ $mv -lt 4600 ]; then
+        echo "$soc $mv $ma $st" > /run/czwallet-battery.new && mv /run/czwallet-battery.new /run/czwallet-battery
+      fi
+    fi
+    sleep 10
+  done
+}
+battery &
+
 i=0
 until [ "$(get 0x02)" = 0x5a ]; do
   i=$((i + 1)); [ $i -ge 30 ] && { echo "power switch: chip not found, not watching"; exec sleep infinity; }
