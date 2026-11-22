@@ -113,7 +113,13 @@ done
 # wallet for good (a Conflicts= in czsigner didn't stop it). Off entirely;
 # the signer switches the panel on itself (ui/display.wake_panel).
 if in_root systemctl list-unit-files --no-legend 2>/dev/null | grep -q '^fb_load\.service'; then
-  echo "mask fb_load.service"; in_root systemctl mask fb_load.service
+  echo "switch off fb_load.service"
+  in_root systemctl disable fb_load.service 2>/dev/null || true
+  # M5Stack ships the unit in /etc, where a mask can't go: set it aside first
+  if [ -f "$ROOT/etc/systemd/system/fb_load.service" ]; then
+    mv "$ROOT/etc/systemd/system/fb_load.service" "$ROOT/etc/systemd/system/fb_load.service.m5-off"
+  fi
+  in_root systemctl mask fb_load.service
 fi
 
 echo "== keyboard: the Fn layer must be there (volume keys)"
