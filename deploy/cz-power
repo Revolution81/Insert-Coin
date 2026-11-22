@@ -8,7 +8,7 @@
 # image switches that off, so here: OFF_TIME is set to 7 s, the switch
 # bit (0xB9 bit 0) is read every half second, and when it reads off: the
 # card is synced at once, the wallet and signer stop (keys locked), a
-# countdown to the power cut shows on the screen (ui/goodbye.py), and Linux
+# SHUTTING DOWN screen shows (ui/goodbye.py), and Linux
 # shuts down properly (services get 4 s each, not 90) before the power goes.
 #
 # Careful on purpose: nothing is done unless the chip answers with its ID

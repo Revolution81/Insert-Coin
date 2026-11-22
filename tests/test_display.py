@@ -147,5 +147,5 @@ def test_word_entry_waits_longer_before_cancelling():
 
 def test_power_off_countdown_draws():
     from ui import goodbye
-    a, b, c = goodbye.draw(9), goodbye.draw(3), goodbye.draw(0, done=True)
-    assert a.size == (320, 170) and a.tobytes() != b.tobytes() != c.tobytes()
+    a, c = goodbye.draw(), goodbye.draw(done=True)
+    assert a.size == (320, 170) and a.tobytes() != c.tobytes()

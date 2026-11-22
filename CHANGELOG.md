@@ -55,10 +55,10 @@ From the second session on the device:
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
 - Typing "fi" no longer leaves a gap before the cursor (the text was drawn
   with ligatures on the device, so "fi" became one narrower glyph).
-- **Power switch shuts down cleanly**, in about 7 s, with a countdown on
-  the screen: switching off used to cut the power 2 s later with no warning
+- **Power switch shuts down cleanly**, in about 7 s, with a SHUTTING
+  DOWN screen: switching off used to cut the power 2 s later with no warning
   to Linux. Now the card is synced at once, the wallet and signer stop,
-  Sir Signer counts down to the power cut, and Linux shuts down properly
+  Sir Signer shows SHUTTING DOWN, then ALL DONE, and Linux shuts down properly
   first (services get 4 s each to stop instead of 90).
 - **Volume keys**: Fn+D louder, Fn+S quieter, Fn+A sound off/on, with a
   volume bar in the middle of the screen; saved. The menu boop is now
