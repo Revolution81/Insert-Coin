@@ -216,64 +216,11 @@ def test_appearance_digits_in_place(app):  # noqa: F811
     assert _shown(m, "BALANCE DIGITS") == "SMALL SATS"
 
 
-def test_clock_12h_setting(app):  # noqa: F811
-    import time as _t
+def test_no_clock_and_sync_shown_as_how_long_ago():
+    """No clock anywhere (the time zone would need a location lookup); the
+    sync line says how long ago instead."""
     from ui import theme as t
-    from ui.flow import settings_screen
-    assert t.clock_text(False, _t.struct_time((2026, 11, 18, 21, 56, 0, 2, 322, 0))) == "21:56"
-    assert t.clock_text(True, _t.struct_time((2026, 11, 18, 21, 56, 0, 2, 322, 0))) == "9:56PM"
-    assert t.clock_text(True, _t.struct_time((2026, 11, 18, 0, 5, 0, 2, 322, 0))) == "12:05AM"
-    assert t.clock_text(True, _t.struct_time((2026, 11, 18, 12, 0, 0, 2, 322, 0))) == "12:00PM"
-    create_wallet(app)
-    settings_screen(app, at="CLOCK")
-    settle(app)
-    row = next(i for i in app.visible.items if i[0] == "CLOCK")
-    assert row[2] == "12H"                         # 12-hour by default
-    enter(app)                                     # flips it to 24-hour
-    settle(app)
-    row = next(i for i in app.visible.items if i[0] == "CLOCK")
-    assert row[2] == "24H" and app.signer.status()["clock_12h"] is False
-    assert app._clock_12h() is False
-
-
-def test_clock_12h_reaches_sync_line(app, monkeypatch):  # noqa: F811
-    import time as _t
-    create_wallet(app)
-    app.clock_12h = True
-    class _W:  # noqa: N801
-        last_sync = _t.mktime((2026, 11, 18, 22, 8, 0, 0, 0, -1)); tip_height = 976519
-    monkeypatch.setattr(type(app), "online", property(lambda self: True))
-    app.wallet, app.net_error, app.syncing = _W(), "", False
-    assert app.net_line().startswith("SYNCED 10:08PM")
-
-
-def test_time_zone_in_setup(app, monkeypatch):  # noqa: F811
-    """SETUP > DISPLAY & SOUND > TIME ZONE steps through the list and the
-    clock follows (M5Stack's OS ships with China time)."""
-    from ui.flow import settings_screen
-    monkeypatch.setenv("TZ", "UTC")
-    monkeypatch.setenv("CZ_SIM", "1")              # no root helper here
-    create_wallet(app)
-    settings_screen(app, at="TIME ZONE")
-    settle(app)
-    row = next(i for i in app.visible.items if i[0] == "TIME ZONE")
-    assert row[2] == "UTC"
-    press(app, "KEY_C")                               # RIGHT
-    settle(app)
-    row = next(i for i in app.visible.items if i[0] == "TIME ZONE")
-    assert row[2] == "HONOLULU"
-    for _ in range(2):
-        press(app, "KEY_Z")                           # LEFT twice: past UTC
-    settle(app)
-    row = next(i for i in app.visible.items if i[0] == "TIME ZONE")
-    assert row[2] == "AUCKLAND"
-
-
-def test_time_zone_names():
-    from core import timezone
-    assert timezone.label("America/New_York") == "NEW YORK"
-    assert timezone.step("America/New_York", 1) == "America/Halifax"
-    assert timezone.label("Etc/UTC") == "UTC"
-    import os
-    for _, z in timezone.ZONES:
-        assert os.path.exists(os.path.join(timezone.ZONEINFO, z)), z
+    assert t.ago(5) == "JUST NOW" and t.ago(300) == "5 MIN AGO"
+    assert t.ago(7200) == "2 HR AGO" and t.ago(86400) == "1 DAY AGO"
+    assert t.ago(3 * 86400) == "3 DAYS AGO"
+    assert not hasattr(t, "clock_text")

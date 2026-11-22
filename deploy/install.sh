@@ -164,14 +164,12 @@ chmod 644 /etc/czwallet/release_keys.txt
 echo "== root helpers (radios, updates, card copies, file sharing)"
 install -o root -g root -m 755 "$SRC/deploy/cz-radio" /usr/local/sbin/cz-radio
 install -o root -g root -m 755 "$SRC/deploy/cz-power" /usr/local/sbin/cz-power
-install -o root -g root -m 755 "$SRC/deploy/cz-time" /usr/local/sbin/cz-time
 install -o root -g root -m 755 "$SRC/deploy/cz-update" /usr/local/sbin/cz-update
 install -o root -g root -m 755 "$SRC/deploy/cz-backup" /usr/local/sbin/cz-backup
 install -o root -g root -m 755 "$SRC/deploy/cz-share" /usr/local/sbin/cz-share
 {
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-radio vault, /usr/local/sbin/cz-radio online"
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-update *"
-  echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-time zone *"
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-backup *"
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-share start, /usr/local/sbin/cz-share stop"
 } > /etc/sudoers.d/czwallet
@@ -201,8 +199,8 @@ if [ "$IMAGE" = 1 ]; then
   raspi-config nonint do_i2c 0 || true
   raspi-config nonint do_serial_hw 0 || true
   raspi-config nonint do_serial_cons 1 || true
-  # M5Stack's OS ships with China time; start from UTC and let the owner pick
-  # theirs in SETUP > DISPLAY & SOUND > TIME ZONE
+  # M5Stack's OS ships with China time; the wallet shows no clock, and logs
+  # and file names are clearer in UTC
   ln -sf /usr/share/zoneinfo/UTC /etc/localtime && echo UTC > /etc/timezone
 else
   echo "== interfaces for add-ons: left as they are (no live changes)"

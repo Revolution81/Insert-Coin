@@ -11,9 +11,6 @@ From the second session on the device:
   animate). OK closes it; the payment stays in the outbox either way.
 - Animated QR codes play slower (2 parts a second), and the arrow keys
   pause them and step one part at a time; PART n/N shows PAUSED.
-- **SETUP › DISPLAY & SOUND › CLOCK**: 24H (21:56) or 12H (9:56PM) on every
-  status bar, the signer's screens included, plus SYNCED on the home screen
-  and a transaction's time in HISTORY. The signer keeps the setting.
 - **Faster updates**: running `deploy/install.sh` again skips system
   packages that are already installed, Python packages when
   `requirements.lock` hasn't changed, and the interface setup, so an update
@@ -88,15 +85,12 @@ From the second session on the device:
   the logo.
   The signer then switches the panel on itself (unblank and mode set):
   on the new OS the screen otherwise stayed black.
-- **SETUP › DISPLAY & SOUND › TIME ZONE**: M5Stack's OS ships with China
-  time, so the clock read hours off. Pick yours from a list (LEFT/RIGHT);
-  the wallet image starts on UTC. Never worked out from the network (that
-  would tell a server where you are). Network time already sets the clock
-  itself when Online.
 - Test cards record each power-switch shutdown in
   insert-coin-shutdown.txt, to see what the goodbye screen did.
-- The clock is 12-hour (AM/PM) by default; SETUP › DISPLAY & SOUND ›
-  CLOCK switches to 24-hour.
+- **No clock on screen**: showing the right time needs the time zone, and
+  finding that out automatically means telling a server where you are.
+  The sync line says how long ago instead (SYNCED 5 MIN AGO), and
+  transaction dates are in UTC. The CLOCK setting is gone.
 - The volume keys also work when the keyboard's driver reports Fn as its
   own key code (KEY_DVD), and keys the wallet doesn't use are named in the
   journal (never letters or digits), to see what a keyboard sends.

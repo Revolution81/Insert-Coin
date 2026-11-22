@@ -673,7 +673,7 @@ def history_screen(app, selected=0):
     for tx in txs:
         label = app.wallet.tx_label(tx.txid)
         status = "PENDING" if not tx.confirmed else (
-            time.strftime("%m/%d", time.localtime(tx.timestamp)) if tx.timestamp else "OK")
+            time.strftime("%m/%d", time.gmtime(tx.timestamp)) if tx.timestamp else "OK")
         items.append((fmt_sats(tx.delta, True), lambda app, tx=tx: tx_detail(app, tx),
                       label[:12] if label else status,
                       "cyan" if not tx.confirmed else ("light" if label else "grey")))
@@ -689,8 +689,8 @@ def tx_detail(app, tx):
     w = app.wallet
     tip = w.tip_height
     conf = (f"{tip - tx.height + 1} CONF" if tip else "CONFIRMED") if tx.confirmed else "PENDING"
-    when = (time.strftime("%Y-%m-%d ", time.localtime(tx.timestamp))
-            + t.clock_text(app._clock_12h(), time.localtime(tx.timestamp))) if tx.timestamp else ""
+    # dates in UTC: no time zone is set (see ui/theme.status_bar)
+    when = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(tx.timestamp)) if tx.timestamp else ""
     label = w.tx_label(tx.txid)
     info = [f"{fmt_sats(tx.delta, True)} sats  {conf}",
             f"{when}" + (f"  FEE {fmt_sats(tx.fee)}" if tx.fee else ""),
@@ -1135,13 +1135,6 @@ def auto_lock_menu(app):
     app.push(menu)
 
 
-def _zone_label() -> str:
-    from core import timezone
-    if os.environ.get("CZ_SIM"):
-        return timezone.label(os.environ.get("TZ", "UTC"))
-    return timezone.label()
-
-
 def sound_label(settings) -> str:
     return "ON" if settings.sound else "OFF"
 
@@ -1153,7 +1146,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
-    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "TIME ZONE", "CLOCK", "SOUND", "QR FORMAT"]),
+    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
 
@@ -1244,12 +1237,6 @@ def settings_screen(app, at: str | None = None):
         app.settings.qr_format = "bbqr" if app.settings.qr_format == "ur" else "ur"
         app.settings.save()
 
-    def clock_toggle(app, step=0):
-        """24-hour (21:56) or 12-hour (9:56PM) on every status bar."""
-        on = not app._clock_12h()
-        app.signer.set_clock_12h(on=on)
-        app.clock_12h = on
-
     def sound_toggle(app, step):
         """One switch for all sound: the title fanfare and the menu boop.
         Saved, so it stays that way after a restart."""
@@ -1259,14 +1246,6 @@ def settings_screen(app, at: str | None = None):
         if app.settings.sound:
             sound.play("ui_move")                  # a boop to say it's back on
     sound_toggle.plays_sound = True            # no menu click on top of it
-
-    def zone_step(app, step):
-        """LEFT/RIGHT (or OK) through the time zones; the clock follows."""
-        from core import timezone
-        new = timezone.step(timezone.current() if not os.environ.get("CZ_SIM")
-                            else os.environ.get("TZ", "UTC"), -1 if step < 0 else 1)
-        if not timezone.set_zone(new):
-            app.push(MessageScreen("TIME ZONE", "Couldn't change the time zone.", "red"))
 
     def auto_lock(app):
         auto_lock_menu(app)
@@ -1320,8 +1299,6 @@ def settings_screen(app, at: str | None = None):
             ("APPEARANCE", appearance, "", "grey"),
             ("SCREEN SLEEP", screen_sleep_menu, sleep_label(st.get("screen_sleep", 120)),
              "cyan" if st.get("screen_sleep", 120) else "grey"),
-            ("TIME ZONE", None, _zone_label(), "cyan", zone_step),
-            ("CLOCK", None, "12H" if st.get("clock_12h") else "24H", "cyan", clock_toggle),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
             ("PAPER WALLETS", paper_wallets),
             ("SHARE FILES", share_files, "WI-FI", "grey"),

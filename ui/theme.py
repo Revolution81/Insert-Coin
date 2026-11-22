@@ -446,16 +446,21 @@ def battery(d, xy, frac, charging=False):
             d.point((x + bx, y + by), fill=PAL["gold"])
 
 
-def clock_text(h12: bool = False, when=None) -> str:
-    """The status bar's time: 21:56, or 9:56PM with the 12-hour clock."""
-    import time as _time
-    tm = _time.localtime() if when is None else when
-    if not h12:
-        return _time.strftime("%H:%M", tm)
-    return f"{(tm.tm_hour % 12) or 12}:{tm.tm_min:02d}{'AM' if tm.tm_hour < 12 else 'PM'}"
+def ago(seconds: float) -> str:
+    """How long ago, in words that need no clock or time zone: JUST NOW,
+    5 MIN AGO, 3 HR AGO, 2 DAYS AGO."""
+    s = max(0, int(seconds))
+    if s < 60:
+        return "JUST NOW"
+    if s < 3600:
+        return f"{s // 60} MIN AGO"
+    if s < 86400:
+        return f"{s // 3600} HR AGO"
+    days = s // 86400
+    return f"{days} DAY{'S' if days > 1 else ''} AGO"
 
 
-def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=False,
+def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="", online=False,
                typing=None, icons=(), charging=False, own_server=False):
     """typing: None in menu mode, or the translator's indicators dict
     ({"shift": bool, "fn": bool, "sym": bool}) in text mode, which shows an
@@ -489,11 +494,14 @@ def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="14:43", online=Fal
         sprite(img, WIFI, (ix, 2), {"w": col})
         if not online:
             d.line((ix, 9, ix + 7, 2), fill=PAL["red"])
+    # No clock: showing the time right needs the time zone, and finding that
+    # out automatically means telling a server where you are.
     clock_x = W - 26
-    text(d, (clock_x, 3), clock, TINY, "grey", shadow=False, align="right")
+    if clock:
+        text(d, (clock_x, 3), clock, TINY, "grey", shadow=False, align="right")
     battery(d, (W - 21, 2), battery_frac, charging)
-    # add-on icons (secure chip, fingerprint) left of the clock
-    x = clock_x - TINY.width(clock) - 12
+    # add-on icons (secure chip, fingerprint) left of the battery
+    x = clock_x - (TINY.width(clock) + 12 if clock else 10)
     for rows, color in icons:
         col = PAL.get(color, color) if isinstance(color, str) else color
         sprite(img, rows, (x, 2), {"w": col, "k": PAL["ink"]})

@@ -140,7 +140,7 @@ def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
         seen += labels
         app.pop()
         assert app.visible.title == "SETUP"
-    assert len(seen) == len(set(seen)) == 30
+    assert len(seen) == len(set(seen)) == 28
 
 
 def test_restore_shows_one_moment_not_the_menu_after_the_signer():
