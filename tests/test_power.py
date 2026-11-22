@@ -45,3 +45,28 @@ def test_charging_bolt_draws():
     t.battery(ImageDraw.Draw(b), (2, 2), 0.5, charging=True)
     assert a.tobytes() != b.tobytes()
     assert t.PAL["gold"] in [b.getpixel((2 + x, 2 + y)) for x, y in t.BOLT] or True
+
+
+def test_uncalibrated_gauge_cant_claim_full_while_draining(tmp_path):
+    """The gauge said 100% on a battery so flat the camera browned it out:
+    while draining, the voltage caps the level."""
+    supply(tmp_path, "bq27220-0", type="Battery", capacity="100", status="Discharging",
+           voltage_now="3550000", current_now="-400000")
+    level, plugged = power.read(str(tmp_path))
+    assert level < 0.1 and not plugged
+
+
+def test_plugged_in_and_full_shows_the_plug(tmp_path):
+    """Cable in, battery full: "Full" with no drain is plugged in; "Full"
+    while draining is on battery."""
+    supply(tmp_path, "bq27220-0", type="Battery", capacity="100", status="Full",
+           voltage_now="4180000", current_now="0")
+    assert power.read(str(tmp_path)) == (1.0, True)
+    (tmp_path / "bq27220-0" / "current_now").write_text("-250000\n")
+    assert power.read(str(tmp_path))[1] is False
+
+
+def test_voltage_curve():
+    assert power.level_from_voltage(3.2) == 0.0
+    assert power.level_from_voltage(4.2) == 1.0
+    assert 0.5 < power.level_from_voltage(3.8) < 0.7

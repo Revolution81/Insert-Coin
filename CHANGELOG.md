@@ -64,6 +64,11 @@ From the second session on the device:
   volume bar in the middle of the screen; saved. The menu boop is now
   pitched for the Cardputer's little speaker (it played a note too low
   for it to make, so it was silent).
+- **Battery reading fixed**: the level can't show full while the voltage
+  says the battery is nearly flat (an uncalibrated fuel gauge claimed 100%
+  on a battery so low the camera reset the device), and the plug symbol
+  shows when the cable is in and the battery is full (the gauge says
+  "Full", not "Charging", then). The boot log lists the gauge's readings.
 - The volume keys also work when the keyboard's driver reports Fn as its
   own key code (KEY_DVD), and keys the wallet doesn't use are named in the
   journal (never letters or digits), to see what a keyboard sends.
