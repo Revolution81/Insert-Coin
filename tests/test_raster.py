@@ -112,3 +112,31 @@ def test_raster_only_printer_gets_a_page(fmt, tmp_path, monkeypatch):
         assert job["data"][:4] == (b"RaS2" if fmt.endswith("pwg-raster") else b"UNIR")
     finally:
         p.close()
+
+
+def test_a_strict_printer_is_asked_properly_canon_ts6500():
+    """A Canon TS6500 answered only the first of our questions, because each
+    value of requested-attributes repeated the name. The list must be one
+    attribute; and a printer with only PWG/URF must then get a page."""
+    from core import ipp
+    req = ipp.encode_request(ipp.GET_PRINTER_ATTRIBUTES, 1, "ipps://10.0.0.5:631/ipp/print",
+                             ipp.one_set(ipp.KEYWORD, "requested-attributes", ipp.WANTED))
+    from tools.fake_printer import requested
+    assert requested(req) == ipp.WANTED
+    p = FakePrinter(formats=("application/octet-stream", "image/urf", "image/pwg-raster"),
+                    model="Canon TS6500 series")
+    try:
+        info = ipp.get_attributes("127.0.0.1", p.port)
+        assert info["model"] == "Canon TS6500 series" and info["state"] == "IDLE"
+        assert info["format"] == "image/pwg-raster" and info["raster"]["dpi"] == 300
+    finally:
+        p.close()
+
+
+def test_the_old_way_of_asking_fails_on_a_strict_printer():
+    """Proof the fake printer is strict enough to have caught it."""
+    from core import ipp
+    from tools.fake_printer import requested
+    req = ipp.encode_request(ipp.GET_PRINTER_ATTRIBUTES, 1, "ipps://10.0.0.5:631/ipp/print",
+                             [(ipp.KEYWORD, "requested-attributes", n) for n in ipp.WANTED])
+    assert requested(req) == ["printer-make-and-model"]

@@ -5,6 +5,13 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 ## 0.8.24: steadier outbox screen
 
 From the second session on the device:
+- **Fixed: a Canon TS6500 said it took no page format.** When asking a
+  printer what it supports, the wallet repeated the name
+  `requested-attributes` before every item instead of sending one list, so
+  strict printers answered only the first question (the model name) and
+  never listed their formats. It's one list now, with a fallback to asking
+  for "all"; the test printer is now as strict as a real one; and CAN'T
+  PRINT shows what the printer did list.
 - **Prints on any driverless printer.** Printers that take neither JPEG nor
   PDF over IPP (a Canon PIXMA TS6500 in testing) now get the page as PWG
   Raster (required by IPP Everywhere) or Apple Raster (required by

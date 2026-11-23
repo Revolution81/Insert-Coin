@@ -44,13 +44,45 @@ def _cert(dirpath: str) -> tuple[str, str]:
     return c, k
 
 
+def requested(body: bytes) -> list[str]:
+    """requested-attributes as a strict printer reads it: the first attribute
+    of that name and the empty-named values right after it; a second
+    attribute with the same name is ignored."""
+    i, out, cur, seen = 9, [], None, False
+    while i < len(body):
+        tag = body[i]
+        i += 1
+        if tag == ipp.END:
+            break
+        if tag <= 0x0F:
+            continue
+        nlen = struct.unpack(">H", body[i:i + 2])[0]
+        name = body[i + 2:i + 2 + nlen].decode()
+        i += 2 + nlen
+        vlen = struct.unpack(">H", body[i:i + 2])[0]
+        val = body[i + 2:i + 2 + vlen]
+        i += 2 + vlen
+        if nlen:
+            cur = name
+            if name == "requested-attributes":
+                if seen:
+                    cur = None
+                    continue
+                seen = True
+        if cur == "requested-attributes":
+            out.append(val.decode())
+    return out
+
+
 class FakePrinter:
     def __init__(self, port: int = 0, formats=("image/jpeg", "application/pdf"),
                  tls: bool = True, out_dir: str | None = None, chunked: bool = False,
                  pwg_res=(300, 600), pwg_types=("black_1", "sgray_8", "srgb_8"),
-                 urf=("V1.4", "W8", "SRGB24", "RS300-600", "CP1", "DM1")):
+                 urf=("V1.4", "W8", "SRGB24", "RS300-600", "CP1", "DM1"),
+                 model: str = "Fake LaserJet 1000", strict: bool = True):
         self.formats, self.tls, self.out_dir, self.chunked = list(formats), tls, out_dir, chunked
         self.pwg_res, self.pwg_types, self.urf = list(pwg_res), list(pwg_types), list(urf)
+        self.model, self.strict = model, strict
         self.jobs: list[dict] = []
         self.requests = 0
         self._dir = tempfile.mkdtemp()
@@ -129,21 +161,26 @@ class FakePrinter:
             ipp._attr(ipp.CHARSET, "attributes-charset", "utf-8") + \
             ipp._attr(ipp.LANGUAGE, "attributes-natural-language", "en")
         if op == ipp.GET_PRINTER_ATTRIBUTES:
+            # like a real printer: answer only what was asked, and read a
+            # repeated attribute name the strict way (first one only)
+            wanted = set(requested(body)) if self.strict else {"all"}
+            every = bool(wanted & {"all", "printer-description"})
+
+            def give(tag, name, values):
+                if not (every or name in wanted):
+                    return b""
+                return b"".join(ipp._attr(tag, name if i == 0 else "", v)
+                                for i, v in enumerate(values))
             out = head + bytes([ipp.PRINTER])
-            out += ipp._attr(ipp.TEXT, "printer-make-and-model", "Fake LaserJet 1000")
-            out += ipp._attr(ipp.ENUM, "printer-state", 3)
-            for i, f in enumerate(self.formats):
-                out += ipp._attr(ipp.MIME, "document-format-supported" if i == 0 else "", f)
+            out += give(ipp.TEXT, "printer-make-and-model", [self.model])
+            out += give(ipp.ENUM, "printer-state", [3])
+            out += give(ipp.MIME, "document-format-supported", self.formats)
             if "image/pwg-raster" in self.formats:
-                for i, r in enumerate(self.pwg_res):
-                    out += ipp._attr(0x32, "pwg-raster-document-resolution-supported"
-                                     if i == 0 else "", struct.pack(">iib", r, r, 3))
-                for i, t in enumerate(self.pwg_types):
-                    out += ipp._attr(ipp.KEYWORD, "pwg-raster-document-type-supported"
-                                     if i == 0 else "", t)
+                out += give(0x32, "pwg-raster-document-resolution-supported",
+                            [struct.pack(">iib", r, r, 3) for r in self.pwg_res])
+                out += give(ipp.KEYWORD, "pwg-raster-document-type-supported", self.pwg_types)
             if "image/urf" in self.formats:
-                for i, t in enumerate(self.urf):
-                    out += ipp._attr(ipp.KEYWORD, "urf-supported" if i == 0 else "", t)
+                out += give(ipp.KEYWORD, "urf-supported", self.urf)
             return out + bytes([ipp.END])
         if op == ipp.PRINT_JOB:
             fmt = (attrs.get("document-format") or ["?"])[0]

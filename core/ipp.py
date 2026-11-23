@@ -89,6 +89,19 @@ def encode_request(op: int, request_id: int, uri: str, extra: list | None = None
     return out + bytes([END])
 
 
+def one_set(tag: int, name: str, values: list) -> list:
+    """A multi-valued attribute (a "1setOf"): the name goes on the first
+    value only, the rest follow with an empty name (RFC 8010 3.1.5). Giving
+    each value the name again makes separate attributes, and a strict
+    printer then answers only the first."""
+    return [(tag, name if i == 0 else "", v) for i, v in enumerate(values)]
+
+
+WANTED = ["printer-make-and-model", "printer-name", "printer-state",
+          "document-format-supported", "pwg-raster-document-resolution-supported",
+          "pwg-raster-document-type-supported", "urf-supported"]
+
+
 def decode_response(buf: bytes) -> tuple[int, dict]:
     """(status code, {attribute name: [values]}) across all groups."""
     status, attrs, _ = decode(buf)
@@ -278,19 +291,20 @@ def get_attributes(host: str, port: int = 631, path: str = "ipp/print",
                    pin: str | None = None) -> dict:
     """What the printer is, and the certificate fingerprint. Sends nothing
     secret, so it's safe before the printer is trusted."""
-    req = encode_request(GET_PRINTER_ATTRIBUTES, 1, uri(host, port, path), [
-        (KEYWORD, "requested-attributes", "printer-make-and-model"),
-        (KEYWORD, "requested-attributes", "printer-name"),
-        (KEYWORD, "requested-attributes", "printer-state"),
-        (KEYWORD, "requested-attributes", "document-format-supported"),
-        (KEYWORD, "requested-attributes", "pwg-raster-document-resolution-supported"),
-        (KEYWORD, "requested-attributes", "pwg-raster-document-type-supported"),
-        (KEYWORD, "requested-attributes", "urf-supported"),
-    ])
-    reply, fp = exchange(host, port, path, req, pin=pin, timeout=10)
-    status, attrs = decode_response(reply)
-    if status >= 0x0400:
-        raise PrinterError(f"the printer refused (IPP status 0x{status:04x})")
+    def ask(names):
+        req = encode_request(GET_PRINTER_ATTRIBUTES, 1, uri(host, port, path),
+                             one_set(KEYWORD, "requested-attributes", names))
+        reply, fp = exchange(host, port, path, req, pin=pin, timeout=10)
+        status, attrs = decode_response(reply)
+        if status >= 0x0400:
+            raise PrinterError(f"the printer refused (IPP status 0x{status:04x})")
+        return attrs, fp
+
+    attrs, fp = ask(WANTED)
+    if not attrs.get("document-format-supported"):     # some only answer "all"
+        attrs, fp2 = ask(["all"])
+        if fp2 != fp:
+            raise PrinterError("the printer's certificate changed")
     formats = [f for f in attrs.get("document-format-supported", []) if isinstance(f, str)]
     model = (attrs.get("printer-make-and-model") or attrs.get("printer-name") or ["Printer"])[0]
     state = (attrs.get("printer-state") or [0])[0]
