@@ -802,8 +802,42 @@ def paper_wallets(app):
 
     app.push(MenuScreen("PAPER WALLETS", [
         ("MAKE NEW", make),
+        ("VIEW ALL", view_paper_wallets),
         ("PRINT", print_one, "WI-FI", "grey"),
     ], info=["A fresh key, not your seed.", "Small amounts only."]))
+
+
+def view_paper_wallets(app):
+    """PAPER WALLETS > VIEW ALL: every paper wallet kept on this device, by
+    deposit address; OK shows that address as a QR (to fund it or look it
+    up). Only addresses: the app never reads the keys, which stay in the
+    paper folder for PRINT and SHARE FILES."""
+    from core import printing
+
+    def files():
+        move_paper()                    # any the last MAKE NEW couldn't move
+        return printing.controller().call("files")
+
+    def show(app, address):
+        groups = [address[i:i + 4] for i in range(0, len(address), 4)]
+        rows = [" ".join(groups[i:i + 3]) for i in range(0, len(groups), 3)]
+        app.push(AnimatedQRScreen("PAPER WALLET", [address.upper() if address.startswith(
+            ("bc1", "tb1", "bcrt1")) else address],
+            rows + ["", "Deposit address. The", "key is in its file:", "PRINT or SHARE FILES."]))
+
+    def got(app, names):
+        if not names:
+            app.push(MessageScreen("PAPER WALLETS", ["None on this device yet:",
+                                                     "MAKE NEW first."]))
+            return
+        items = [(n[:12] + "..." + n[-6:], (lambda a: lambda app: show(app, a))(n))
+                 for n in names]
+        app.push(MenuScreen(f"{len(names)} PAPER WALLET" + ("S" if len(names) != 1 else ""),
+                            items, info=["OK shows the deposit address", "as a QR."]))
+
+    def failed(app, e):
+        app.push(MessageScreen("PAPER WALLETS", [str(e)[:160]], border="red"))
+    app.job("LOOKING...", files, got, failed)
 
 
 def export_history(app):

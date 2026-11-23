@@ -421,7 +421,10 @@ def folders() -> dict:
     paper wallets in a folder only root and this service can read; on a PC,
     the simulator's data folder."""
     from core import config
-    if os.environ.get("CZ_SIM") or not os.path.isdir("/boot/firmware"):
+    # the device is told apart by its root helper, never by /boot/firmware:
+    # czshare's sandbox only shows the card folder once an export made it,
+    # and guessing "simulator" from that hid every paper wallet
+    if os.environ.get("CZ_SIM") or not os.path.exists(HELPER):
         root = os.path.dirname(config.APP_DIR)
         return {"history": os.path.join(config.APP_DIR, "exports"),
                 "paper": os.path.join(root, "signer", "paper")}

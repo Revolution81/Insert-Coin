@@ -5,6 +5,14 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 ## 0.8.24: steadier outbox screen
 
 From the second session on the device:
+- **Fixed: SHARE FILES listed no paper wallets.** The sharing service
+  decided whether it was on the device by looking for the card's folder,
+  which its sandbox only shows once a history export exists; without one it
+  looked in the simulator's folder. It now goes by the root helper, like
+  the rest of the wallet.
+- **PAPER WALLETS › VIEW ALL** lists every paper wallet kept on the device;
+  OK shows its deposit address as a QR. (Addresses only: the keys stay in
+  the paper folder, for PRINT and SHARE FILES.)
 - **Fixed: a Canon TS6500 said it took no page format.** When asking a
   printer what it supports, the wallet repeated the name
   `requested-attributes` before every item instead of sending one list, so

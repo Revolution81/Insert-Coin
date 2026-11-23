@@ -237,7 +237,8 @@ def test_f4_paper_wallets_go_to_the_private_folder_not_the_card(tmp_path, monkey
 def test_f4_share_serves_paper_from_the_private_folder(monkeypatch):
     from core import share
     monkeypatch.delenv("CZ_SIM", raising=False)
-    monkeypatch.setattr(share.os.path, "isdir", lambda p: p == "/boot/firmware")
+    real = share.os.path.exists
+    monkeypatch.setattr(share.os.path, "exists", lambda p: p == share.HELPER or real(p))
     f = share.folders()
     assert f["paper"] == "/var/lib/czwallet/paper"
     svc = open(os.path.join(os.path.dirname(__file__), "..", "deploy", "czshare.service")).read()
@@ -363,3 +364,32 @@ def test_share_status_is_readable_by_the_app(tmp_path, monkeypatch):
     finally:
         os.umask(old)
     assert seen == [0o644]
+
+
+def test_share_finds_the_device_paper_folder_without_a_card_folder(monkeypatch):
+    """In czshare's sandbox /boot/firmware only exists once a history export
+    made InsertCoin-exports; paper wallets must be found either way."""
+    import os
+    from core import share
+    monkeypatch.delenv("CZ_SIM", raising=False)
+    real = os.path.exists
+    monkeypatch.setattr(os.path, "exists", lambda p: p == share.HELPER or real(p))
+    monkeypatch.setattr(os.path, "isdir", lambda p: False)
+    assert share.folders()["paper"] == "/var/lib/czwallet/paper"
+
+
+def test_paper_wallets_view_all_lists_them(app):  # noqa: F811
+    from core import paper, share
+    from ui.flow import view_paper_wallets
+    from ui.qrscreens import AnimatedQRScreen
+    from test_app import enter, settle
+    d = share.folders()["paper"]
+    w = paper.build(paper.random_key(), "signet")
+    paper.save(d, w, with_pdf=False)
+    view_paper_wallets(app)
+    settle(app)
+    m = app.visible
+    assert m.title == "1 PAPER WALLET" and m.items[0][0].startswith(w["address"][:12])
+    enter(app)
+    assert isinstance(app.visible, AnimatedQRScreen)
+    assert app.visible.frames == [w["address"].upper()]

@@ -67,7 +67,7 @@ def test_paper_wallets_in_the_ui(app):  # noqa: F811
     m = app.visible
     m.sel = [i[0] for i in m.items].index("PAPER WALLETS")
     enter(app)
-    assert [i[0] for i in app.visible.items] == ["MAKE NEW", "PRINT"]
+    assert [i[0] for i in app.visible.items] == ["MAKE NEW", "VIEW ALL", "PRINT"]
     enter(app)                                           # MAKE NEW
     settle(app)
     c = app.console
