@@ -735,7 +735,7 @@ def show_txid(app, txid: str):
     views = []
     if url:
         views.append(("LINK", "TRACK IT", [url],
-                      ["Scan with a phone", f"to open it on", host, "", "TAB: just the TXID"]))
+                      ["Scan with a phone", "to open it on", host, "", "TAB: just the TXID"]))
     views.append(("TXID", "TXID", [txid], words + ["", "TAB: the link" if url else ""]))
     app.push(AnimatedQRScreen(views[0][1], views[0][2], views[0][3], views=views))
 

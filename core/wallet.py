@@ -886,7 +886,7 @@ def why_not_bitcoin(text: str, network: str) -> str:
     network, or a typo. Detection is a courtesy: the real check is that the
     address parses for this network at all."""
     import re
-    from embit import base58, bech32
+    from embit import base58
 
     t = text.strip()
     low = t.lower()

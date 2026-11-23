@@ -5,6 +5,13 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 ## 0.8.24: steadier outbox screen
 
 From the second session on the device:
+- **Release-candidate checks**: the full test suite (455 tests) and the
+  memory-leak run (random keys on every screen, signing, QR, SHARE FILES,
+  printing, Electrum) are clean. Fixed in the review: tapping Fn on its own
+  and then A could turn the next A into mute while typing; Fn now only
+  works as M5Stack's keyboard sends it (Fn+A/S/D held together).
+- Website and instruction booklet updated: no clock, Fn+A/S/D volume keys
+  on the controls page, fresh screenshots.
 - After signing in Vault mode the screen is now **SAVED TO OUTBOX** and says
   plainly that the payment sends itself when you go Online. A small payment
   shows one steady QR instead of flipping through parts (bigger ones still
@@ -100,9 +107,8 @@ From the second session on the device:
   The sync line and HISTORY say how long ago instead (SYNCED 5 MIN AGO,
   3D AGO); a transaction's details add its exact time, marked "shown in
   UTC". The CLOCK setting is gone.
-- The volume keys also work when the keyboard's driver reports Fn as its
-  own key code (KEY_DVD), and keys the wallet doesn't use are named in the
-  journal (never letters or digits), to see what a keyboard sends.
+- Keys the wallet doesn't use are named in the journal on test cards
+  (never letters or digits), to see what a keyboard sends.
 - **The Konami code moved to the title screen**, with its own secret
   jingle: UP UP DOWN DOWN LEFT RIGHT LEFT RIGHT B A, then OK. It's no
   longer on the PIN screen, so no PIN text is reserved for it.

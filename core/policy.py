@@ -25,7 +25,6 @@ import datetime as dt
 import hashlib
 import hmac
 import json
-import os
 import secrets
 import struct
 import time

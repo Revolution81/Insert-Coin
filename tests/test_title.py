@@ -183,10 +183,22 @@ def test_direct_stream_keeps_the_amp_awake_for_boops(monkeypatch, tmp_path):
     import subprocess
     started = []
 
+    class PacedFile:                          # like aplay: a write waits while it plays
+        def __init__(self, path):
+            self.f = open(path, "wb")
+        def write(self, b):
+            import time
+            time.sleep(len(b) / 2 / sound.RATE)
+            return self.f.write(b)
+        def flush(self):
+            self.f.flush()
+        def close(self):
+            self.f.close()
+
     class FakeProc:
         def __init__(self, cmd, **kw):
             started.append(cmd)
-            self.stdin = open(tmp_path / "out.raw", "wb")
+            self.stdin = PacedFile(tmp_path / "out.raw")
         def wait(self, timeout=None):
             return 0
 
@@ -199,7 +211,7 @@ def test_direct_stream_keeps_the_amp_awake_for_boops(monkeypatch, tmp_path):
     assert len(started) == 1
     assert len(s.pending) >= int(sound.DIRECT_LEAD_IN * sound.RATE)
     import time
-    for _ in range(200):
+    for _ in range(400):
         if s.proc is None:
             break
         time.sleep(0.02)
@@ -313,23 +325,12 @@ def test_fn_letter_volume_keys_match_the_keycaps():
     assert FN_VOLUME == {"KEY_D": "+", "KEY_S": "-", "KEY_A": "mute"}
 
 
-def test_fn_as_the_driver_sends_it_works_for_volume():
-    """This keyboard's driver reports Fn as KEY_DVD: Fn+D must still be louder."""
+def test_fn_alone_does_nothing_and_never_changes_the_next_letter():
+    """M5Stack's driver sends Fn as KEY_DVD and does the Fn layer itself.
+    Tapping Fn then typing A must give A, not mute (an earlier fallback did)."""
     from ui.input import Translator, Mode, Kind
-    tr = Translator(Mode.MENU)
-    assert tr.feed("KEY_DVD", 1) == []
-    ev = tr.feed("KEY_D", 1)
-    assert [(e.kind, e.value) for e in ev] == [(Kind.VOLUME, "+")]
-    tr.feed("KEY_D", 0); tr.feed("KEY_DVD", 0)
-    assert all(e.kind is not Kind.VOLUME for e in tr.feed("KEY_D", 1))
-
-
-def test_fn_tapped_by_the_driver_arms_the_next_key():
-    """The driver may send Fn as a quick press+release before the letter:
-    Fn+S is still quieter, not SEND; a plain S afterwards is SEND again."""
-    from ui.input import Translator, Mode, Kind
-    tr = Translator(Mode.MENU)
-    tr.feed("KEY_DVD", 1); tr.feed("KEY_DVD", 0)
-    assert [(e.kind, e.value) for e in tr.feed("KEY_S", 1)] == [(Kind.VOLUME, "-")]
-    tr.feed("KEY_S", 0)
-    assert all(e.kind is not Kind.VOLUME for e in tr.feed("KEY_S", 1))
+    tr = Translator(Mode.TEXT)
+    assert tr.feed("KEY_DVD", 1) == [] and tr.feed("KEY_DVD", 0) == []
+    evs = tr.feed("KEY_A", 1)
+    assert evs and all(e.kind is not Kind.VOLUME for e in evs)
+    assert [(e.kind, e.value) for e in tr.feed("KEY_MUTE", 1)] == [(Kind.VOLUME, "mute")]

@@ -1054,7 +1054,7 @@ class Signer:
     def address(self, wallet_id: str | None = None, index: int = 0, change: bool = False) -> str:
         """An address of one of this signer's wallets, derived here from the
         keys, so the signer's screen can show it without trusting the app."""
-        root = self._need_root()
+        self._need_root()                      # locked: refuses here
         index, branch = int(index), 1 if change else 0
         if not 0 <= index < 2 ** 31:
             raise SignerError("bad address index")
