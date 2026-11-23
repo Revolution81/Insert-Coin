@@ -1,3 +1,12 @@
 #!/bin/sh
 # Root helper: copy one card backup to the PC-readable side of the card.
+# The app starts this with sudo, but sudo keeps the app's sandbox (its
+# read-only view of the disk), so writing here would fail. Run again as a
+# one-off systemd job instead, outside any sandbox, with stdin/stdout/stderr
+# and the exit code passed through. sudo clears the environment, so the app
+# can't set CZ_OUTSIDE itself to skip this.
+if [ -z "${CZ_OUTSIDE:-}" ]; then
+  exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
+    --setenv=CZ_OUTSIDE=1 "$0" "$@"
+fi
 exec /opt/czwallet-venv/bin/python -I /opt/czwallet/tools/copy_backup.py "$1"

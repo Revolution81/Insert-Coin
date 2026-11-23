@@ -22,17 +22,6 @@ Restart=always
 RestartSec=2
 ProtectSystem=strict
 ReadWritePaths=/var/lib/czwallet/app
-# The root helpers the app starts with sudo (cz-backup, cz-update) run inside
-# this unit's read-only view of the disk, so the folders they write must be
-# opened here too. That changes nothing for the app itself: those folders
-# stay root-only by their own permissions (paper: root:czshare 2770; the
-# signer's: czsigner 0700; /opt: root 755). On the card's FAT side only the
-# wallet's own folders are opened, never the boot files beside them; they're
-# made first (as root, outside the sandbox) since only existing ones open.
-ExecStartPre=-+/bin/mkdir -p /boot/firmware/czwallet-backup /boot/firmware/InsertCoin-exports
-ReadWritePaths=-/var/lib/czwallet/paper -/var/lib/czwallet/signer
-ReadWritePaths=-/boot/firmware/czwallet-backup -/boot/firmware/InsertCoin-exports -/boot/firmware/InsertCoin-paper
-ReadWritePaths=/opt
 ProtectHome=yes
 PrivateTmp=yes
 

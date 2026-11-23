@@ -2,6 +2,15 @@
 # Root helper for SHARE FILES (sudo, from the app only).
 #   cz-share start   < config JSON on stdin: user, password_hash, include_paper, timeout_s
 #   cz-share stop
+# The app starts this with sudo, but sudo keeps the app's sandbox (its
+# read-only view of the disk), so writing here would fail. Run again as a
+# one-off systemd job instead, outside any sandbox, with stdin/stdout/stderr
+# and the exit code passed through. sudo clears the environment, so the app
+# can't set CZ_OUTSIDE itself to skip this.
+if [ -z "${CZ_OUTSIDE:-}" ]; then
+  exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
+    --setenv=CZ_OUTSIDE=1 "$0" "$@"
+fi
 set -eu
 case "${1:-}" in
   start)

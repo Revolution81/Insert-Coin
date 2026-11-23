@@ -264,28 +264,28 @@ def test_no_real_addresses_in_the_app():
     assert found == []
 
 
-def test_root_helpers_can_write_where_they_must():
-    """The app starts cz-backup and cz-update with sudo, and they run inside
-    the app's ProtectSystem=strict view, where every path is read-only unless
-    the unit opens it. Paper wallets never reached PRINT because of this."""
+def test_root_helpers_leave_the_apps_sandbox():
+    """The app starts its root helpers with sudo, and sudo keeps the app's
+    ProtectSystem=strict view, where the whole disk is read-only. Paper
+    wallets never reached PRINT and SHARE FILES couldn't start because of
+    this. Every helper that writes must re-run itself through systemd-run
+    (outside the sandbox) before doing anything else."""
     import os
+    import re
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for name in ("cz-backup", "cz-update", "cz-share"):
+        text = open(os.path.join(root, "deploy", name)).read()
+        code = [ln for ln in text.splitlines() if ln.strip() and not ln.lstrip().startswith("#")]
+        assert code[0] == 'if [ -z "${CZ_OUTSIDE:-}" ]; then', name
+        assert re.match(r'\s*exec systemd-run --quiet --wait --pipe --collect', code[1]), name
+        assert '--setenv=CZ_OUTSIDE=1 "$0" "$@"' in code[2], name
+    # the app's sandbox itself stays as tight as it was
     unit = open(os.path.join(root, "deploy", "czwallet.service")).read()
-    opened = []
-    for line in unit.splitlines():
-        if line.startswith("ReadWritePaths="):
-            opened += [p.lstrip("-") for p in line.split("=", 1)[1].split()]
-    from tools import copy_backup as cb
-    from core import update
-    needed = [cb.PAPER_DST, cb.PAPER_SRC, cb.PAPER_OLD, cb.DST, cb.EXPORT_DST,
-              update.RELEASES, os.path.dirname(update.LINK)]
-    for path in needed:
-        assert any(path == o or path.startswith(o.rstrip("/") + "/") for o in opened), path
-    # the card's folders must exist before the app starts, or they stay shut
-    for d in (cb.DST, cb.EXPORT_DST):
-        assert d in unit.split("ExecStartPre=-+/bin/mkdir -p", 1)[1].splitlines()[0]
-    # and only the wallet's own folders on the card, never the boot files
-    assert "/boot/firmware" not in opened and "/boot" not in opened and "/" not in opened
+    rw = [ln for ln in unit.splitlines() if ln.startswith("ReadWritePaths=")]
+    assert rw == ["ReadWritePaths=/var/lib/czwallet/app"]
+    # and sudo can't be told to keep CZ_OUTSIDE (no SETENV, no env_keep)
+    inst = open(os.path.join(root, "deploy", "install.sh")).read()
+    assert "SETENV" not in inst and "env_keep" not in inst
 
 
 def test_a_failed_copy_to_the_card_is_reported(monkeypatch):
