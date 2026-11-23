@@ -374,13 +374,14 @@ screen; it moved off the PIN path in 0.8.24).
 
 ## Power switch (wallet image)
 
-`deploy/cz-power` (root, `czwallet-power.service`): the switch is read by
-the M5IOE1 chip, which keeps power on for OFF_TIME after switch-off and then
-cuts it. The service sets OFF_TIME to 7 s; after three OFF readings in a
-row (only after it has seen the switch ON, and only if the chip answers with
-its ID) it syncs the card, stops the wallet and signer, shows a SHUTTING DOWN
-screen (`ui/goodbye.py`) and runs `systemctl poweroff` with services given 4 s each
-to stop. Without it the power was simply cut 2 s after switching off.
+Switching off is handled by M5Stack's own kernel driver, `powerfail-suo`:
+half a second after the switch moves it flushes and remounts every
+filesystem read-only, turns the backlight off and holds the LCD in reset;
+the M5IOE1 then cuts the power. Nothing is left half-written on the card.
+The wallet's files are also written atomically (new file, then rename), so
+even a sudden cut can't leave one half old, half new. `deploy/cz-power`
+(root) only gives the chip 7 s before the cut (room for the remount), reads
+the battery gauge and switches the screen light for SCREEN SLEEP.
 
 ## App mode
 

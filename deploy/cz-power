@@ -1,20 +1,14 @@
 #!/bin/sh
-# Insert Coin: a clean shutdown when the power switch goes off.
+# Insert Coin: power helper (root) for the Cardputer Zero.
 #
-# The Cardputer Zero's power switch is read by the M5IOE1 I/O expander
-# (I2C1, 0x4F). When it goes off the chip keeps the power on for OFF_TIME
-# (register 0xB2/0xB3, ms; 2 s after every power-on) and then cuts it, with
-# no word to Linux. On M5Stack's OS their launcher handles this; the wallet
-# image switches that off, so here: OFF_TIME is set to 7 s, the switch
-# bit (0xB9 bit 0) is read every half second, and when it reads off: the
-# card is synced at once, the wallet and signer stop (keys locked), a
-# SHUTTING DOWN screen shows (ui/goodbye.py), and Linux
-# shuts down properly (services get 4 s each, not 90) before the power goes.
+# Switching off: M5Stack's own kernel driver (powerfail-suo) handles it. Half
+# a second after the switch moves it flushes and remounts every filesystem
+# read-only, turns the backlight off and holds the LCD in reset; the M5IOE1
+# then cuts the power after OFF_TIME. That's quicker protection than any
+# shutdown from here could be, so this only sets OFF_TIME (7 s, room for the
+# read-only remount) and reads the battery gauge (below).
 #
-# Careful on purpose: nothing is done unless the chip answers with its ID
-# (REV 0x02 = 0x5A); it only acts after first seeing the switch ON, and only
-# on three OFF readings in a row, so a misread can never shut down a device
-# that's switched on.
+# Nothing is done unless the chip answers with its ID (REV 0x02 = 0x5A).
 BUS=1 ADDR=0x4f
 get() { i2cget -f -y $BUS $ADDR "$1" 2>/dev/null; }
 
@@ -43,13 +37,12 @@ battery &
 
 i=0
 until [ "$(get 0x02)" = 0x5a ]; do
-  i=$((i + 1)); [ $i -ge 30 ] && { echo "power switch: chip not found, not watching"; exec sleep infinity; }
+  i=$((i + 1)); [ $i -ge 30 ] && { echo "power chip not found: OFF_TIME and screen light left alone"; exec sleep infinity; }
   sleep 1
 done
 
-# OFF_TIME = 7000 ms (0x1B58), both bytes in one write as the chip expects.
-# Linux needs about 2 s here (the card is synced and the wallet stopped
-# first), so 7 s leaves room without a long wait on a finished screen.
+# OFF_TIME = 7000 ms (0x1B58), both bytes in one write as the chip expects:
+# room for powerfail-suo's read-only remount before the power goes.
 OFF_MS=7000
 i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x58 0x1b 2>/dev/null \
   && echo "power switch: 7 s to shut down after switching off"
@@ -63,23 +56,9 @@ light() {
 }
 light_now=1
 
-seen_on=0 off=0
+# screen sleep: follow the signer's flag (the battery reader runs alongside)
 while :; do
   if [ -e /run/czwallet/screen-off ]; then want=0; else want=1; fi
   if [ "$want" != "$light_now" ]; then light "$want"; light_now=$want; fi
-  s=$(get 0xb9)
-  if [ -n "$s" ]; then
-    if [ $((s & 1)) = 1 ]; then seen_on=1; off=0
-    elif [ $seen_on = 1 ]; then off=$((off + 1))
-    fi
-  fi
-  if [ $off -ge 3 ]; then
-    echo "power switch: off, shutting down"
-    sync                                    # whatever happens next, the card is written
-    # The screens come from czwallet-goodbye.service and the shutdown hook,
-    # however the shutdown starts (M5Stack's powerfail-suo driver usually
-    # starts it first); this watcher is the fallback.
-    exec systemctl poweroff
-  fi
   sleep 0.5
 done

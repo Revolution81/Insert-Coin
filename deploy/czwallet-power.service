@@ -1,8 +1,7 @@
 [Unit]
-Description=Insert Coin: shut down cleanly when the power switch goes off
-# See /usr/local/sbin/cz-power. M5Stack's launcher does this on their OS;
-# the wallet image switches the launcher off.
-After=czwallet-ioe-ready.service
+Description=Insert Coin: power helper (battery gauge, screen light, switch-off timing)
+# See /usr/local/sbin/cz-power. Switching off itself is M5Stack's
+# powerfail-suo driver's job.
 
 [Service]
 ExecStart=/usr/local/sbin/cz-power

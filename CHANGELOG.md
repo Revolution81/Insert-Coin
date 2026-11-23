@@ -52,11 +52,10 @@ From the second session on the device:
   there, the sounds are made at about a quarter level (CZ_SOUND_LEVEL).
 - Typing "fi" no longer leaves a gap before the cursor (the text was drawn
   with ligatures on the device, so "fi" became one narrower glyph).
-- **Power switch shuts down cleanly**, in about 7 s, with a SHUTTING
-  DOWN screen: switching off used to cut the power 2 s later with no warning
-  to Linux. Now the card is synced at once, the wallet and signer stop,
-  Sir Signer shows SHUTTING DOWN, then ALL DONE, and Linux shuts down properly
-  first (services get 4 s each to stop instead of 90).
+- **Power switch**: M5Stack's own driver (powerfail-suo, in their November
+  OS) makes the card read-only half a second after the switch moves, then
+  the power is cut: nothing is left half-written. The wallet's own
+  shutdown screen and watcher are gone; the screen simply goes dark.
 - **Volume keys**: Fn+D louder, Fn+S quieter, Fn+A sound off/on, with a
   volume bar in the middle of the screen; saved. The menu boop is now
   pitched for the Cardputer's little speaker (it played a note too low
@@ -78,11 +77,6 @@ From the second session on the device:
   one string, preferring the one the wallet knows.
 - The keyboard reader is whole again (a test build broke it and the
   screen stayed blank); a test now checks it.
-- **Sir Signer's shutdown screen is back** on M5Stack's November OS: its own
-  power-switch driver (powerfail-suo) starts the shutdown before our switch
-  watcher sees it, so the screen is now part of the shutdown itself:
-  SHUTTING DOWN as the signer stops (czwallet-goodbye.service), ALL DONE
-  from the last shutdown hook.
 - **Screen sleep turns the light off for real**: brightness 0 disables the
   backlight PWM, and the M5IOE1 then hands the pin (line 9) back to its
   GPIO setting, which was never set low, so the screen stayed lit. The
@@ -101,8 +95,6 @@ From the second session on the device:
   the logo.
   The signer then switches the panel on itself (unblank and mode set):
   on the new OS the screen otherwise stayed black.
-- Test cards record each power-switch shutdown in
-  insert-coin-shutdown.txt, to see what the goodbye screen did.
 - **No clock on screen**: showing the right time needs the time zone, and
   finding that out automatically means telling a server where you are.
   The sync line and HISTORY say how long ago instead (SYNCED 5 MIN AGO,

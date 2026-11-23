@@ -145,12 +145,6 @@ def test_word_entry_waits_longer_before_cancelling():
     assert WordEntryScreen.idle_s >= 600
 
 
-def test_power_off_countdown_draws():
-    from ui import goodbye
-    a, c = goodbye.draw(), goodbye.draw(done=True)
-    assert a.size == (320, 170) and a.tobytes() != c.tobytes()
-
-
 def test_signer_may_write_the_backlight():
     """ProtectKernelTunables makes /sys read-only; screen sleep needs the
     backlight's brightness file writable (it never slept without it)."""
@@ -231,14 +225,6 @@ def test_mute_key_name_is_a_string():
     assert pick_name(("KEY_MIN_INTERESTING", "KEY_MUTE")) == "KEY_MUTE"
     assert pick_name(["KEY_A"]) == "KEY_A" and pick_name("KEY_B") == "KEY_B"
     from core.screen_link import ScreenClient  # noqa: F401  (send_key takes any name)
-
-
-def test_goodbye_one_frame_modes(tmp_path, monkeypatch):
-    from ui import goodbye, display
-    monkeypatch.setattr(display, "_find_fb", lambda: None)
-    monkeypatch.chdir(tmp_path)
-    assert goodbye.main(["x", "--shutting"]) == 0
-    assert goodbye.main(["x", "--done"]) == 0
 
 
 def test_keyboard_reader_is_whole():

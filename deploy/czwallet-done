@@ -1,9 +1,0 @@
-#!/bin/sh
-# systemd-shutdown hook: runs at the very end of a poweroff or reboot, with
-# everything stopped and the disks read-only. Puts Sir Signer's ALL DONE on
-# the screen (ui/goodbye.py). Nothing is written anywhere.
-case "$1" in poweroff|reboot|halt) ;; *) exit 0 ;; esac
-/usr/local/sbin/cz-light on >/dev/null 2>&1 || true      # in case the screen slept
-cd /opt/czwallet 2>/dev/null || exit 0
-PYTHONDONTWRITEBYTECODE=1 /opt/czwallet-venv/bin/python -m ui.goodbye --done >/dev/null 2>&1 || true
-exit 0

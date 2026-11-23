@@ -249,9 +249,11 @@ systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 systemctl enable czwallet-bootlog 2>/dev/null || true
 # M5's launcher (off here) normally ends the keyboard lights' boot walk and
 # owns the screen; these two do just those parts
-systemctl enable czwallet-ioe-ready czwallet-console-off czwallet-power czwallet-goodbye
-install -d /usr/lib/systemd/system-shutdown
-install -o root -g root -m 755 "$SRC/deploy/czwallet-done" /usr/lib/systemd/system-shutdown/czwallet-done
+systemctl enable czwallet-ioe-ready czwallet-console-off czwallet-power
+# switching off is M5Stack's powerfail-suo driver's job (card read-only in
+# 0.5 s); the shutdown screens of some 0.8.24 test builds are gone
+systemctl disable czwallet-goodbye 2>/dev/null || true
+rm -f /etc/systemd/system/czwallet-goodbye.service /usr/lib/systemd/system-shutdown/czwallet-done
 # Shutting down from the power switch has 10 s before the power is cut:
 # no service gets the default 90 s to stop (the card is synced first anyway)
 mkdir -p /etc/systemd/system.conf.d
