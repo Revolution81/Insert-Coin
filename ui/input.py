@@ -92,6 +92,7 @@ VOLUME_KEYS = {"KEY_VOLUMEUP": "+", "KEY_VOLUMEDOWN": "-", "KEY_MUTE": "mute"}
 FN_VOLUME = {"KEY_D": "+", "KEY_S": "-", "KEY_A": "mute"}
 # What the Cardputer Zero's driver sends for Fn itself (and alike codes)
 FN_DRIVER_KEYS = {"KEY_DVD"}
+KNOWN_NAMES = {"KEY_MUTE", "KEY_VOLUMEUP", "KEY_VOLUMEDOWN"}
 FN_ARM_S = 3.0
 
 LETTERS = {f"KEY_{c}": c.lower() for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
@@ -395,7 +396,21 @@ class KeyboardDevice:
             return CHR + self.symbols[code]
         ecodes = self._evdev.ecodes
         name = ecodes.KEY.get(code) or ecodes.BTN.get(code) or f"KEY_{code}"
-        return name[0] if isinstance(name, list) else name   # some codes have aliases
+        return pick_name(name)
+
+
+def pick_name(name) -> str:
+    """One name for a key code. Some codes have aliases, and python-evdev
+    gives those as a list or a tuple: 113 is ("KEY_MIN_INTERESTING",
+    "KEY_MUTE"). Taking only lists let that tuple through, and Fn+A (mute)
+    crashed the signer. Prefer a name the wallet knows, else the last."""
+    if isinstance(name, (list, tuple)):
+        names = [str(n) for n in name]
+        for n in names:
+            if n in VOLUME_KEYS or n in KNOWN_NAMES:
+                return n
+        return names[-1] if names else "KEY_UNKNOWN"
+    return str(name)
 
     def poll(self, timeout: float) -> list[tuple[str, int]]:
         """Wait up to `timeout` seconds; return [(key_name, value), ...].

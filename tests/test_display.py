@@ -167,8 +167,9 @@ def test_service_shell_lines_are_quoted_right():
     import shlex
     for unit in (Path(__file__).resolve().parents[1] / "deploy").glob("*.service"):
         for line in unit.read_text().splitlines():
-            if line.startswith("ExecStart=") and " -c '" in line:
-                args = shlex.split(line[len("ExecStart="):])
+            key = line.split("=", 1)[0]
+            if key in ("ExecStart", "ExecStop", "ExecStartPre") and " -c '" in line:
+                args = shlex.split(line[len(key) + 1:])
                 assert len(args) == 3, f"{unit.name}: {len(args)} arguments"
 
 
@@ -220,3 +221,21 @@ def test_light_switch_structs_match_the_kernel():
     loader.exec_module(l)
     assert ctypes.sizeof(l.LineRequest) == 592 and l.GET_LINE == 0xC250B407
     assert ctypes.sizeof(l.ChipInfo) == 68 and l.GET_CHIPINFO == 0x8044B401
+
+
+
+def test_mute_key_name_is_a_string():
+    """evdev names code 113 ("KEY_MIN_INTERESTING", "KEY_MUTE") as a tuple:
+    taking that as-is crashed the signer on Fn+A."""
+    from ui.input import pick_name
+    assert pick_name(("KEY_MIN_INTERESTING", "KEY_MUTE")) == "KEY_MUTE"
+    assert pick_name(["KEY_A"]) == "KEY_A" and pick_name("KEY_B") == "KEY_B"
+    from core.screen_link import ScreenClient  # noqa: F401  (send_key takes any name)
+
+
+def test_goodbye_one_frame_modes(tmp_path, monkeypatch):
+    from ui import goodbye, display
+    monkeypatch.setattr(display, "_find_fb", lambda: None)
+    monkeypatch.chdir(tmp_path)
+    assert goodbye.main(["x", "--shutting"]) == 0
+    assert goodbye.main(["x", "--done"]) == 0

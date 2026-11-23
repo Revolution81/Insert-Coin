@@ -219,7 +219,8 @@ if [ "$MODE" = app ]; then
   # Nothing starts at boot: the launcher's Insert Coin icon runs a session
   install -m 644 "$SRC/deploy/czwallet-appmode.conf" /etc/systemd/system/czwallet.service.d/appmode.conf
   systemctl daemon-reload || true
-  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet czwallet-ioe-ready czwallet-console-off czwallet-power 2>/dev/null || true
+  systemctl disable tor czwallet-vault czsigner cznet czscan czprint czwallet czwallet-ioe-ready czwallet-console-off czwallet-power czwallet-goodbye 2>/dev/null || true
+  rm -f /usr/lib/systemd/system-shutdown/czwallet-done
   install -o root -g root -m 755 "$SRC/deploy/cz-session" /usr/local/sbin/cz-session
   install -o root -g root -m 755 "$SRC/deploy/insert-coin" /usr/local/bin/insert-coin
   install -d /usr/share/APPLaunch/applications /usr/share/APPLaunch/share/images
@@ -248,7 +249,9 @@ systemctl enable tor czwallet-vault czsigner cznet czscan czprint czwallet
 systemctl enable czwallet-bootlog 2>/dev/null || true
 # M5's launcher (off here) normally ends the keyboard lights' boot walk and
 # owns the screen; these two do just those parts
-systemctl enable czwallet-ioe-ready czwallet-console-off czwallet-power
+systemctl enable czwallet-ioe-ready czwallet-console-off czwallet-power czwallet-goodbye
+install -d /usr/lib/systemd/system-shutdown
+install -o root -g root -m 755 "$SRC/deploy/czwallet-done" /usr/lib/systemd/system-shutdown/czwallet-done
 # Shutting down from the power switch has 10 s before the power is cut:
 # no service gets the default 90 s to stop (the card is synced first anyway)
 mkdir -p /etc/systemd/system.conf.d

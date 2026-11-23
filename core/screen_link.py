@@ -109,7 +109,7 @@ class ScreenServer:
                 self._conn = None
 
     def send_key(self, name: str, value: int):
-        raw = name.encode()[:255]
+        raw = str(name).encode()[:255]
         self._write(b"K" + bytes([len(raw)]) + raw + bytes([value & 0xFF]))
 
     def send_mode(self, secure: bool):

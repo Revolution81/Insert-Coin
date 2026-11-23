@@ -72,6 +72,15 @@ From the second session on the device:
   own state of charge, voltage and current every 2 s for the wallet.
 - Test cards (insert-coin-debug.txt) log every key pressed in menus and
   save the boot log every minute for 30 minutes.
+- **Fn+A (mute) no longer crashes the wallet**: python-evdev names that key
+  code with a tuple of aliases ("KEY_MIN_INTERESTING", "KEY_MUTE"), which
+  went to the app link as-is and crashed the signer. Names are now always
+  one string, preferring the one the wallet knows.
+- **Sir Signer's shutdown screen is back** on M5Stack's November OS: its own
+  power-switch driver (powerfail-suo) starts the shutdown before our switch
+  watcher sees it, so the screen is now part of the shutdown itself:
+  SHUTTING DOWN as the signer stops (czwallet-goodbye.service), ALL DONE
+  from the last shutdown hook.
 - **Screen sleep turns the light off for real**: brightness 0 left the
   Cardputer Zero's screen lit. The light's on/off switch is line 9 of the
   M5IOE1 GPIO chip (as M5Stack's launcher has it); the signer raises a flag

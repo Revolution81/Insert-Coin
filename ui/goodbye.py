@@ -40,6 +40,14 @@ def draw(done: bool = False) -> Image.Image:
 
 def main(argv: list[str]) -> int:
     from .display import Display
+    if len(argv) > 1 and argv[1] in ("--shutting", "--done"):
+        # one frame and out: from czwallet-goodbye.service (SHUTTING DOWN,
+        # as the signer stops) and the last shutdown hook (ALL DONE)
+        disp = Display("/run/czwallet-goodbye.png")
+        done = argv[1] == "--done"
+        disp.show(draw(done=done))
+        print(f"goodbye: {'ALL DONE' if done else 'SHUTTING DOWN'} shown on {disp.fb}", flush=True)
+        return 0
     deadline = float(argv[1]) if len(argv) > 1 else time.time() + 8
     disp = Display("/run/czwallet-goodbye.png")
     stop = {"now": False}
