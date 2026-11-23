@@ -15,7 +15,8 @@
   <a href="docs/AUDIT.md">Security review</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="LICENSE">License</a> ·
-  <a href="docs/HARDWARE_TEST.md">Hardware test plan</a>
+  <a href="docs/HARDWARE_TEST.md">Hardware test plan</a> ·
+  <a href="#donate">Donate</a>
 </p>
 
 > [!WARNING]
@@ -238,6 +239,20 @@ tests/                 python3 -m pytest tests
   Treat a lost card as exposed to the offline attack above.
 - Keep real savings on the savings edition, in Vault mode, or in a multisig
   where this device is one key. The spending edition is for spending money.
+
+## Donate
+
+Insert Coin is free and made by one person. If it's useful to you, a
+donation helps pay for the work, test devices and an outside security audit.
+Bitcoin only, on-chain:
+
+<p>
+  <img src="site/img/donate.svg" width="160" alt="QR code of the donation address">
+</p>
+
+```
+bc1qca69hxsnkwtqn7j9wmjeyg5tutwx38rdwfzx8k
+```
 
 ## License
 
