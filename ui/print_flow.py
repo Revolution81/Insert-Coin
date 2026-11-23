@@ -85,8 +85,10 @@ def check(app, ctl, address, host, port, path):
     def got(app, info):
         where = f"{info['host']}:{info['port']}" if info["port"] != 631 else info["host"]
         if not info.get("format"):
-            app.push(MessageScreen("CAN'T PRINT", [info["model"], "takes neither JPEG nor PDF",
-                                                   "pages."], border="red"))
+            app.push(MessageScreen("CAN'T PRINT", [info["model"], "takes none of the page",
+                                                   "formats driverless printers",
+                                                   "use (JPEG, PDF, PWG or Apple",
+                                                   "raster)."], border="red"))
             return
         if info.get("changed"):
             app.push(ConfirmScreen("CERTIFICATE CHANGED", [

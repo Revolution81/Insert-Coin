@@ -12,7 +12,7 @@ from core import share
 from . import theme as t
 from .input import Kind
 from .qrscreens import AnimatedQRScreen
-from .widgets import MenuScreen, MessageScreen, TextInputScreen
+from .widgets import ConfirmScreen, MenuScreen, MessageScreen, TextInputScreen
 
 MINUTES = (5, 10, 15, 30)
 
@@ -33,12 +33,19 @@ def share_menu(app):
                 "and go Online, then come back."]))
             return
         if opts["paper"] and s.share_pass_hash is None:
-            # paper wallets are private keys: never behind a password everyone knows
-            app.push(MessageScreen("SET A PASSWORD", [
-                "Paper wallets hold private keys.",
-                "Set your own PASSWORD before",
-                "sharing them (not \"bitcoin\")."], border="red"))
+            # paper wallets are private keys: strongly suggest a password of
+            # your own (the default is printed in the booklet), but it's your call
+            app.push(ConfirmScreen("CHANGE PASSWORD?", [
+                "Paper wallets hold private keys,",
+                "and the password is still the",
+                f"default ({share.DEFAULT_PASS}). Anyone on your",
+                "Wi-Fi who knows it could take",
+                "them. Better: set your own",
+                "PASSWORD first."], go, danger=True, yes="SHARE ANYWAY", no="BACK"))
             return
+        go(app)
+
+    def go(app):
         if opts["paper"]:
             from .flow import move_paper
             move_paper()                # any the last MAKE NEW couldn't move
@@ -138,6 +145,14 @@ class SharingScreen(AnimatedQRScreen):
             app.pop()
             app.push(MessageScreen("SHARING ENDED", ["Time's up: the page is closed."]))
             return t.new_canvas()[0]
+        if st is None and not getattr(self, "_seen", False) and self.ctl is not None:
+            started = getattr(self, "_started", None) or now
+            self._started = started
+            if now - started > 30:                          # never came up
+                self.ctl.stop()
+                self.ctl = None
+                self.error = "the sharing service didn't start"
+                return self.render(app, frame)
         if st:
             self._seen = True
             if st["url"] != self._url:

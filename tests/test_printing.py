@@ -145,10 +145,10 @@ def test_pdf_only_printer_gets_pdf_and_no_format_is_refused(wallet_dir, tmp_path
         assert p.jobs[0]["format"] == "application/pdf" and p.jobs[0]["data"].startswith(b"%PDF")
     finally:
         p.close()
-    q = FakePrinter(formats=("image/pwg-raster",))
+    q = FakePrinter(formats=("image/pwg-raster", "text/plain"), pwg_types=("black_1",))
     try:
         svc.trust("127.0.0.1", q.port, svc.check("127.0.0.1", q.port)["fingerprint"])
-        with pytest.raises(printing.PrintError, match="neither JPEG nor PDF"):
+        with pytest.raises(printing.PrintError, match="none of the page formats"):
             svc.print(w["address"], "127.0.0.1", q.port)
     finally:
         q.close()

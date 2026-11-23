@@ -46,8 +46,11 @@ def _cert(dirpath: str) -> tuple[str, str]:
 
 class FakePrinter:
     def __init__(self, port: int = 0, formats=("image/jpeg", "application/pdf"),
-                 tls: bool = True, out_dir: str | None = None, chunked: bool = False):
+                 tls: bool = True, out_dir: str | None = None, chunked: bool = False,
+                 pwg_res=(300, 600), pwg_types=("black_1", "sgray_8", "srgb_8"),
+                 urf=("V1.4", "W8", "SRGB24", "RS300-600", "CP1", "DM1")):
         self.formats, self.tls, self.out_dir, self.chunked = list(formats), tls, out_dir, chunked
+        self.pwg_res, self.pwg_types, self.urf = list(pwg_res), list(pwg_types), list(urf)
         self.jobs: list[dict] = []
         self.requests = 0
         self._dir = tempfile.mkdtemp()
@@ -131,6 +134,16 @@ class FakePrinter:
             out += ipp._attr(ipp.ENUM, "printer-state", 3)
             for i, f in enumerate(self.formats):
                 out += ipp._attr(ipp.MIME, "document-format-supported" if i == 0 else "", f)
+            if "image/pwg-raster" in self.formats:
+                for i, r in enumerate(self.pwg_res):
+                    out += ipp._attr(0x32, "pwg-raster-document-resolution-supported"
+                                     if i == 0 else "", struct.pack(">iib", r, r, 3))
+                for i, t in enumerate(self.pwg_types):
+                    out += ipp._attr(ipp.KEYWORD, "pwg-raster-document-type-supported"
+                                     if i == 0 else "", t)
+            if "image/urf" in self.formats:
+                for i, t in enumerate(self.urf):
+                    out += ipp._attr(ipp.KEYWORD, "urf-supported" if i == 0 else "", t)
             return out + bytes([ipp.END])
         if op == ipp.PRINT_JOB:
             fmt = (attrs.get("document-format") or ["?"])[0]
@@ -141,7 +154,8 @@ class FakePrinter:
             self.jobs.append(job)
             if self.out_dir:
                 os.makedirs(self.out_dir, exist_ok=True)
-                ext = ".jpg" if fmt == "image/jpeg" else ".pdf"
+                ext = {"image/jpeg": ".jpg", "application/pdf": ".pdf",
+                       "image/pwg-raster": ".pwg", "image/urf": ".urf"}.get(fmt, ".bin")
                 with open(os.path.join(self.out_dir, f"job{len(self.jobs)}{ext}"), "wb") as f:
                     f.write(doc)
             return head + bytes([ipp.JOB]) + ipp._attr(ipp.INTEGER, "job-id", len(self.jobs)) + \

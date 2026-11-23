@@ -118,11 +118,19 @@ class PrintService:
         info = ipp.get_attributes(host, port, path, pin=pin)   # same certificate as trusted
         fmt = info["format"]
         if not fmt:
-            raise PrintError("this printer takes neither JPEG nor PDF pages")
+            raise PrintError("this printer takes none of the page formats a "
+                             "driverless printer should (JPEG, PDF, PWG or Apple raster)")
+        rst = info.get("raster") or {}
 
         def page() -> bytes:                                    # read only once it checks out
             w = self._wallet(address)
-            return paperlib.jpeg(w) if fmt == "image/jpeg" else paperlib.pdf(w)
+            if fmt == "image/jpeg":
+                return paperlib.jpeg(w)
+            if fmt == "application/pdf":
+                return paperlib.pdf(w)
+            from . import raster
+            make = raster.pwg if fmt == raster.PWG else raster.urf
+            return make(paperlib.page(w), rst["dpi"], rst["color"])
         job = ipp.print_job(host, port, path, pin, page, fmt,
                             job_name=f"Paper wallet {address[:10]}")
         return {"job": job, "model": info["model"]}

@@ -31,7 +31,12 @@ def main() -> int:
             st = {"url": srv.url(), "fingerprint": srv.fingerprint, "ends": ends,
                   "downloads": srv.downloads}
             tmp = os.path.join(RUN, "status.json.tmp")
-            with open(tmp, "w") as f:
+            # readable by the app (the address, fingerprint and time left,
+            # nothing secret): this service's UMask=0077 would make it 0600
+            # and the app's screen would wait on "Starting..." forever
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+            os.fchmod(fd, 0o644)
+            with os.fdopen(fd, "w") as f:
                 json.dump(st, f)
             os.replace(tmp, os.path.join(RUN, "status.json"))
             time.sleep(1)

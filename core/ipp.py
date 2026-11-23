@@ -34,7 +34,9 @@ INTEGER, BOOLEAN, ENUM = 0x21, 0x22, 0x23
 TEXT, NAME, KEYWORD, URI, CHARSET, LANGUAGE, MIME = 0x41, 0x42, 0x44, 0x45, 0x47, 0x48, 0x49
 
 MAX_REPLY = 2 * 1024 * 1024
-FORMATS = ("image/jpeg", "application/pdf")   # what we can send, best first
+# what we can send, best first: JPEG and PDF if the printer takes them, else
+# the raster formats every driverless printer must take (core/raster.py)
+FORMATS = ("image/jpeg", "application/pdf", "image/pwg-raster", "image/urf")
 STATES = {3: "IDLE", 4: "PRINTING", 5: "STOPPED"}
 
 
@@ -281,6 +283,9 @@ def get_attributes(host: str, port: int = 631, path: str = "ipp/print",
         (KEYWORD, "requested-attributes", "printer-name"),
         (KEYWORD, "requested-attributes", "printer-state"),
         (KEYWORD, "requested-attributes", "document-format-supported"),
+        (KEYWORD, "requested-attributes", "pwg-raster-document-resolution-supported"),
+        (KEYWORD, "requested-attributes", "pwg-raster-document-type-supported"),
+        (KEYWORD, "requested-attributes", "urf-supported"),
     ])
     reply, fp = exchange(host, port, path, req, pin=pin, timeout=10)
     status, attrs = decode_response(reply)
@@ -289,15 +294,28 @@ def get_attributes(host: str, port: int = 631, path: str = "ipp/print",
     formats = [f for f in attrs.get("document-format-supported", []) if isinstance(f, str)]
     model = (attrs.get("printer-make-and-model") or attrs.get("printer-name") or ["Printer"])[0]
     state = (attrs.get("printer-state") or [0])[0]
-    return {"model": str(model)[:40], "formats": formats, "format": choose_format(formats),
+    fmt, raster = choose_format(formats, attrs)
+    return {"model": str(model)[:40], "formats": formats, "format": fmt, "raster": raster,
             "state": STATES.get(state, "?"), "fingerprint": fp}
 
 
-def choose_format(supported: list[str]) -> str | None:
+def choose_format(supported: list[str], attrs: dict | None = None):
+    """(the format to send, and for a raster format its dpi and colour)."""
+    from . import raster
+    attrs = attrs or {}
     for f in FORMATS:
-        if f in supported:
-            return f
-    return None
+        if f not in supported:
+            continue
+        if f == raster.PWG:
+            pick = raster.pwg_choice(attrs.get("pwg-raster-document-resolution-supported", []),
+                                     attrs.get("pwg-raster-document-type-supported", []))
+        elif f == raster.URF:
+            pick = raster.urf_choice(attrs.get("urf-supported", []))
+        else:
+            return f, None
+        if pick:
+            return f, pick
+    return None, None
 
 
 def print_job(host: str, port: int, path: str, pin: str, document, fmt: str,

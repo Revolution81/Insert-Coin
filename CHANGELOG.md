@@ -5,6 +5,19 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 ## 0.8.24: steadier outbox screen
 
 From the second session on the device:
+- **Prints on any driverless printer.** Printers that take neither JPEG nor
+  PDF over IPP (a Canon PIXMA TS6500 in testing) now get the page as PWG
+  Raster (required by IPP Everywhere) or Apple Raster (required by
+  AirPrint), packed by the wallet itself at the printer's own resolution.
+  JPEG and PDF are still used when the printer takes them.
+- **Fixed: SHARE FILES stayed on "Starting...".** The sharing service wrote
+  its status file readable only by itself, so the app's screen never saw
+  the page come up. It's readable now (it holds the address, fingerprint
+  and time left, nothing secret), and if the service hasn't come up after
+  30 seconds the screen says so instead of waiting forever.
+- Sharing paper wallets with the default password is now a warning (CHANGE
+  PASSWORD?, with BACK picked) instead of a refusal: SHARE ANYWAY is your
+  call.
 - **Fixed: PRINT said no paper wallets had been made, and SHARE FILES
   couldn't start.** The app starts its root helpers (cz-backup, cz-share,
   cz-update) with sudo, but sudo keeps the app's sandbox, a read-only view

@@ -129,8 +129,8 @@ def test_f8_unusual_sighash_refused_up_front(rig):
         signer.describe(_edit(built["psbt"], none))
 
 
-# ----------------------------------- F5 paper wallets need your own password
-def test_f5_paper_wallets_never_shared_behind_the_default_password(app, monkeypatch):  # noqa: F811
+# ------------------- F5 paper wallets: the default password is warned about
+def test_f5_paper_wallets_warn_about_the_default_password(app, monkeypatch):  # noqa: F811
     from core import share
     from ui.flow import settings_screen
     from ui.share_flow import SharingScreen
@@ -149,9 +149,20 @@ def test_f5_paper_wallets_never_shared_behind_the_default_password(app, monkeypa
     enter(app)                                                # INCLUDE
     menu.sel = 0
     enter(app)
-    assert app.visible.title == "SET A PASSWORD"
-    app.settings.share_pass_hash = share.hash_password("my-own-pass")
+    # the default password is warned about, with BACK picked: no sharing yet
+    assert app.visible.title == "CHANGE PASSWORD?" and app.visible.sel == 1
+    enter(app)
+    assert app.visible is menu
+    # SHARE ANYWAY is the owner's call
+    enter(app)
+    app.visible.sel = 0
+    enter(app)
+    assert isinstance(app.visible, SharingScreen)
+    app.visible.on_hide(app) if hasattr(app.visible, "on_hide") else None
     app.pop()
+    # with a password of your own there's no question
+    app.settings.share_pass_hash = share.hash_password("my-own-pass")
+    menu.sel = 0
     enter(app)
     assert isinstance(app.visible, SharingScreen)
     app.visible.on_hide(app) if hasattr(app.visible, "on_hide") else None
@@ -309,3 +320,46 @@ def test_paper_move_reports_failure(monkeypatch):
     assert flow.move_paper() is False
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0))
     assert flow.move_paper() is True
+
+
+def test_share_status_is_readable_by_the_app(tmp_path, monkeypatch):
+    """czshare runs with UMask=0077: its status file must still be 0644,
+    or the app (another user) never sees the page come up."""
+    import json
+    import os
+    from core import share
+    monkeypatch.setattr(share, "RUN_DIR", str(tmp_path))
+    (tmp_path / "config.json").write_text(json.dumps(
+        {"password_hash": share.hash_password("x"), "timeout_s": 60}))
+    import tools.share_service as svc
+    monkeypatch.setattr(svc, "RUN", str(tmp_path))
+
+    class Srv:
+        url = lambda self: "https://10.0.0.2:8443"       # noqa: E731
+        fingerprint, downloads = "ab" * 32, 0
+        n = 0
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def seconds_left(self):
+            Srv.n += 1
+            return 1 if Srv.n < 2 else 0
+    monkeypatch.setattr(share, "ShareServer", lambda *a, **k: Srv())
+    monkeypatch.setattr(share, "folders", lambda: {})
+    seen = []
+    real_replace = os.replace
+
+    def spy(a, b):
+        seen.append(os.stat(a).st_mode & 0o777)
+        real_replace(a, b)
+    monkeypatch.setattr(os, "replace", spy)
+    old = os.umask(0o077)
+    try:
+        svc.main()
+    finally:
+        os.umask(old)
+    assert seen == [0o644]
