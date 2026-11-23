@@ -186,7 +186,7 @@ Typing: every key types, **fn + F Z X C** moves the cursor, **OK** done, **HOME*
 
 ```
 pip install -r requirements.txt pytest
-python3 -m pytest tests                     # 456 tests, offline
+python3 -m pytest tests                     # 458 tests, offline
 python3 tools/fuzz.py                       # junk input at every parser
 python3 tools/monkey.py 10 1500             # random key-mashing robot
 python3 tools/leakcheck.py                  # long-running memory loops

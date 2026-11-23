@@ -239,3 +239,34 @@ def test_goodbye_one_frame_modes(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert goodbye.main(["x", "--shutting"]) == 0
     assert goodbye.main(["x", "--done"]) == 0
+
+
+def test_keyboard_reader_is_whole():
+    """The signer reads the real keyboard with KeyboardDevice.poll. A helper
+    once landed in the middle of the class and swallowed poll() and close():
+    the signer crashed at its first read and the screen stayed blank. The
+    simulated keyboards in the other tests never call these."""
+    import inspect
+    from ui.input import KeyboardDevice
+    for name in ("poll", "name_of", "close"):
+        assert inspect.isfunction(getattr(KeyboardDevice, name, None)), name
+
+
+def test_no_method_stranded_outside_its_class():
+    """A def taking self straight inside a plain function (not a class) is a
+    method an edit cut off from its class: that blanked the screen once."""
+    import ast
+    import glob
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    files = [str(root / "app.py")] + glob.glob(str(root / "core/**/*.py"), recursive=True) \
+        + glob.glob(str(root / "ui/**/*.py"), recursive=True)
+    bad = []
+    for f in files:
+        for node in ast.parse(Path(f).read_text()).body:
+            if isinstance(node, ast.FunctionDef):
+                for stmt in node.body:
+                    if (isinstance(stmt, ast.FunctionDef) and stmt.args.args
+                            and stmt.args.args[0].arg == "self"):
+                        bad.append(f"{f}: {node.name}.{stmt.name}")
+    assert not bad, bad

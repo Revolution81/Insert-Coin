@@ -3,9 +3,13 @@
 
   cz-light on | off
 
-The light's on/off switch is line 9 of the M5IOE1 I/O expander's GPIO chip
-(the line M5Stack's launcher calls BACKLIGHT); PWM brightness 0 alone leaves
-it lit. Uses the kernel's GPIO character device (v2 uAPI) directly: request
+The light is pin 9 of the M5IOE1 I/O expander (PA7, "backlight, TIM1 CH4":
+see the chip's firmware docs, github.com/prokrypt/CardputerZero-Open-IOE1).
+The PWM drives it while enabled; brightness 0 disables the PWM and then the
+pin goes "back to the host's GPIO setting", which nothing had set low, so
+the light stayed on. Setting line 9 low then turns it off; brightness > 0
+re-enables the PWM, which takes the pin back. M5Stack's launcher calls this
+line BACKLIGHT too. Line 11 is the LCD's reset and is never touched. Uses the kernel's GPIO character device (v2 uAPI) directly: request
 the line as an output with the value, then release it, which keeps the value
 (the same as M5Stack's launcher does). Nothing else is touched.
 """

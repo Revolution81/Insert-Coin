@@ -76,15 +76,18 @@ From the second session on the device:
   code with a tuple of aliases ("KEY_MIN_INTERESTING", "KEY_MUTE"), which
   went to the app link as-is and crashed the signer. Names are now always
   one string, preferring the one the wallet knows.
+- The keyboard reader is whole again (a test build broke it and the
+  screen stayed blank); a test now checks it.
 - **Sir Signer's shutdown screen is back** on M5Stack's November OS: its own
   power-switch driver (powerfail-suo) starts the shutdown before our switch
   watcher sees it, so the screen is now part of the shutdown itself:
   SHUTTING DOWN as the signer stops (czwallet-goodbye.service), ALL DONE
   from the last shutdown hook.
-- **Screen sleep turns the light off for real**: brightness 0 left the
-  Cardputer Zero's screen lit. The light's on/off switch is line 9 of the
-  M5IOE1 GPIO chip (as M5Stack's launcher has it); the signer raises a flag
-  and the root power service flips that line (deploy/cz-light).
+- **Screen sleep turns the light off for real**: brightness 0 disables the
+  backlight PWM, and the M5IOE1 then hands the pin (line 9) back to its
+  GPIO setting, which was never set low, so the screen stayed lit. The
+  signer raises a flag and the root power service sets line 9 low
+  (deploy/cz-light); brightness back up gives the pin to the PWM again.
 - **Screen sleep works**: the signer's sandbox made all of /sys
   read-only, so turning the backlight off silently failed and the screen
   never went dark. The backlight's brightness file is now writable for it.

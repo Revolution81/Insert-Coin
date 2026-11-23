@@ -365,6 +365,20 @@ def find_keyboard(ev=None) -> str | None:
     return None
 
 
+def pick_name(name) -> str:
+    """One name for a key code. Some codes have aliases, and python-evdev
+    gives those as a list or a tuple: 113 is ("KEY_MIN_INTERESTING",
+    "KEY_MUTE"). Taking only lists let that tuple through, and Fn+A (mute)
+    crashed the signer. Prefer a name the wallet knows, else the last."""
+    if isinstance(name, (list, tuple)):
+        names = [str(n) for n in name]
+        for n in names:
+            if n in VOLUME_KEYS or n in KNOWN_NAMES:
+                return n
+        return names[-1] if names else "KEY_UNKNOWN"
+    return str(name)
+
+
 class KeyboardDevice:
     """Reads the built-in keyboard through evdev and grabs it exclusively,
     so typed passphrases never also reach a console or another program."""
@@ -398,19 +412,6 @@ class KeyboardDevice:
         name = ecodes.KEY.get(code) or ecodes.BTN.get(code) or f"KEY_{code}"
         return pick_name(name)
 
-
-def pick_name(name) -> str:
-    """One name for a key code. Some codes have aliases, and python-evdev
-    gives those as a list or a tuple: 113 is ("KEY_MIN_INTERESTING",
-    "KEY_MUTE"). Taking only lists let that tuple through, and Fn+A (mute)
-    crashed the signer. Prefer a name the wallet knows, else the last."""
-    if isinstance(name, (list, tuple)):
-        names = [str(n) for n in name]
-        for n in names:
-            if n in VOLUME_KEYS or n in KNOWN_NAMES:
-                return n
-        return names[-1] if names else "KEY_UNKNOWN"
-    return str(name)
 
     def poll(self, timeout: float) -> list[tuple[str, int]]:
         """Wait up to `timeout` seconds; return [(key_name, value), ...].
