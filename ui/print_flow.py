@@ -30,6 +30,11 @@ def print_menu(app):
         return
     ctl = printing.controller()
 
+    def files():
+        from .flow import move_paper
+        move_paper()                    # any the last MAKE NEW couldn't move
+        return ctl.call("files")
+
     def got_files(app, names):
         if not names:
             app.push(MessageScreen("PRINT", ["No paper wallets on this", "device yet:",
@@ -39,7 +44,7 @@ def print_menu(app):
                  for n in names]
         app.push(MenuScreen("PRINT WHICH?", items, info=[
             "Pick the paper wallet to print", "(by its deposit address)."]))
-    app.job("LOOKING...", lambda: ctl.call("files"), got_files, _err(app, "PRINT"))
+    app.job("LOOKING...", files, got_files, _err(app, "PRINT"))
 
 
 def pick_printer(app, ctl, address):

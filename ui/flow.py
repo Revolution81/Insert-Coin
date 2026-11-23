@@ -745,24 +745,45 @@ def share_files(app):
     share_menu(app)
 
 
+def move_paper() -> bool:
+    """Have the root helper move paper wallets the signer wrote into the
+    device's paper folder, where PRINT and SHARE FILES read them. True when
+    it worked (or there's nothing to do here: the simulator, no helper).
+    A failed move loses nothing: the files stay in the signer's folder and
+    the next call tries again."""
+    if os.environ.get("CZ_SIM"):
+        return True
+    import subprocess
+    helper = "/usr/local/sbin/cz-backup"
+    if not os.path.exists(helper):
+        return True
+    try:
+        r = subprocess.run(["sudo", "-n", helper, "paper"], capture_output=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
+
+
 def paper_wallets(app):
     """TOOLS > PAPER WALLETS: MAKE NEW (Sir Signer makes them and writes the
     files; the root helper moves them to the device's paper folder, which
     only the SHARE FILES and PRINT services can read, not the card, not the
     app) and PRINT (to a printer on your Wi-Fi, ui/print_flow.py)."""
     def moved(app):
-        if os.environ.get("CZ_SIM"):
-            return "simdata/signer/paper"
-        import subprocess
-        helper = "/usr/local/sbin/cz-backup"
-        if os.path.exists(helper):
-            subprocess.run(["sudo", "-n", helper, "paper"], capture_output=True, timeout=60)
-        return "this device"
+        ok = move_paper()
+        return ("simdata/signer/paper" if os.environ.get("CZ_SIM") else "this device"), ok
 
     def done(app, result):
         made = (result or {}).get("made", [])
-        where = moved(app)
+        where, ok = moved(app)
         if not made:
+            return
+        if not ok:
+            app.push(MessageScreen("PAPER WALLETS", [
+                f"{len(made)} made, but not yet moved", "to the paper folder, so PRINT",
+                "and SHARE FILES can't see it.", "",
+                "It's safe inside Sir Signer's", "folder; PRINT tries the move",
+                "again. If this keeps happening,", "please report it."], border="red"))
             return
         lines = [f"{len(made)} paper wallet{'s' if len(made) > 1 else ''} saved to",
                  where + ":", ""]

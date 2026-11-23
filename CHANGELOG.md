@@ -5,6 +5,15 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 ## 0.8.24: steadier outbox screen
 
 From the second session on the device:
+- **Fixed: PRINT said no paper wallets had been made.** The app starts its
+  root helpers (cz-backup, cz-update) with sudo, but they ran inside the
+  app's own read-only view of the disk, so moving a new paper wallet into
+  the paper folder failed without a word. The same silently stopped card
+  backups and history exports from reaching the card's PC-readable side,
+  and would have stopped SETUP › UPDATE. The app's service now opens exactly
+  the folders those helpers write (they stay root-only by their own
+  permissions), PRINT and SHARE FILES retry the move first, and a failed
+  move or copy is now shown instead of a "saved" message.
 - **Release-candidate checks**: the full test suite (455 tests) and the
   memory-leak run (random keys on every screen, signing, QR, SHARE FILES,
   printing, Electrum) are clean. Fixed in the review: tapping Fn on its own

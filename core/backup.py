@@ -186,7 +186,9 @@ def _copy_to_card(name: str) -> None:
     helper = "/usr/local/sbin/cz-backup"
     if os.environ.get("CZ_SIM") or not os.path.exists(helper):
         return
-    subprocess.run(["sudo", "-n", helper, name], capture_output=True, timeout=30)
+    r = subprocess.run(["sudo", "-n", helper, name], capture_output=True, timeout=30)
+    if r.returncode != 0:
+        raise RuntimeError("Saved on this device, but it couldn't be copied to the card.")
 
 
 def find(tag: str | None = None) -> list[str]:

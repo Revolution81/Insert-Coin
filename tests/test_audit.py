@@ -233,6 +233,11 @@ def test_f4_share_serves_paper_from_the_private_folder(monkeypatch):
     assert "BindPaths=-/var/lib/czwallet/paper" in svc and "InsertCoin-paper" not in svc
 
 
+# The project's donation address (README and website), checked on the
+# owner's device. The only real address allowed outside the tests.
+DONATION = "bc1qca69hxsnkwtqn7j9wmjeyg5tutwx38rdwfzx8k"
+
+
 def test_no_real_addresses_in_the_app():
     """Example addresses copied from tutorials belong to someone (one well-known
     one holds coins people sent by mistake). Only tests may contain real
@@ -252,7 +257,55 @@ def test_no_real_addresses_in_the_app():
             for m in pat.findall(open(p, encoding="utf-8", errors="replace").read()):
                 try:
                     address_to_scriptpubkey(m)
-                    found.append((os.path.relpath(p, root), m))
+                    if m != DONATION:       # the project's own, on purpose
+                        found.append((os.path.relpath(p, root), m))
                 except Exception:  # noqa: BLE001
                     pass                    # not a valid address: fine
     assert found == []
+
+
+def test_root_helpers_can_write_where_they_must():
+    """The app starts cz-backup and cz-update with sudo, and they run inside
+    the app's ProtectSystem=strict view, where every path is read-only unless
+    the unit opens it. Paper wallets never reached PRINT because of this."""
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    unit = open(os.path.join(root, "deploy", "czwallet.service")).read()
+    opened = []
+    for line in unit.splitlines():
+        if line.startswith("ReadWritePaths="):
+            opened += [p.lstrip("-") for p in line.split("=", 1)[1].split()]
+    from tools import copy_backup as cb
+    from core import update
+    needed = [cb.PAPER_DST, cb.PAPER_SRC, cb.PAPER_OLD, cb.DST, cb.EXPORT_DST,
+              update.RELEASES, os.path.dirname(update.LINK)]
+    for path in needed:
+        assert any(path == o or path.startswith(o.rstrip("/") + "/") for o in opened), path
+    # the card's folders must exist before the app starts, or they stay shut
+    for d in (cb.DST, cb.EXPORT_DST):
+        assert d in unit.split("ExecStartPre=-+/bin/mkdir -p", 1)[1].splitlines()[0]
+    # and only the wallet's own folders on the card, never the boot files
+    assert "/boot/firmware" not in opened and "/boot" not in opened and "/" not in opened
+
+
+def test_a_failed_copy_to_the_card_is_reported(monkeypatch):
+    import subprocess
+    from core import backup, history_export
+    monkeypatch.delenv("CZ_SIM", raising=False)
+    monkeypatch.setattr("os.path.exists", lambda p: True)
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 1))
+    import pytest
+    for mod in (backup, history_export):
+        with pytest.raises(RuntimeError):
+            mod._copy_to_card("x")
+
+
+def test_paper_move_reports_failure(monkeypatch):
+    import subprocess
+    from ui import flow
+    monkeypatch.delenv("CZ_SIM", raising=False)
+    monkeypatch.setattr("os.path.exists", lambda p: True)
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 1))
+    assert flow.move_paper() is False
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0))
+    assert flow.move_paper() is True

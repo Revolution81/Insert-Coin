@@ -39,6 +39,9 @@ def share_menu(app):
                 "Set your own PASSWORD before",
                 "sharing them (not \"bitcoin\")."], border="red"))
             return
+        if opts["paper"]:
+            from .flow import move_paper
+            move_paper()                # any the last MAKE NEW couldn't move
         app.push(SharingScreen(include_paper=opts["paper"]))
 
     def paper(app, step):
