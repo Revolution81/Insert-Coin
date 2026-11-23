@@ -89,8 +89,9 @@ From the second session on the device:
   insert-coin-shutdown.txt, to see what the goodbye screen did.
 - **No clock on screen**: showing the right time needs the time zone, and
   finding that out automatically means telling a server where you are.
-  The sync line says how long ago instead (SYNCED 5 MIN AGO), and
-  transaction dates are in UTC. The CLOCK setting is gone.
+  The sync line and HISTORY say how long ago instead (SYNCED 5 MIN AGO,
+  3D AGO); a transaction's details add its exact time, marked "shown in
+  UTC". The CLOCK setting is gone.
 - The volume keys also work when the keyboard's driver reports Fn as its
   own key code (KEY_DVD), and keys the wallet doesn't use are named in the
   journal (never letters or digits), to see what a keyboard sends.

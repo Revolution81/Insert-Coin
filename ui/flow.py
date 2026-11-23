@@ -673,7 +673,7 @@ def history_screen(app, selected=0):
     for tx in txs:
         label = app.wallet.tx_label(tx.txid)
         status = "PENDING" if not tx.confirmed else (
-            time.strftime("%m/%d", time.gmtime(tx.timestamp)) if tx.timestamp else "OK")
+            t.ago_short(time.time() - tx.timestamp) if tx.timestamp else "OK")
         items.append((fmt_sats(tx.delta, True), lambda app, tx=tx: tx_detail(app, tx),
                       label[:12] if label else status,
                       "cyan" if not tx.confirmed else ("light" if label else "grey")))
@@ -689,12 +689,17 @@ def tx_detail(app, tx):
     w = app.wallet
     tip = w.tip_height
     conf = (f"{tip - tx.height + 1} CONF" if tip else "CONFIRMED") if tx.confirmed else "PENDING"
-    # dates in UTC: no time zone is set (see ui/theme.status_bar)
-    when = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime(tx.timestamp)) if tx.timestamp else ""
+    # How long ago is right anywhere; the exact time is in UTC, said so,
+    # since no time zone is set (see ui/theme.status_bar)
+    ago = t.ago(time.time() - tx.timestamp) if tx.timestamp else "PENDING"
+    exact = (time.strftime("%Y-%m-%d %H:%M", time.gmtime(tx.timestamp)) + " (shown in UTC)"
+             if tx.timestamp else "")
     label = w.tx_label(tx.txid)
     info = [f"{fmt_sats(tx.delta, True)} sats  {conf}",
-            f"{when}" + (f"  FEE {fmt_sats(tx.fee)}" if tx.fee else ""),
+            ago + (f"  FEE {fmt_sats(tx.fee)}" if tx.fee else ""),
             f'"{label}"' if label else "No label"]
+    if exact:
+        info.insert(2, exact)
 
     def reopen(app):
         app.pop()                 # this detail

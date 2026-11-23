@@ -224,3 +224,9 @@ def test_no_clock_and_sync_shown_as_how_long_ago():
     assert t.ago(7200) == "2 HR AGO" and t.ago(86400) == "1 DAY AGO"
     assert t.ago(3 * 86400) == "3 DAYS AGO"
     assert not hasattr(t, "clock_text")
+
+
+def test_history_says_how_long_ago():
+    from ui import theme as t
+    assert t.ago_short(30) == "NOW" and t.ago_short(7200) == "2H AGO"
+    assert t.ago_short(3 * 86400) == "3D AGO" and t.ago_short(15 * 86400) == "2W AGO"

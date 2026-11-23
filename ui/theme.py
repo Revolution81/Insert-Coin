@@ -460,6 +460,16 @@ def ago(seconds: float) -> str:
     return f"{days} DAY{'S' if days > 1 else ''} AGO"
 
 
+def ago_short(seconds: float) -> str:
+    """ago() for a narrow column: NOW, 5M AGO, 3H AGO, 2D AGO, 6W AGO, 1Y AGO."""
+    s = max(0, int(seconds))
+    for size, unit in ((365 * 86400, "Y"), (7 * 86400, "W"), (86400, "D"),
+                       (3600, "H"), (60, "M")):
+        if s >= size:
+            return f"{s // size}{unit} AGO"
+    return "NOW"
+
+
 def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="", online=False,
                typing=None, icons=(), charging=False, own_server=False):
     """typing: None in menu mode, or the translator's indicators dict
