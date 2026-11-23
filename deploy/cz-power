@@ -54,8 +54,19 @@ OFF_MS=7000
 i2ctransfer -f -y $BUS w3@$ADDR 0xb2 0x58 0x1b 2>/dev/null \
   && echo "power switch: 7 s to shut down after switching off"
 
+# The screen's light: brightness 0 leaves it lit, so screen sleep also uses
+# its real on/off switch, line 9 of the M5IOE1's GPIO chip (as M5Stack's
+# launcher does). The signer (which may not touch GPIO) asks by creating
+# /run/czwallet/screen-off; this loop switches the light to match.
+light() {
+  /usr/local/sbin/cz-light "$([ "$1" = 1 ] && echo on || echo off)" 2>&1
+}
+light_now=1
+
 seen_on=0 off=0
 while :; do
+  if [ -e /run/czwallet/screen-off ]; then want=0; else want=1; fi
+  if [ "$want" != "$light_now" ]; then light "$want"; light_now=$want; fi
   s=$(get 0xb9)
   if [ -n "$s" ]; then
     if [ $((s & 1)) = 1 ]; then seen_on=1; off=0

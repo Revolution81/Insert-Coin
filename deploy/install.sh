@@ -164,6 +164,7 @@ chmod 644 /etc/czwallet/release_keys.txt
 echo "== root helpers (radios, updates, card copies, file sharing)"
 install -o root -g root -m 755 "$SRC/deploy/cz-radio" /usr/local/sbin/cz-radio
 install -o root -g root -m 755 "$SRC/deploy/cz-power" /usr/local/sbin/cz-power
+install -o root -g root -m 755 "$SRC/deploy/cz-light" /usr/local/sbin/cz-light
 install -o root -g root -m 755 "$SRC/deploy/cz-update" /usr/local/sbin/cz-update
 install -o root -g root -m 755 "$SRC/deploy/cz-backup" /usr/local/sbin/cz-backup
 install -o root -g root -m 755 "$SRC/deploy/cz-share" /usr/local/sbin/cz-share

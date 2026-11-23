@@ -187,3 +187,36 @@ def test_wake_panel_is_harmless_without_a_panel(tmp_path):
     f.write_bytes(b"\0" * 16)
     assert wake_panel(str(f)) is False
     assert wake_panel(str(tmp_path / "missing")) is False
+
+
+def test_screen_sleep_asks_for_the_light_switch(tmp_path, monkeypatch):
+    """Brightness 0 leaves the Cardputer Zero's light on; sleeping also
+    raises the flag the root power service turns into the real switch."""
+    from ui import display
+    flag = tmp_path / "run" / "screen-off"
+    flag.parent.mkdir()
+    monkeypatch.setattr(display, "SCREEN_OFF_FLAG", str(flag))
+    bl = tmp_path / "bl"
+    bl.mkdir()
+    (bl / "brightness").write_text("75")
+    (bl / "max_brightness").write_text("100")
+    s = display.ScreenSleep(lambda: 120, str(bl), clock=lambda: 0.0)
+    s.sleep()
+    assert flag.exists() and (bl / "brightness").read_text() == "0"
+    s.wake()
+    assert not flag.exists() and (bl / "brightness").read_text() == "75"
+
+
+def test_light_switch_structs_match_the_kernel():
+    """cz-light talks to the GPIO character device: sizes as in linux/gpio.h."""
+    import ctypes
+    import importlib.util
+    from importlib.machinery import SourceFileLoader
+    from pathlib import Path
+    path = str(Path(__file__).resolve().parents[1] / "deploy" / "cz-light")
+    loader = SourceFileLoader("cz_light", path)
+    spec = importlib.util.spec_from_loader("cz_light", loader)
+    l = importlib.util.module_from_spec(spec)
+    loader.exec_module(l)
+    assert ctypes.sizeof(l.LineRequest) == 592 and l.GET_LINE == 0xC250B407
+    assert ctypes.sizeof(l.ChipInfo) == 68 and l.GET_CHIPINFO == 0x8044B401

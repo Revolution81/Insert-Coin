@@ -1,0 +1,106 @@
+#!/usr/bin/python3
+"""Insert Coin: switch the Cardputer Zero's screen light on or off (root).
+
+  cz-light on | off
+
+The light's on/off switch is line 9 of the M5IOE1 I/O expander's GPIO chip
+(the line M5Stack's launcher calls BACKLIGHT); PWM brightness 0 alone leaves
+it lit. Uses the kernel's GPIO character device (v2 uAPI) directly: request
+the line as an output with the value, then release it, which keeps the value
+(the same as M5Stack's launcher does). Nothing else is touched.
+"""
+import ctypes
+import fcntl
+import glob
+import os
+import sys
+
+LINE = 9
+LABEL = "m5ioe1"
+
+
+class Attr(ctypes.Structure):
+    _fields_ = [("id", ctypes.c_uint32), ("padding", ctypes.c_uint32), ("value", ctypes.c_uint64)]
+
+
+class ConfigAttr(ctypes.Structure):
+    _fields_ = [("attr", Attr), ("mask", ctypes.c_uint64)]
+
+
+class LineConfig(ctypes.Structure):
+    _fields_ = [("flags", ctypes.c_uint64), ("num_attrs", ctypes.c_uint32),
+                ("padding", ctypes.c_uint32 * 5), ("attrs", ConfigAttr * 10)]
+
+
+class LineRequest(ctypes.Structure):
+    _fields_ = [("offsets", ctypes.c_uint32 * 64), ("consumer", ctypes.c_char * 32),
+                ("config", LineConfig), ("num_lines", ctypes.c_uint32),
+                ("event_buffer_size", ctypes.c_uint32), ("padding", ctypes.c_uint32 * 5),
+                ("fd", ctypes.c_int32)]
+
+
+class ChipInfo(ctypes.Structure):
+    _fields_ = [("name", ctypes.c_char * 32), ("label", ctypes.c_char * 32),
+                ("lines", ctypes.c_uint32)]
+
+
+def _iowr(nr, size):
+    return (3 << 30) | (size << 16) | (0xB4 << 8) | nr
+
+
+def _ior(nr, size):
+    return (2 << 30) | (size << 16) | (0xB4 << 8) | nr
+
+
+GET_CHIPINFO = _ior(0x01, ctypes.sizeof(ChipInfo))
+GET_LINE = _iowr(0x07, ctypes.sizeof(LineRequest))
+FLAG_OUTPUT = 1 << 3
+ATTR_OUTPUT_VALUES = 2
+
+
+def find_chip():
+    for path in sorted(glob.glob("/dev/gpiochip*")):
+        try:
+            fd = os.open(path, os.O_RDONLY)
+        except OSError:
+            continue
+        try:
+            info = ChipInfo()
+            fcntl.ioctl(fd, GET_CHIPINFO, info)
+            if info.label.decode(errors="replace") == LABEL:
+                return path
+        except OSError:
+            pass
+        finally:
+            os.close(fd)
+    return None
+
+
+def set_light(on: bool) -> str:
+    chip = find_chip()
+    if not chip:
+        return "screen light: m5ioe1 GPIO chip not found"
+    req = LineRequest()
+    req.offsets[0] = LINE
+    req.num_lines = 1
+    req.consumer = b"insert-coin"
+    req.config.flags = FLAG_OUTPUT
+    req.config.num_attrs = 1
+    req.config.attrs[0].attr.id = ATTR_OUTPUT_VALUES
+    req.config.attrs[0].attr.value = 1 if on else 0
+    req.config.attrs[0].mask = 1
+    fd = os.open(chip, os.O_RDONLY)
+    try:
+        fcntl.ioctl(fd, GET_LINE, req)
+    except OSError as e:
+        return f"screen light: couldn't set line {LINE} on {chip}: {e}"
+    finally:
+        os.close(fd)
+    os.close(req.fd)
+    return f"screen light: {'on' if on else 'off'} ({chip} line {LINE})"
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2 or sys.argv[1] not in ("on", "off"):
+        sys.exit("usage: cz-light on|off")
+    print(set_light(sys.argv[1] == "on"))

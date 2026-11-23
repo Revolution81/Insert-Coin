@@ -142,13 +142,36 @@ class ScreenSleep:
         cur = _bl_read("brightness", self.path)
         self._level = cur if cur else None
         _bl_write(0, self.path)
+        _light_flag(True)
         self.asleep = True
 
     def wake(self) -> None:
         level = self._level or _bl_read("max_brightness", self.path) or 100
         _bl_write(level, self.path)
+        _light_flag(False)
         self.asleep = False
         self.last = self.clock()
+
+
+# Brightness 0 doesn't turn the Cardputer Zero's light off: the panel stays
+# lit (logs showed brightness 0 with the screen still on). The light has a
+# real on/off switch, line 9 of the M5IOE1 chip (as M5Stack's launcher has
+# it); the root power service (deploy/cz-power) switches it when this flag
+# file appears or goes away. The signer may only write its own run folder.
+SCREEN_OFF_FLAG = "/run/czwallet/screen-off"
+
+
+def _light_flag(off: bool, path: str | None = None) -> None:
+    path = path or SCREEN_OFF_FLAG
+    try:
+        if off:
+            if os.path.isdir(os.path.dirname(path)):
+                open(path, "w").close()
+        elif os.path.exists(path):
+            os.remove(path)
+    except OSError as e:
+        import sys
+        print(f"screen: light switch flag not set: {e}", file=sys.stderr, flush=True)
 
 
 FBIOGET_VSCREENINFO, FBIOPUT_VSCREENINFO, FBIOBLANK = 0x4600, 0x4601, 0x4611
