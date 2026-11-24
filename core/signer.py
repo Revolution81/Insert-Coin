@@ -784,6 +784,121 @@ class Signer:
         self._need_root()
         return (self._temp["secret"], self._temp["passphrase"]) if self._temp else None
 
+    # ------------------------------------------------------- key teleport
+    # KEY TELEPORT (core/teleport.py, COLDCARD's protocol). The receiver's
+    # one-time key waits here, encrypted with the main seed, until a package
+    # opens with it (or a new one is asked for). Signer screens only.
+    def _kt_file(self) -> tuple[str, bytes]:
+        key = hmac.new(self._main_key().secret, b"czwallet-teleport-v1", hashlib.sha256).digest()
+        name = hashlib.sha256(key).hexdigest()[:16]
+        return os.path.join(self.dir, f"kt-{name}.bin"), key
+
+    def kt_rx_key(self, new: bool = False, make: bool = True) -> bytes | None:
+        """The waiting receive key: made (and kept) when there's none or new=True."""
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from . import teleport as kt
+        self._need_root()
+        self._hobbled("receiving secrets")
+        path, key = self._kt_file()
+        if os.path.exists(path) and not new:
+            with open(path, "rb") as f:
+                blob = f.read()
+            return AESGCM(key).decrypt(blob[:12], blob[12:], None)
+        if not make:
+            return None
+        k = kt.new_secret()
+        nonce = os.urandom(12)
+        _atomic_write(path, nonce + AESGCM(key).encrypt(nonce, k, None))
+        return k
+
+    def kt_rx_done(self) -> None:
+        """A package opened: that receive key is never used again."""
+        self._need_root()
+        path, _ = self._kt_file()
+        if os.path.exists(path):
+            os.remove(path)
+
+    def teleport_secret(self, pin: str) -> tuple[bytes, str]:
+        """The seed in use, in COLDCARD's encoding, after the PIN. With a
+        passphrase it goes as the master xprv it makes (as COLDCARD does)."""
+        from . import teleport as kt
+        words = self.reveal_words(pin=pin)            # PIN, policy checks
+        root = self._need_root()
+        fp = seedlib.fingerprint(root)
+        if seedlib.fingerprint(seedlib.root_key(words, "", self._network)) == fp:
+            return kt.encode_secret(words), fp
+        return b"\x01" + root.chain_code + root.key.secret, fp
+
+    def seedvault_secret(self, index: int) -> tuple[bytes, str, str]:
+        """(encoded, fingerprint, label) of a seed vault entry, for teleport."""
+        from . import teleport as kt
+        self._need_root()
+        self._hobbled("the seed vault")
+        entries = self._load_seedvault()
+        if not isinstance(index, int) or not 0 <= index < len(entries):
+            raise SignerError("no such seed")
+        e = entries[index]
+        if e["passphrase"]:
+            r = seedlib.root_key(e["secret"], e["passphrase"], self._network)
+            enc = b"\x01" + r.chain_code + r.key.secret
+        else:
+            enc = kt.encode_secret(e["secret"])
+        return enc, e["fp"], e["label"]
+
+    def _ms_keys(self, pol) -> list[tuple[str, str, bip32.HDKey]]:
+        """(fingerprint, path, xpub) of every key in a registered wallet."""
+        import re
+        out = []
+        for fp, path, xk in re.findall(r"\[([0-9a-fA-F]{8})((?:/\d+[hH']?)*)\]([1-9A-HJ-NP-Za-km-z]{100,120})",
+                                       pol.descriptor):
+            out.append((fp.lower(), path, bip32.HDKey.from_string(xk)))
+        return out
+
+    def _my_ms_key(self, pol) -> bip32.HDKey | None:
+        mine = self._root.my_fingerprint.hex()
+        for fp, path, xk in self._ms_keys(pol):
+            if fp == mine:
+                k = self._root.derive("m" + path)
+                if k.to_public().key.sec() == xk.key.sec():
+                    return k
+        return None
+
+    def kt_ms_candidates(self, nonce: int) -> list[tuple[str, bytes, bytes]]:
+        """For an E package: (sender fingerprint, my private key, his pubkey)
+        for every other co-signer of every registered wallet."""
+        from . import teleport as kt
+        self._need_root()
+        out = []
+        for pol in self._registry:
+            me = self._my_ms_key(pol)
+            if me is None:
+                continue
+            mine = kt.ms_child_secret(me, nonce)
+            for fp, _, xk in self._ms_keys(pol):
+                if fp != self._root.my_fingerprint.hex():
+                    out.append((fp, mine, kt.ms_child_pubkey(xk, nonce)))
+        return out
+
+    def kt_ms_target(self, wallet_id: str, fingerprint: str, nonce: int) -> tuple[bytes, bytes]:
+        """(my private key, his pubkey) to send a PSBT to one co-signer."""
+        from . import teleport as kt
+        self._need_root()
+        pol = next((p for p in self._registry if p.id == wallet_id), None)
+        me = pol and self._my_ms_key(pol)
+        if not me:
+            raise SignerError("not a wallet this device is part of")
+        his = [xk for fp, _, xk in self._ms_keys(pol) if fp == fingerprint.lower()]
+        if len(his) != 1 or fingerprint.lower() == self._root.my_fingerprint.hex():
+            raise SignerError("no such co-signer")
+        return kt.ms_child_secret(me, nonce), kt.ms_child_pubkey(his[0], nonce)
+
+    def ms_cosigners(self, wallet_id: str) -> list[str]:
+        self._need_root()
+        pol = next((p for p in self._registry if p.id == wallet_id), None)
+        if pol is None:
+            raise SignerError("unknown wallet")
+        return [fp for fp, _, _ in self._ms_keys(pol)]
+
     # ------------------------------------------------------ spending policy
     def _policy_day(self, rules: dict) -> dict:
         """Today's total for PER DAY: the same day rules as the online cap

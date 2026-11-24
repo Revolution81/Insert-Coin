@@ -38,7 +38,8 @@ PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "bind_chip_prompt", "unbind_chip_prompt", "quick_unlock_prompt",
            "register_prompt", "address_prompt", "message_prompt",
            "child_seed_prompt", "account_rule_prompt", "restore_backup_prompt", "xprv_prompt", "notes_prompt",
-           "seed_xor_prompt", "temp_seed_prompt",
+           "seed_xor_prompt", "temp_seed_prompt", "kt_receive_prompt", "kt_send_prompt",
+    "kt_incoming_prompt", "kt_psbt_prompt",
            "verify_backup_prompt",
            "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "countdown_prompt",
            "policy_prompt", "bypass_prompt", "totp_prompt"}
@@ -171,6 +172,18 @@ class TrustedSigner:
 
     def temp_seed_prompt(self):
         return self._ask("temporary_seed")
+
+    def kt_receive_prompt(self):
+        return self._ask("teleport_receive")
+
+    def kt_send_prompt(self, rx):
+        return self._ask("teleport_send", rx=rx)
+
+    def kt_incoming_prompt(self, kind, payload):
+        return self._ask("teleport_incoming", kind=kind, payload=payload)
+
+    def kt_psbt_prompt(self, psbt):
+        return self._ask("teleport_psbt", psbt=psbt)
 
     def verify_backup_prompt(self, files: list):
         return self._ask("verify_backup", files=files)

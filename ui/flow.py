@@ -1263,7 +1263,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["NOTES & PASSWORDS", "ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS",
-               "TEMPORARY SEED", "WALLETS"]),
+               "TEMPORARY SEED", "KEY TELEPORT", "WALLETS"]),
     ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
@@ -1405,6 +1405,7 @@ def settings_screen(app, at: str | None = None):
             ("CARD BACKUP", card_backup_menu),
             ("CHILD SEEDS", ask("child_seed_prompt", lambda app, r: r and r.get("temporary")
                                 and use_temporary(app, r["temporary"]))),
+            ("KEY TELEPORT", lambda app: teleport_menu(app), "COLDCARD", "grey"),
             ("TEMPORARY SEED", ask("temp_seed_prompt", lambda app, info: info and
                                    use_temporary(app, info)),
              "IN USE" if st.get("temporary") else "", "orange"),
@@ -1475,9 +1476,63 @@ def scan_anything(app):
                 sign_external(app, res.data)
         elif res.kind == "tx":
             broadcast_scanned(app, res.data)
+        elif res.kind == "teleport":
+            teleport_scanned(app, res)
         else:
             app.push(MessageScreen("SCANNED TEXT", [res.text[:200]]))
     app.push(ScanScreen("SCAN", got, hint="ADDRESS, PSBT OR SIGNED TX"))
+
+
+# ========================================================== KEY TELEPORT
+def teleport_menu(app):
+    """SETUP › TOOLS › KEY TELEPORT. Everything secret happens on the
+    signer's screens; the app only scans QRs and passes them along."""
+    def send(app):
+        def got(app, res):
+            if res.kind == "teleport" and res.text == "R":
+                teleport_scanned(app, res)
+            else:
+                app.push(MessageScreen("NOT A RECEIVE QR", ["Scan the QR the receiving",
+                                                            "device shows under KEY", "TELEPORT › RECEIVE."]))
+        app.push(ScanScreen("SCAN RECEIVER", got, hint="THE RECEIVER'S QR"))
+
+    def psbt(app):
+        def got(app, res):
+            if res.kind != "psbt":
+                app.push(MessageScreen("NOT A PSBT", ["Scan a multisig PSBT."]))
+                return
+            app.prompt("kt_psbt_prompt", lambda app, r: None,
+                       psbt=base64.b64encode(res.data).decode())
+        last = getattr(app, "last_signed_psbt", None)
+        rows = [("SCAN A PSBT", lambda app: app.push(ScanScreen("SCAN PSBT", got, hint="MULTISIG PSBT")))]
+        if last:
+            rows.insert(0, ("THE ONE JUST SIGNED", lambda app: app.prompt(
+                "kt_psbt_prompt", lambda app, r: None, psbt=last), "", "gold"))
+        app.push(MenuScreen("PSBT TO CO-SIGNER", rows,
+                            info=["For a multisig wallet: goes", "to one co-signer, no setup."]))
+
+    app.push(MenuScreen("KEY TELEPORT", [
+        ("RECEIVE", lambda app: app.prompt("kt_receive_prompt", lambda app, r: None)),
+        ("SEND", send),
+        ("PSBT TO CO-SIGNER", psbt)],
+        info=["Seeds, notes and PSBTs to", "another device by QR. Works", "with COLDCARD Q too."]))
+
+
+def teleport_scanned(app, res):
+    """A KEY TELEPORT QR: R starts sending to it; S and E are packages."""
+    data = base64.b64encode(res.data).decode()
+    if res.text == "R":
+        app.prompt("kt_send_prompt", lambda app, r: None, rx=data)
+        return
+
+    def done(app, r):
+        if not r:
+            return
+        if r.get("psbt"):
+            sign_external(app, base64.b64decode(r["psbt"]))
+        elif r.get("temporary"):
+            use_temporary(app, r["temporary"])
+    app.prompt("kt_incoming_prompt", done, kind=res.text, payload=data)
 
 
 def sign_external(app, psbt_bytes: bytes):
@@ -1487,6 +1542,7 @@ def sign_external(app, psbt_bytes: bytes):
     b64 = base64.b64encode(psbt_bytes).decode()
 
     def signed(app, out_b64):
+        app.last_signed_psbt = out_b64                # KEY TELEPORT › PSBT TO CO-SIGNER
         frames = psbt_frames(app, base64.b64decode(out_b64))
         app.home()
         app.push(AnimatedQRScreen("SIGNED PSBT", frames,

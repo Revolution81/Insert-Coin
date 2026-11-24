@@ -1024,6 +1024,64 @@ def temporary_seed(c):
     run(c)
 
 
+def _b64(v, most=200_000) -> bytes:
+    import base64
+    if not isinstance(v, str) or len(v) > most:
+        raise BadRequest("bad data")
+    try:
+        return base64.b64decode(v, validate=True)
+    except ValueError:
+        raise BadRequest("bad data")
+
+
+def teleport_receive(c):
+    """KEY TELEPORT › RECEIVE: the receive QR and its 8 digits."""
+    if c.signer.status()["policy"]["locked"]:
+        _final(c, MessageScreen("POLICY LOCKED", [
+            "Only multisig PSBTs come in", "by teleport while the", "spending policy is locked."],
+            border="red"))
+        return
+    from .teleport_flow import receive_start
+    receive_start(c)
+
+
+def teleport_send(c, rx):
+    """KEY TELEPORT › SEND, after the app scanned someone's receive QR."""
+    rx = _b64(rx, 200)
+    if len(rx) != 33:
+        raise BadRequest("not a receive QR")
+    if c.signer.status()["policy"]["locked"]:
+        _final(c, MessageScreen("POLICY LOCKED", [
+            "Nothing leaves by teleport", "while the spending policy", "is locked."], border="red"))
+        return
+    from .teleport_flow import send
+    send(c, rx)
+
+
+def teleport_incoming(c, kind, payload):
+    """A scanned S or E package."""
+    if kind not in ("S", "E"):
+        raise BadRequest("unknown package")
+    data = _b64(payload)
+    if kind == "S" and c.signer.status()["policy"]["locked"]:
+        _final(c, MessageScreen("POLICY LOCKED", [
+            "Only multisig PSBTs come in", "by teleport while the", "spending policy is locked."],
+            border="red"))
+        return
+    from .teleport_flow import receive
+    try:
+        receive(c, kind, data)
+    except ValueError:
+        raise BadRequest("damaged package")
+
+
+def teleport_psbt(c, psbt):
+    """A multisig PSBT to one co-signer (KEY TELEPORT, no setup needed)."""
+    _b64(psbt)
+    from .teleport_flow import send_psbt
+    send_psbt(c, psbt)
+
+
 def verify_backup(c, files):
     """VERIFY BACKUP: open each copy of this seed's card backups with the
     seed's key and say which are whole, changing nothing. AES-GCM fails on

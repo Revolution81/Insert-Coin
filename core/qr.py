@@ -32,7 +32,7 @@ PSBT_MAGIC = b"psbt\xff"
 
 @dataclass
 class Scanned:
-    kind: str                     # "address" | "psbt" | "tx" | "seedqr" | "text"
+    kind: str                     # "address" | "psbt" | "tx" | "seedqr" | "text" | "teleport"
     address: str = ""
     sats: int | None = None
     label: str = ""
@@ -102,13 +102,16 @@ def bbqr_join(parts: list[str], enc: str) -> bytes:
         raise QRFormatError(f"damaged BBQr data: {e}")
 
 
-def bbqr_encode(data: bytes, ftype: str, max_chars: int = 140) -> list[str]:
+def bbqr_encode(data: bytes, ftype: str, max_chars: int = 140, compress: bool = True) -> list[str]:
     """Split data into BBQr frames of at most max_chars of payload each.
     140 base32 chars keeps every frame a small QR that's easy to scan off a
     1.9" screen."""
     z = zlib.compressobj(wbits=-10, level=9)
     packed = z.compress(data) + z.flush()
-    enc, payload = ("Z", _b32encode(packed)) if len(packed) < len(data) else ("2", _b32encode(data))
+    if compress and len(packed) < len(data):
+        enc, payload = "Z", _b32encode(packed)
+    else:                                             # KEY TELEPORT: always plain base32
+        enc, payload = "2", _b32encode(data)
     step = max(8, max_chars - max_chars % 8)          # base32 parts: multiples of 8 chars
     chunks = [payload[i:i + step] for i in range(0, len(payload), step)] or [""]
     if len(chunks) > 1295:
@@ -210,6 +213,8 @@ class Collector:
             self.result = Scanned("tx", data=data)
         elif t in "UJ":
             self.result = classify(data.decode("utf-8", "replace"))
+        elif t in "RSE":                              # KEY TELEPORT (COLDCARD)
+            self.result = Scanned("teleport", data=data, text=t)
         else:
             self.error = f"unsupported BBQr type {t}"
             self.parts.clear()
