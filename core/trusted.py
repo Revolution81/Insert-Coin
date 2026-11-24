@@ -30,7 +30,7 @@ from .vault import _atomic_write
 SAFE = {"status", "public_info", "account_info", "account_rules", "backup_tag", "make_backup",
         "lock", "describe", "list_multisig",
         "check_multisig", "remove_multisig", "chip_status", "touch", "shorten_auto_lock",
-        "policy_info", "set_screen_sleep"}
+        "policy_info", "set_screen_sleep", "main_seed"}
 
 PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "shares_prompt", "sign_prompt", "words_prompt", "seedqr_prompt", "split_prompt",
@@ -38,7 +38,7 @@ PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "bind_chip_prompt", "unbind_chip_prompt", "quick_unlock_prompt",
            "register_prompt", "address_prompt", "message_prompt",
            "child_seed_prompt", "account_rule_prompt", "restore_backup_prompt", "xprv_prompt", "notes_prompt",
-           "seed_xor_prompt",
+           "seed_xor_prompt", "temp_seed_prompt",
            "verify_backup_prompt",
            "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "countdown_prompt",
            "policy_prompt", "bypass_prompt", "totp_prompt"}
@@ -168,6 +168,9 @@ class TrustedSigner:
 
     def notes_prompt(self):
         return self._ask("notes")
+
+    def temp_seed_prompt(self):
+        return self._ask("temporary_seed")
 
     def verify_backup_prompt(self, files: list):
         return self._ask("verify_backup", files=files)

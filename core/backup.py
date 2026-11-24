@@ -104,6 +104,9 @@ def summary(payload: dict) -> list[str]:
     n_notes = len(sig.get("notes", []))
     if n_notes:
         lines.append(f"{n_notes} note{'s' if n_notes != 1 else ''} & passwords")
+    n_sv = len(sig.get("seedvault", []))
+    if n_sv:
+        lines.append(f"{n_sv} seed{'s' if n_sv != 1 else ''} in the seed vault")
     lines.append(f"{labels} labels, settings")
     return lines
 

@@ -471,7 +471,7 @@ def ago_short(seconds: float) -> str:
 
 
 def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="", online=False,
-               typing=None, icons=(), charging=False, own_server=False):
+               typing=None, icons=(), charging=False, own_server=False, temp=False):
     """typing: None in menu mode, or the translator's indicators dict
     ({"shift": bool, "fn": bool, "sym": bool}) in text mode, which shows an
     ABC badge plus whichever modifiers are active."""
@@ -504,6 +504,10 @@ def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="", online=False,
         sprite(img, WIFI, (ix, 2), {"w": col})
         if not online:
             d.line((ix, 9, ix + 7, 2), fill=PAL["red"])
+    if temp:                                   # a temporary seed is in use (until LOCK)
+        tx = ix + 12
+        _rounded(d, tx, 1, tx + BODY.width("TEMP") + 7, 10, PAL["orange"], 2)
+        text(d, (tx + 4, 2), "TEMP", BODY, PAL["ink"], shadow=False)
     # No clock: showing the time right needs the time zone, and finding that
     # out automatically means telling a server where you are.
     clock_x = W - 26

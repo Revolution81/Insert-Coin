@@ -1013,6 +1013,17 @@ def notes(c):
     run(c)
 
 
+def temporary_seed(c):
+    """TEMPORARY SEED and the SEED VAULT (ui/tempseed_flow.py)."""
+    if c.signer.status()["policy"]["locked"]:
+        _final(c, MessageScreen("POLICY LOCKED", [
+            "Temporary seeds are off while", "the spending policy is locked:",
+            "your main seed could be loaded", "as one to walk around it."], border="red"))
+        return
+    from .tempseed_flow import temporary_seed as run
+    run(c)
+
+
 def verify_backup(c, files):
     """VERIFY BACKUP: open each copy of this seed's card backups with the
     seed's key and say which are whole, changing nothing. AES-GCM fails on
@@ -1054,9 +1065,18 @@ def child_seed(c):
                 c.pop()
 
                 def show(c, m):
+                    def use(c):
+                        c.job("OPENING SEED...", lambda: c.signer.use_temporary(
+                            secret=m, passphrase="", label=f"CHILD #{index}"),
+                            lambda c, info: c.finish({"words": n, "index": index,
+                                                      "temporary": info}),
+                            lambda c, e: c.push(MessageScreen("CAN'T USE IT", [str(e)[:40]],
+                                                              border="red")))
+
                     def after(c):
                         c.push(MenuScreen(f"CHILD #{index}", [
                             ("DONE", lambda c: c.finish({"words": n, "index": index})),
+                            ("USE AS TEMPORARY", use, "UNTIL LOCK", "grey"),
                             ("SHOW AS SEEDQR", lambda c: c.push(
                                 SeedQRScreen(seedlib.seedqr_encode(m), n))),
                             ("SHOW WORDS AGAIN", lambda c: c.push(ShowWordsScreen(

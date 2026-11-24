@@ -177,7 +177,8 @@ class App:
             info = self.public
             self.wallet = WalletService(self.settings, info["descriptor"],
                                         info["change_descriptor"], info["fingerprint"])
-            self.wallet_id, self.wallet_name = None, "Main"
+            temp = info.get("temporary")
+            self.wallet_id, self.wallet_name = None, ("Temp " + temp["label"] if temp else "Main")
             self.account = info
         elif entry.get("account"):
             info = self.signer.account_info(account=entry["account"])
@@ -218,6 +219,8 @@ class App:
                 self.signer.lock()
             except Exception:
                 pass
+            if self.public and self.public.get("temporary"):   # the signer is back on the main seed
+                self.public = {k: v for k, v in self.public.items() if k != "temporary"}
         self.replace(locked_screen(self, soft=soft))
         if not soft:
             unlock(self)
@@ -572,7 +575,7 @@ class App:
                      battery_frac=level, charging=charging,
                      online=bool(self.wallet and self.wallet.connected), typing=typing,
                      own_server=self.settings.own_server,
-                     icons=status_icons(self))
+                     icons=status_icons(self), temp=bool((self.public or {}).get("temporary")))
 
     def feed(self, name: str, value: int):
         self.last_input = time.monotonic()

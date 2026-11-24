@@ -112,6 +112,9 @@ def estimate_vsize(n_in: int, n_out: int) -> float:
     return 10.5 + 68.0 * n_in + 31.0 * n_out
 
 
+SEEDVAULT_MAX = 20
+
+
 class Signer:
     def __init__(self, directory: str, auto_lock_s: int = 120):
         self.dir = directory
@@ -126,6 +129,8 @@ class Signer:
         self._registry: list[ms.Policy] = []
         self._wipe_set = False
         self._login: dict | None = None         # a login waiting out its countdown
+        self._main: bip32.HDKey | None = None   # the main seed's key while a temporary one is in use
+        self._temp: dict | None = None          # {"secret", "passphrase", "label"} of that one
         self.cap_path = os.path.join(directory, "cap.json")
         self.policy_path = os.path.join(directory, "policy.json")
 
@@ -139,6 +144,9 @@ class Signer:
         if st["unlocked"]:
             st["duress"] = self._duress
             st["wipe_pin"] = self._wipe_set
+            if self._temp is not None:
+                st["temporary"] = {"label": self._temp["label"],
+                                   "fingerprint": seedlib.fingerprint(self._root)}
         st["quick_hours"] = self._quick_hours()
         st["lock_after"] = self.lock_after()
         st["screen_sleep"] = self.screen_sleep()
@@ -211,6 +219,7 @@ class Signer:
         pp = u.passphrase if u.passphrase is not None else (passphrase or "")
         network = self.vault.info()["network"]
         self._root = seedlib.root_key(u.mnemonic, pp, network)
+        self._main, self._temp = None, None
         self._seed_tag = hashlib.sha256(u.mnemonic.encode()).digest()
         self._network = network
         self._duress = u.duress_set
@@ -222,6 +231,8 @@ class Signer:
 
     def lock(self) -> None:
         self._root = None
+        self._main = None
+        self._temp = None
         self._duress = False
         self._wipe_set = False
         self._registry = []
@@ -344,9 +355,12 @@ class Signer:
     def public_info(self) -> dict:
         root = self._need_root()
         recv, change = seedlib.public_descriptors(root, self._network)
-        return {"fingerprint": seedlib.fingerprint(root), "network": self._network,
+        info = {"fingerprint": seedlib.fingerprint(root), "network": self._network,
                 "descriptor": recv, "change_descriptor": change,
                 "multisig_key": ms.cosigner_key(root, self._network)}
+        if self._temp is not None:
+            info["temporary"] = {"label": self._temp["label"]}
+        return info
 
     # ------------------------------------------------- multisig registry
     # Registered wallets are encrypted with a key derived from the seed, so
@@ -504,6 +518,8 @@ class Signer:
                    "signer": {"multisig": [p.to_dict() for p in self._registry],
                               "rules": dict(self._rules),
                               "notes": self._load_notes()}}
+        if self._temp is None:                         # the main seed's backup carries its vault
+            payload["signer"]["seedvault"] = self._load_seedvault()
         key, tag = backup.keys(root.secret)
         try:
             blob = backup.seal(key, payload)
@@ -554,8 +570,25 @@ class Signer:
             merged, notes_added = nl.merge(self._load_notes(), theirs)
             if notes_added:
                 self._save_notes(merged)
+        vault_added = 0
+        theirs = sig.get("seedvault", [])
+        if self._temp is None and isinstance(theirs, list) and theirs:
+            mine = self._load_seedvault()
+            have = {e["fp"] for e in mine}
+            for e in theirs:
+                try:
+                    e = self._vault_entry(e.get("secret", ""), e.get("passphrase", ""),
+                                          e.get("label", ""), e.get("made"))
+                except (SignerError, AttributeError):
+                    continue
+                if e["fp"] not in have and len(mine) < SEEDVAULT_MAX:
+                    mine.append(e)
+                    have.add(e["fp"])
+                    vault_added += 1
+            if vault_added:
+                self._save_seedvault(mine)
         return {"multisig": added, "skipped": skipped, "rules": dict(self._rules),
-                "notes": notes_added}
+                "notes": notes_added, "seedvault": vault_added}
 
     def _check_same_wallet(self, pin: str):
         u = self.vault.check_pin(pin)
@@ -605,7 +638,151 @@ class Signer:
         For a wallet imported from an xprv, that key (there are no words)."""
         self._hobbled("showing the seed")
         mnemonic, _ = self.vault.unlock(pin)
+        if self._temp is not None:                    # the PIN is still the device's
+            return self._temp["secret"]
         return mnemonic
+
+    # ----------------------------------------- temporary seeds, seed vault
+    # TEMPORARY SEED: another seed (or xprv) used until LOCK, without touching
+    # the stored one. The PIN stays the device's; the main key waits in
+    # memory and comes back with main_seed(). SEED VAULT: extra seeds kept
+    # encrypted with a key from the main seed, to switch to in two clicks.
+    # Signer screens only (the app never sees a secret), and not while a
+    # spending policy is locked: loading the main seed as a "temporary" one
+    # would walk around the policy.
+    def _check_secret(self, secret: str, passphrase: str) -> tuple[str, str]:
+        if not isinstance(secret, str) or not isinstance(passphrase, str) or len(passphrase) > 100:
+            raise SignerError("bad seed")
+        if seedlib.is_xprv(secret):
+            try:
+                return seedlib.check_xprv(secret, self._network), ""
+            except ValueError as e:
+                raise SignerError(str(e))
+        m = seedlib.normalize(secret)
+        if not seedlib.is_valid(m):
+            raise SignerError("not a valid seed")
+        return m, passphrase
+
+    def _main_key(self) -> bip32.HDKey:
+        self._need_root()
+        return self._main if self._main is not None else self._root
+
+    def use_temporary(self, secret: str, passphrase: str = "", label: str = "") -> dict:
+        self._need_root()
+        self._hobbled("temporary seeds")
+        secret, passphrase = self._check_secret(secret, passphrase)
+        root = seedlib.root_key(secret, passphrase, self._network)
+        main = self._main_key()
+        if root.my_fingerprint == main.my_fingerprint:
+            return self.main_seed()                    # that's the main seed: just go back
+        self._main = main
+        self._root = root
+        self._temp = {"secret": secret, "passphrase": passphrase,
+                      "label": str(label)[:16] or seedlib.fingerprint(root).upper()}
+        self._pending.clear()
+        self._load_registry()
+        self._load_rules()
+        self._touch()
+        return self.public_info()
+
+    def main_seed(self) -> dict:
+        """Back to the stored seed (also what LOCK and the next unlock do)."""
+        self._need_root()
+        if self._main is not None:
+            self._root, self._main, self._temp = self._main, None, None
+            self._pending.clear()
+            self._load_registry()
+            self._load_rules()
+        self._touch()
+        return self.public_info()
+
+    def _seedvault_file(self) -> tuple[str, bytes]:
+        key = hmac.new(self._main_key().secret, b"czwallet-seedvault-v1", hashlib.sha256).digest()
+        name = hashlib.sha256(key).hexdigest()[:16]
+        return os.path.join(self.dir, f"sv-{name}.bin"), key
+
+    def _load_seedvault(self) -> list[dict]:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        path, key = self._seedvault_file()
+        if not os.path.exists(path):
+            return []
+        with open(path, "rb") as f:
+            blob = f.read()
+        return json.loads(AESGCM(key).decrypt(blob[:12], blob[12:], None))
+
+    def _save_seedvault(self, entries: list[dict]) -> None:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        path, key = self._seedvault_file()
+        nonce = os.urandom(12)
+        _atomic_write(path, nonce + AESGCM(key).encrypt(nonce, json.dumps(entries).encode(), None))
+
+    def _vault_entry(self, secret, passphrase, label, made=None) -> dict:
+        secret, passphrase = self._check_secret(secret, passphrase)
+        fp = seedlib.fingerprint(seedlib.root_key(secret, passphrase, self._network))
+        return {"secret": secret, "passphrase": passphrase,
+                "label": (str(label).strip()[:16] or fp.upper()), "fp": fp,
+                "made": made if isinstance(made, int) else int(time.time())}
+
+    def seedvault(self) -> list[dict]:
+        """What's in the vault, without the secrets (signer screens only)."""
+        self._need_root()
+        self._hobbled("the seed vault")
+        out = []
+        for e in self._load_seedvault():
+            kind = "XPRV" if seedlib.is_xprv(e["secret"]) else f"{len(e['secret'].split())}W"
+            out.append({"label": e["label"], "fp": e["fp"], "kind": kind,
+                        "passphrase": bool(e["passphrase"]), "made": e["made"],
+                        "active": self._temp is not None and
+                        seedlib.fingerprint(self._root) == e["fp"]})
+        return out
+
+    def seedvault_add(self, secret: str, passphrase: str = "", label: str = "") -> list[dict]:
+        self._need_root()
+        self._hobbled("the seed vault")
+        e = self._vault_entry(secret, passphrase, label)
+        if e["fp"] == self._main_key().my_fingerprint.hex():
+            raise SignerError("that's your main seed")
+        entries = self._load_seedvault()
+        if any(x["fp"] == e["fp"] for x in entries):
+            raise SignerError("already in the vault")
+        if len(entries) >= SEEDVAULT_MAX:
+            raise SignerError(f"the vault is full ({SEEDVAULT_MAX})")
+        entries.append(e)
+        self._save_seedvault(entries)
+        return self.seedvault()
+
+    def seedvault_use(self, index: int) -> dict:
+        self._need_root()
+        entries = self._load_seedvault()
+        if not isinstance(index, int) or not 0 <= index < len(entries):
+            raise SignerError("no such seed")
+        e = entries[index]
+        return self.use_temporary(e["secret"], e["passphrase"], e["label"])
+
+    def seedvault_rename(self, index: int, label: str) -> list[dict]:
+        self._need_root()
+        entries = self._load_seedvault()
+        if not isinstance(index, int) or not 0 <= index < len(entries) or not str(label).strip():
+            raise SignerError("no such seed")
+        entries[index]["label"] = str(label).strip()[:16]
+        self._save_seedvault(entries)
+        if self._temp is not None and seedlib.fingerprint(self._root) == entries[index]["fp"]:
+            self._temp["label"] = entries[index]["label"]
+        return self.seedvault()
+
+    def seedvault_delete(self, index: int) -> list[dict]:
+        self._need_root()
+        entries = self._load_seedvault()
+        if not isinstance(index, int) or not 0 <= index < len(entries):
+            raise SignerError("no such seed")
+        del entries[index]
+        self._save_seedvault(entries)
+        return self.seedvault()
+
+    def temporary_secret(self) -> tuple[str, str] | None:
+        """The temporary seed in use (to save it to the vault from its screen)."""
+        self._need_root()
+        return (self._temp["secret"], self._temp["passphrase"]) if self._temp else None
 
     # ------------------------------------------------------ spending policy
     def _policy_day(self, rules: dict) -> dict:

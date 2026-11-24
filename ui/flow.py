@@ -80,6 +80,20 @@ def exit_to_menu(app):
                            lambda app: app.request_exit()))
 
 
+def use_temporary(app, info):
+    """TEMPORARY SEED (or BACK TO MAIN SEED): the signer switched; open what it
+    now holds. Only public keys arrive here."""
+    app.open_wallet(info)
+    temp = info.get("temporary")
+    if temp:
+        app.push(MessageScreen("TEMPORARY SEED", [f"Using {temp['label'][:16]}",
+                                                  f"Fingerprint {info['fingerprint']}", "",
+                                                  "LOCK goes back to your main", "seed (or SETUP › TOOLS)."]))
+    else:
+        app.push(MessageScreen("MAIN SEED", ["Back on your main seed.",
+                                             f"Fingerprint {info['fingerprint']}"]))
+
+
 def _ready(app, info):
     app.open_wallet(info)
     app.push(MessageScreen("READY!", ["Your wallet is set up.", "",
@@ -352,6 +366,8 @@ class HomeScreen(Screen):
             col = "gold"
         elif app.wallet_id:
             sub, col = f"{app.wallet_name.upper()}  {app.wallet.k} OF {app.wallet.n} MULTISIG", "gold"
+        elif (app.public or {}).get("temporary"):
+            sub, col = f"TEMP SEED {app.public['temporary']['label'][:12]}  FP {app.fingerprint}", "orange"
         elif b.get("pending"):
             sub, col = f"{fmt_sats(b['pending'], True)} PENDING", "cyan"
         else:
@@ -1247,7 +1263,7 @@ SETUP_GROUPS = [
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["NOTES & PASSWORDS", "ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS",
-               "WALLETS"]),
+               "TEMPORARY SEED", "WALLETS"]),
     ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
@@ -1387,7 +1403,11 @@ def settings_screen(app, at: str | None = None):
             ("SEEDQR BACKUP", ask("seedqr_prompt")),
             ("SPLIT BACKUP", split_backup),
             ("CARD BACKUP", card_backup_menu),
-            ("CHILD SEEDS", ask("child_seed_prompt")),
+            ("CHILD SEEDS", ask("child_seed_prompt", lambda app, r: r and r.get("temporary")
+                                and use_temporary(app, r["temporary"]))),
+            ("TEMPORARY SEED", ask("temp_seed_prompt", lambda app, info: info and
+                                   use_temporary(app, info)),
+             "IN USE" if st.get("temporary") else "", "orange"),
             ("DURESS PIN", ask("duress_prompt", back_to("DURESS PIN")),
              "ON" if st.get("duress") else "OFF", "gold" if st.get("duress") else "grey"),
             ("CHANGE PIN", ask("change_pin_prompt")),
