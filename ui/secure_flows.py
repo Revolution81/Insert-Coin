@@ -766,6 +766,57 @@ def restore_xprv(c, network):
                            max_len=120, info=lambda s: f"{len(s)}/111 characters"))
 
 
+def seed_xor(c, network):
+    """Rebuild a seed from its Seed XOR parts (COLDCARD's format), typed
+    here: every part is needed, in any order."""
+    from core import seedxor
+    network = _network(network)
+
+    def setup(n_parts, n_words):
+        def go(c):
+            got: list[str] = []
+
+            def ask(c):
+                i = len(got) + 1
+
+                def done(c, words):
+                    m = " ".join(words)
+                    if not seedlib.is_valid(m):
+                        return "Checksum failed: a word is wrong"
+                    if m in got:
+                        return "You've typed this part already"
+                    got.append(m)
+                    c.pop()
+                    if len(got) < n_parts:
+                        ask(c)
+                        return None
+                    try:
+                        seed = seedxor.combine(got)
+                    except seedxor.SeedXorError as e:
+                        got.clear()
+                        c.push(MessageScreen("CAN'T COMBINE", [str(e)], border="red"))
+                        return None
+                    got.clear()
+                    c.pop()                     # the WORDS menu
+                    c.pop()                     # the PARTS menu
+                    c.push(MessageScreen("SEED XOR", [f"{n_parts} parts combined.",
+                                                      f"{n_words} words, checksum OK.", "",
+                                                      "Next: passphrase and PIN."],
+                                         then=lambda c: _passphrase(c, seed, network)))
+                    return None
+                c.push(WordEntryScreen(f"PART {i} OF {n_parts}", list(range(1, n_words + 1)), done))
+            ask(c)
+        return go
+
+    def parts(n_parts):
+        return lambda c: c.push(MenuScreen(f"{n_parts} PARTS", [
+            (f"{w} WORDS", setup(n_parts, w)) for w in (12, 18, 24)],
+            info=["How many words in each part?"]))
+
+    c.push(MenuScreen("SEED XOR", [(f"{n} PARTS", parts(n)) for n in seedxor.PARTS],
+                      info=["COLDCARD's split backup: all", "parts needed, any order."]))
+
+
 def shares(c, network):
     """Rebuild a seed from SLIP39 shares typed here."""
     network = _network(network)
@@ -1037,6 +1088,22 @@ def split(c):
             return
         _write_shares(c, splitlib.split(m, k, n), k)
 
+    def write_xor(c, m, n):
+        if seedlib.is_xprv(m):
+            _final(c, MessageScreen("NO SPLIT", ["Seed XOR is made from seed", "words; this wallet",
+                                                 "came from an XPRV."]))
+            return
+        from core import seedxor
+        _write_shares(c, [p.split() for p in seedxor.split(m, n)], n, xor=True)
+
+    def xor(n):
+        def go(c):
+            _pin_job(c, "SEED XOR", "CHECKING PIN...",
+                     lambda pin: c.signer.reveal_words(pin=pin),
+                     lambda c, m: write_xor(c, m, n),
+                     note=f"To write {n} Seed XOR parts")
+        return go
+
     def scheme(k, n):
         def go(c):
             _pin_job(c, "SPLIT BACKUP", "CHECKING PIN...",
@@ -1046,55 +1113,64 @@ def split(c):
         return go
 
     c.push(MenuScreen("SPLIT BACKUP", [
-        (f"{k} OF {n}", scheme(k, n), f"{n} PAPERS", "grey") for k, n in splitlib.SCHEMES],
+        (f"{k} OF {n}", scheme(k, n), f"{n} PAPERS", "grey") for k, n in splitlib.SCHEMES] + [
+        (f"SEED XOR {n} PARTS", xor(n), "ALL NEEDED", "grey") for n in (2, 3, 4)],
         info=["Any K papers rebuild your", "seed; fewer reveal nothing.",
               "Keep them in different places."]))
 
 
-def _write_shares(c, all_shares: list[list[str]], k: int):
+def _write_shares(c, all_shares: list[list[str]], k: int, xor: bool = False):
     n = len(all_shares)
+    word = "PART" if xor else "SHARE"
 
     def show(i):
         def go(c):
             if i == n:
-                _check_shares(c, all_shares, k)
+                _check_shares(c, all_shares, k, xor)
                 return
-            c.push(ShowWordsScreen(all_shares[i], show(i + 1), title=f"SHARE {i + 1} OF {n}"))
+            c.push(ShowWordsScreen(all_shares[i], show(i + 1), title=f"{word} {i + 1} OF {n}"))
         return go
 
-    c.push(MessageScreen("SPLIT BACKUP", [
-        f"You'll write {n} papers of", f"{len(all_shares[0])} words each. Label",
-        "them SHARE 1, SHARE 2...", "", f"Any {k} rebuild your wallet."], then=show(0)))
+    if xor:
+        intro = [f"You'll write {n} parts of", f"{len(all_shares[0])} words each. Label",
+                 "them PART 1, PART 2...", "", f"ALL {n} are needed. Each one", "alone looks like any seed."]
+    else:
+        intro = [f"You'll write {n} papers of", f"{len(all_shares[0])} words each. Label",
+                 "them SHARE 1, SHARE 2...", "", f"Any {k} rebuild your wallet."]
+    c.push(MessageScreen("SEED XOR" if xor else "SPLIT BACKUP", intro, then=show(0)))
 
 
-def _check_shares(c, all_shares, k):
+def _check_shares(c, all_shares, k, xor: bool = False):
     """Two random words from every paper, so each one is known good."""
     n = len(all_shares)
+    word = "PART" if xor else "SHARE"
 
     def check(i):
         def go(c):
             if i == n:
                 all_shares.clear()
-                _final(c, MessageScreen("ALL CHECKED", [
-                    f"{n} shares written, any {k}", "rebuild your wallet.", "",
-                    "Your 12/24 word backup still", "works too. Destroy it only if",
-                    "you want the split to be the", "only way back."]), {"k": k, "n": n})
+                first = ([f"{n} parts written. All {n}", "rebuild your wallet (Seed XOR,",
+                          "as on COLDCARD)."] if xor else
+                         [f"{n} shares written, any {k}", "rebuild your wallet."])
+                _final(c, MessageScreen("ALL CHECKED", first + [
+                    "", "Your seed words still work", "too. Destroy them only if",
+                    "you want this to be the", "only way back."]), {"k": k, "n": n})
                 return
             picks = sorted(random.sample(range(1, len(all_shares[i]) + 1), 2))
 
             def done(c, words):
                 if [all_shares[i][p - 1] for p in picks] != words:
                     c.pop()
-                    c.push(MessageScreen("NOT QUITE", [f"Share {i + 1} doesn't match.",
+                    c.push(MessageScreen("NOT QUITE", [f"{word.title()} {i + 1} doesn't match.",
                                                        "Let's look at it again."],
                                          border="red", then=lambda c: c.push(ShowWordsScreen(
-                                             all_shares[i], check(i), title=f"SHARE {i + 1} OF {n}"))))
+                                             all_shares[i], check(i), title=f"{word} {i + 1} OF {n}"))))
                     return None
                 c.pop()
                 check(i + 1)(c)
                 return None
-            c.push(WordEntryScreen(f"CHECK SHARE {i + 1}", picks, done,
-                                   complete=splitlib.completions))
+            c.push(WordEntryScreen(f"CHECK {word} {i + 1}", picks, done,
+                                   complete=None if xor else splitlib.completions))
         return go
 
     check(0)(c)

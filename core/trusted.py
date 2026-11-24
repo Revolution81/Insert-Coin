@@ -38,6 +38,7 @@ PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "bind_chip_prompt", "unbind_chip_prompt", "quick_unlock_prompt",
            "register_prompt", "address_prompt", "message_prompt",
            "child_seed_prompt", "account_rule_prompt", "restore_backup_prompt", "xprv_prompt", "notes_prompt",
+           "seed_xor_prompt",
            "verify_backup_prompt",
            "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "countdown_prompt",
            "policy_prompt", "bypass_prompt", "totp_prompt"}
@@ -113,6 +114,9 @@ class TrustedSigner:
 
     def import_prompt(self, network: str, mnemonic: str):
         return self._ask("import_seed", network=network, mnemonic=mnemonic)
+
+    def seed_xor_prompt(self, network: str):
+        return self._ask("seed_xor", network=network)
 
     def xprv_prompt(self, network: str):
         return self._ask("restore_xprv", network=network)

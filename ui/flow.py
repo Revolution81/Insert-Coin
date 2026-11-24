@@ -233,7 +233,9 @@ def restore_flow(app):
         ("SCAN SEEDQR", scan),
         ("IMPORT XPRV", import_xprv, "ADVANCED", "grey"),
         ("SPLIT SHARES", lambda app: app.prompt("shares_prompt", _ready,
-                                                network=app.settings.network))],
+                                                network=app.settings.network)),
+        ("SEED XOR", lambda app: app.prompt("seed_xor_prompt", _ready,
+                                            network=app.settings.network), "COLDCARD", "grey")],
         info=["Type 4 letters of each", "word, then SPACE."]))
 
 
