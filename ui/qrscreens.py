@@ -14,7 +14,7 @@ from . import theme as t
 from .camera import CameraError, Scanner  # noqa: F401 - Scanner: type hint
 from .input import Kind
 from .theme import BODY, H, PAL, TINY, W
-from .widgets import Screen, wrap
+from .widgets import Screen, page_hint, paginate, wrap
 
 
 class ScanScreen(Screen):
@@ -179,7 +179,12 @@ class AnimatedQRScreen(Screen):
 
     def handle(self, ev, app):
         n = len(self.frames)
-        if ev.kind is Kind.NAV and n > 1:
+        if ev.kind is Kind.NAV and ev.value in ("UP", "DOWN") and \
+                getattr(self, "_text_pages", 1) > 1:     # UP/DOWN: the text's pages
+            step = -1 if ev.value == "UP" else 1
+            self.text_page = min(max(0, getattr(self, "text_page", 0) + step),
+                                 self._text_pages - 1)
+        elif ev.kind is Kind.NAV and n > 1:
             # Parts play by themselves so a camera can collect them; the
             # arrows stop it and step through one part at a time.
             step = -1 if ev.value in ("LEFT", "UP") else 1
@@ -205,10 +210,17 @@ class AnimatedQRScreen(Screen):
         t.window(d, (x0, 18, W - 5, H - 6), self.title)
         x = x0 + 10
         y = 32
-        for line in self.lines:
-            for part in wrap(line, max(10, (W - 5 - x - 8) // 8)):
-                t.text(d, (x, y), part, BODY, "light")
-                y += 11
+        bottom = 114 if len(self.frames) > 1 else 140   # above PART n/N, or the hint
+        rows = (bottom - y) // 11
+        pages = paginate(self.lines, W - 5 - x - 6, rows)
+        if len(pages) > 1:                               # room for "PAGE 1/2"
+            pages = paginate(self.lines, W - 5 - x - 6, rows - 1)
+        self._text_pages = len(pages)
+        self.text_page = min(getattr(self, "text_page", 0), len(pages) - 1)
+        for part in pages[self.text_page]:
+            t.text(d, (x, y), part, BODY, "light")
+            y += 11
+        page_hint(d, x, bottom - 10, self.text_page, len(pages), "^ v")
         if len(self.frames) > 1:
             t.text(d, (x, 118), f"PART {i + 1}/{len(self.frames)}"
                    + ("  PAUSED" if self.paused is not None else ""), BODY, "gold")

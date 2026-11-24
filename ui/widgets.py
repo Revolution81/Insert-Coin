@@ -71,6 +71,81 @@ def wrap(text: str, cols: int) -> list[str]:
     return lines
 
 
+def wrap_px(text: str, max_px: int, font=BODY) -> list[str]:
+    """Wrap by real pixel width (the font isn't monospaced). A word too long
+    for a whole line (an address, a key) is cut where it overflows."""
+    lines, cur = [], ""
+    for word in text.split():
+        while font.width(word) > max_px:              # a very long word: cut it
+            if cur:
+                lines.append(cur)
+                cur = ""
+            n = len(word)
+            while n > 1 and font.width(word[:n]) > max_px:
+                n -= 1
+            lines.append(word[:n])
+            word = word[n:]
+        trial = f"{cur} {word}" if cur else word
+        if cur and font.width(trial) > max_px:
+            lines.append(cur)
+            cur = word
+        else:
+            cur = trial
+    if cur:
+        lines.append(cur)
+    return lines
+
+
+def paginate(lines: list[str], max_px: int, rows: int, font=BODY) -> list[list[str]]:
+    """Lines wrapped to max_px, cut into pages of at most rows rows. A page
+    break goes at a blank line when one is near, so a paragraph isn't split
+    in the middle, and no page starts with a blank row."""
+    # A paragraph (lines between blank ones) with a line too long for the
+    # window is reflowed as one text, so it doesn't leave one-word orphans;
+    # paragraphs that fit keep their line breaks as written.
+    flat: list[str] = []
+    para: list[str] = []
+
+    def flush():
+        if any(font.width(x) > max_px for x in para):
+            flat.extend(wrap_px(" ".join(para), max_px, font))
+        else:
+            flat.extend(para)
+        para.clear()
+    for line in lines:
+        if line.strip():
+            para.append(line)
+        else:
+            flush()
+            flat.append("")
+    flush()
+    rows = max(1, rows)
+    pages: list[list[str]] = []
+    while flat:
+        while flat and flat[0] == "" and pages:      # no blank row at a page's top
+            flat.pop(0)
+        if not flat:
+            break
+        if len(flat) <= rows:
+            pages.append(flat)
+            break
+        cut = rows
+        for i in range(rows, rows // 2, -1):         # the last blank line in the bottom half
+            if flat[i] == "" if i < len(flat) else False:
+                cut = i
+                break
+        pages.append(flat[:cut])
+        flat = flat[cut:]
+    while pages and pages[-1] and pages[-1][-1] == "":
+        pages[-1].pop()
+    return pages or [[]]
+
+
+def page_hint(d, x: int, y: int, page: int, pages: int, keys: str = "< >") -> None:
+    if pages > 1:
+        t.text(d, (x, y), f"{keys} PAGE {page + 1}/{pages}", TINY, "gold")
+
+
 # ---------------------------------------------------------------------------
 class MenuScreen(Screen):
     """List of (label, action[, right_text, right_color[, adjust]]) items.
@@ -143,10 +218,11 @@ class MenuScreen(Screen):
         t.sky(img, d)
         app.status_bar(img, d, self)
         top = 22
-        for i, line in enumerate(self.info):
+        info = [p for line in self.info for p in (wrap_px(line, W - 18) or [""])]
+        for i, line in enumerate(info):
             t.text(d, (10, 18 + i * 11), line, BODY, "light")
-        if self.info:
-            top = 22 + len(self.info) * 11
+        if info:
+            top = 22 + len(info) * 11
         rows = []
         for i, it in enumerate(self.items):
             right = it[2] if len(it) > 2 else ""
@@ -158,6 +234,11 @@ class MenuScreen(Screen):
 
 
 class MessageScreen(Screen):
+    """A message in a window. Too long for one window, it turns into pages:
+    LEFT/RIGHT (or UP/DOWN) flip them, OK goes to the next page and closes
+    on the last one."""
+    X0, Y0, LINE = 16, 36, 12
+
     def __init__(self, title: str, lines: list[str], then: Callable | None = None,
                  border: str = "light", big: str | None = None):
         self.title = title
@@ -165,9 +246,24 @@ class MessageScreen(Screen):
         self.then = then
         self.border = border
         self.big = big
+        self.page = 0
+        self._pages = None
+
+    def pages(self) -> list[list[str]]:
+        if self._pages is None:
+            top = self.Y0 + (26 if self.big else 0)
+            rows = (H - 26 - top) // self.LINE
+            self._pages = paginate(self.lines, W - 7 - self.X0 - 8, rows)
+        return self._pages
 
     def handle(self, ev, app):
-        if ev.kind in (Kind.SELECT, Kind.BACK, Kind.HOME):
+        n = len(self.pages())
+        if ev.kind is Kind.NAV and n > 1:
+            step = -1 if ev.value in ("LEFT", "UP") else 1
+            self.page = min(max(0, self.page + step), n - 1)
+        elif ev.kind is Kind.SELECT and self.page < n - 1:
+            self.page += 1
+        elif ev.kind in (Kind.SELECT, Kind.BACK, Kind.HOME):
             app.pop()
             if self.then:
                 self.then(app)
@@ -177,16 +273,19 @@ class MessageScreen(Screen):
         t.sky(img, d)
         app.status_bar(img, d, self)
         t.window(d, (6, 22, W - 7, H - 8), self.title, self.border)
-        y = 36
+        y = self.Y0
         if self.big:
             t.text(d, (W // 2, y), self.big, BIG, "gold", align="center")
             y += 26
-        for line in self.lines:
-            for part in wrap(line, 36) or [""]:      # keep blank spacer lines
-                t.text(d, (16, y), part, BODY, "light")
-                y += 12
+        pages = self.pages()
+        self.page = min(self.page, len(pages) - 1)
+        for part in pages[self.page]:
+            t.text(d, (self.X0, y), part, BODY, "light")
+            y += self.LINE
+        page_hint(d, self.X0, H - 22, self.page, len(pages))
         if frame % 2 == 0:
-            t.text(d, (W - 18, H - 22), "OK", TINY, "gold", align="right")
+            last = self.page == len(pages) - 1
+            t.text(d, (W - 18, H - 22), "OK" if last else "OK NEXT", TINY, "gold", align="right")
         return img
 
 
@@ -203,7 +302,10 @@ class ConfirmScreen(Screen):
         self.sel = 1
 
     def handle(self, ev, app):
-        if ev.kind is Kind.NAV:
+        if ev.kind is Kind.NAV and ev.value in ("UP", "DOWN"):
+            self.page = min(max(0, getattr(self, "page", 0) + (-1 if ev.value == "UP" else 1)),
+                            getattr(self, "_npages", 1) - 1)
+        elif ev.kind is Kind.NAV:
             self.sel ^= 1
         elif ev.kind is Kind.SELECT:
             if self.sel == 0:
@@ -219,11 +321,17 @@ class ConfirmScreen(Screen):
         t.sky(img, d)
         app.status_bar(img, d, self)
         t.window(d, (6, 22, W - 7, 118), self.title, "red" if self.danger else "gold")
+        pages = paginate(self.lines, W - 7 - 16 - 8, (118 - 36 - 4) // 12)
+        self.page = min(getattr(self, "page", 0), len(pages) - 1)
         y = 36
-        for line in self.lines:
-            for part in wrap(line, 36) or [""]:      # keep blank spacer lines
-                t.text(d, (16, y), part, BODY, "light")
-                y += 12
+        if len(pages) > 1:                           # room for the page hint
+            pages = paginate(self.lines, W - 7 - 16 - 8, (118 - 36 - 14) // 12)
+            self.page = min(self.page, len(pages) - 1)
+            page_hint(d, 16, 104, self.page, len(pages), "^ v")
+        self._npages = len(pages)
+        for part in pages[self.page]:
+            t.text(d, (16, y), part, BODY, "light")
+            y += 12
         lw = max(len(x) for x in self.labels)
         bw = max(113, 2 * (lw * 8 + 28) + 16)
         t.menu(img, d, (W - 7 - bw, 124, W - 7, H - 4), self.labels, self.sel,
