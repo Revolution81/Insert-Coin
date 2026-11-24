@@ -302,6 +302,7 @@ def test_tapsigner_as_cosigner_end_to_end(app):  # noqa: F811
     press(app, "KEY_W")
     app.visible.sel = [it[0] for it in app.visible.items].index("NEW MULTISIG")
     enter(app)
+    enter(app)                                         # SEGWIT
     app.visible.sel = [it[0] for it in app.visible.items].index("2 OF 2")
     enter(app)
     press(app, "KEY_TAB")                              # TAP CARD instead of scanning

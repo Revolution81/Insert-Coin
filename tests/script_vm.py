@@ -1,7 +1,7 @@
 """
 A small Bitcoin Script interpreter for tests: enough to run the scripts this
 wallet makes (P2WPKH, P2WSH sortedmulti, the inheritance miniscript, P2TR
-key-path) against
+key-path, and P2TR script-path for sortedmulti_a) against
 a real transaction, with real signature checks (BIP143) and BIP112
 CHECKSEQUENCEVERIFY. It's a test oracle, not consensus code.
 """
@@ -159,13 +159,72 @@ def verify_input(tx, i: int, prev_script: bytes, value: int, prevouts=None):
         raise ScriptFail(f"script failed: {e!r}")
 
 
+def _verify_tapscript(tx, i, prev_script, prevouts, w):
+    """BIP341/342 script-path spend: the control block must commit the leaf
+    to the output key (merkle path, tweak, parity), then the leaf runs with
+    Schnorr CHECKSIG / CHECKSIGADD / NUMEQUAL(VERIFY) / VERIFY."""
+    from embit.hashes import tagged_hash
+    from embit.transaction import SIGHASH
+    cb, script, stack = w[-1], w[-2], w[:-2]
+    if len(cb) < 33 or (len(cb) - 33) % 32:
+        raise ScriptFail("bad control block")
+    ver = cb[0] & 0xFE
+    h = tagged_hash("TapLeaf", bytes([ver]) + Script(script).serialize())
+    for j in range(33, len(cb), 32):
+        node = cb[j:j + 32]
+        h = tagged_hash("TapBranch", h + node if h < node else node + h)
+    out = ec.PublicKey.from_xonly(cb[1:33]).taproot_tweak(h)
+    if out.xonly() != prev_script[2:] or (out.sec()[0] & 1) != (cb[0] & 1):
+        raise ScriptFail("control block doesn't commit to the output")
+
+    def checksig(sig, pub):
+        if not sig:
+            return False
+        sighash = sig[64] if len(sig) == 65 else SIGHASH.DEFAULT
+        m = tx.sighash_taproot(i, script_pubkeys=[Script(s) for s, _ in prevouts],
+                               values=[v for _, v in prevouts], sighash=sighash, ext_flag=1,
+                               script=Script(script), leaf_version=ver)
+        if not ec.PublicKey.from_xonly(pub).schnorr_verify(ec.SchnorrSig.parse(sig[:64]), m):
+            raise ScriptFail("bad Schnorr signature")   # BIP342: a non-empty bad sig fails
+        return True
+
+    st = list(stack)
+    for op in parse(script):
+        if isinstance(op, bytes):
+            st.append(op)
+        elif op == 0xAC:                          # CHECKSIG
+            pub, sig = st.pop(), st.pop()
+            st.append(b"\x01" if checksig(sig, pub) else b"")
+        elif op == 0xBA:                          # CHECKSIGADD
+            pub, n, sig = st.pop(), _num(st.pop()), st.pop()
+            n += 1 if checksig(sig, pub) else 0
+            st.append(bytes([n]) if n else b"")
+        elif op in (0x9C, 0x9D):                  # NUMEQUAL(VERIFY)
+            ok = _num(st.pop()) == _num(st.pop())
+            if op == 0x9D:
+                if not ok:
+                    raise ScriptFail("NUMEQUALVERIFY")
+            else:
+                st.append(b"\x01" if ok else b"")
+        elif op == 0x69:
+            if not _true(st.pop()):
+                raise ScriptFail("VERIFY")
+        else:
+            raise ScriptFail(f"tapscript opcode {op:#x} not supported")
+    if len(st) != 1 or not _true(st[-1]):
+        raise ScriptFail("script didn't leave exactly one true value")
+
+
 def _verify_taproot(tx, i, prev_script, prevouts):
-    """BIP341 key-path spend: one Schnorr signature by the output key.
-    (The sighash comes from embit; the key, tweak and signature are checked
-    here.)"""
+    """BIP341 key-path spend: one Schnorr signature by the output key, or a
+    script-path spend (_verify_tapscript). (The sighash comes from embit; the
+    key, tweak and signature are checked here.)"""
     from embit.script import Script
     from embit.transaction import SIGHASH
     w = list(tx.vin[i].witness.items)
+    if len(w) >= 2 and w[-1][:1] and (w[-1][0] & 0xFE) == 0xC0:
+        _verify_tapscript(tx, i, prev_script, prevouts, w)
+        return
     if len(w) != 1 or len(w[0]) not in (64, 65):
         raise ScriptFail("not a key-path spend")
     sig = w[0]

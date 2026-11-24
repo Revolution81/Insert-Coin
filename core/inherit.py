@@ -40,7 +40,7 @@ def build(owner_key: str, heir_key: str, blocks: int) -> str:
             f"and_v(v:pkh({heir_key}/<0;1>/*),older({blocks}))))")
 
 
-def parse(text: str, network: str, my_key: str | None = None, name: str = "") -> Policy:
+def parse(text: str, network: str, my_key=None, name: str = "") -> Policy:
     t = normalize_descriptor(text)
     m = _RE.match(t)
     if not m:
@@ -50,6 +50,8 @@ def parse(text: str, network: str, my_key: str | None = None, name: str = "") ->
     blocks = int(m.group(3))
     if owner[1:9] == heir[1:9]:
         raise PolicyError("owner and heir must be different signers")
+    if my_key is not None and not isinstance(my_key, str):
+        my_key = my_key[0]                       # SegWit (/2h) key: this is wsh(...)
     if my_key is not None and my_key not in (owner, heir):
         raise PolicyError("this device's key isn't in that wallet")
     desc = build(owner, heir, blocks)

@@ -186,9 +186,16 @@ def new_account(app):
 
 def my_key(app):
     key = app.public["multisig_key"]
-    app.push(AnimatedQRScreen("COSIGNER KEY", [key], [
+    tr = app.public.get("multisig_key_tr")
+    seg = ("SEGWIT", "COSIGNER KEY", [key], [
         "This device's key", "for multisig (BIP48).", f"Fingerprint {key[1:9]}", "",
-        "Scan it into the", "wallet you set up", "in Sparrow."]))
+        "Scan it into the", "wallet you set up", "in Sparrow."])
+    views = [seg]
+    if tr:
+        views.append(("TAPROOT", "TAPROOT KEY", [tr], [
+            "This device's key for", "Taproot multisig", "(m/48'/.../3').", "",
+            "For tr(...) wallets", "with sortedmulti_a."]))
+    app.push(AnimatedQRScreen("COSIGNER KEY", [key], seg[3], views=views))
 
 
 def show_descriptor(app, e):
@@ -224,13 +231,14 @@ def _confirm_and_register(app, descriptor, default_name):
 
 
 def new_multisig(app):
-    def start(k, n):
+    def start(k, n, taproot=False):
         def go(app):
-            keys = [app.public["multisig_key"]]
+            keys = [app.public["multisig_key_tr" if taproot else "multisig_key"]]
 
             def next_key(app):
                 if len(keys) == n:
-                    _confirm_and_register(app, build_descriptor(k, keys), f"{k}-of-{n}")
+                    _confirm_and_register(app, build_descriptor(k, keys, taproot),
+                                          f"{k}-of-{n}" + (" Tap" if taproot else ""))
                     return
 
                 def got(app, res):
@@ -262,9 +270,17 @@ def new_multisig(app):
             next_key(app)
         return go
 
+    def sizes(taproot):
+        return lambda app: app.push(MenuScreen("TAPROOT" if taproot else "SEGWIT", [
+            ("2 OF 3", start(2, 3, taproot)), ("2 OF 2", start(2, 2, taproot)),
+            ("3 OF 5", start(3, 5, taproot))],
+            info=["This device is one key.", "Scan the others next."]))
+
     app.push(MenuScreen("NEW MULTISIG", [
-        ("2 OF 3", start(2, 3)), ("2 OF 2", start(2, 2)), ("3 OF 5", start(3, 5))],
-        info=["This device is one key.", "Scan the others next."]))
+        ("SEGWIT", sizes(False), "WSH", "grey"),
+        ("TAPROOT", sizes(True), "TR", "grey")],
+        info=["SegWit works with every wallet.", "Taproot: cheaper, more private;",
+              "its co-signers must support it."]))
 
 
 def import_descriptor(app):

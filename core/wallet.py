@@ -16,6 +16,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -89,6 +90,7 @@ class WalletService:
         desc = Descriptor.from_string(descriptor)
         self.kind = "single"
         self.taproot = False
+        self.ms_taproot = False
         self.role = role
         self.delay = 0
         if change_descriptor is None and descriptor.startswith("wsh(or_d("):
@@ -101,6 +103,17 @@ class WalletService:
             self._in_vb = inherit_vb(len(self._branches[0].derive(0).witness_script().data))
             if role not in ("owner", "heir"):
                 raise WalletError("inheritance wallet needs a role")
+        elif change_descriptor is None and descriptor.startswith("tr("):   # Taproot multisig
+            from .multisig import tr_input_vbytes
+            self._branches = [desc.branch(0), desc.branch(1)]
+            self.multisig = True
+            self.ms_taproot = True
+            self.kind = "multisig"
+            m = re.match(r"^tr\([0-9a-fA-F]{64},sortedmulti_a\((\d+),", descriptor)
+            if not m:
+                raise WalletError("Taproot multisig: tr(NUMS,sortedmulti_a(...)) only")
+            self.k, self.n = int(m.group(1)), len(desc.taptree.keys)
+            self._in_vb = tr_input_vbytes(self.k, self.n)
         elif change_descriptor is None:          # multisig
             from .multisig import input_vbytes, witness_k_n
             self._branches = [desc.branch(0), desc.branch(1)]
@@ -158,6 +171,9 @@ class WalletService:
             pub, path = self._child(branch, i)
             return [(pub, self._key.origin.fingerprint, path)], None
         d = self._branches[branch].derive(i)
+        if self.ms_taproot:                      # the leaf's keys (the NUMS key has no origin)
+            return ([(k.get_public_key(), k.origin.fingerprint, list(k.origin.derivation))
+                     for k in d.taptree.keys], None)
         return ([(k.get_public_key(), k.origin.fingerprint, list(k.origin.derivation))
                  for k in d.keys], d.witness_script())
 
@@ -651,18 +667,33 @@ class WalletService:
             psbt.inputs[k].non_witness_utxo = self._tx(u["txid"])
             if ws is not None:
                 psbt.inputs[k].witness_script = ws
-            self._add_keys(psbt.inputs[k], keys)
+            self._add_keys(psbt.inputs[k], keys, (u["branch"], u["index"]), spend=True)
         for k, (_, _, own) in enumerate(outputs):
             if own:
                 keys, ws = self._keys_at(*own)
                 if ws is not None:
                     psbt.outputs[k].witness_script = ws
-                self._add_keys(psbt.outputs[k], keys)
+                self._add_keys(psbt.outputs[k], keys, own)
         return psbt.to_string()
 
-    def _add_keys(self, scope, keys):
+    def _add_keys(self, scope, keys, at=None, spend=False):
         """Key origins for the signer: BIP32 for SegWit v0, the Taproot
-        fields (x-only key, no script leaves, internal key) for Taproot."""
+        fields (x-only key, no script leaves, internal key) for Taproot.
+        Taproot multisig: each key with its leaf's hash, the NUMS internal
+        key, and (to spend) the leaf script with its control block."""
+        if self.ms_taproot:
+            from embit.ec import PublicKey
+            from embit.hashes import tagged_hash
+            from .multisig import NUMS, tap_leaves
+            script, ver, cb = tap_leaves(self._branches[at[0]].derive(at[1]))[0]
+            leaf = tagged_hash("TapLeaf", bytes([ver]) + Script(script).serialize())
+            for pub, fp, path in keys:
+                scope.taproot_bip32_derivations[pub] = ([leaf], DerivationPath(fp, path))
+            scope.taproot_internal_key = PublicKey.from_xonly(bytes.fromhex(NUMS))
+            if spend:
+                scope.taproot_scripts[cb] = script + bytes([ver])
+                scope.taproot_merkle_root = leaf
+            return
         for pub, fp, path in keys:
             if self.taproot:
                 scope.taproot_bip32_derivations[pub] = ([], DerivationPath(fp, path))
@@ -815,7 +846,7 @@ class WalletService:
     def signatures(self, psbt_b64: str) -> tuple[int, int]:
         """(fewest signatures on any input, signatures needed)."""
         psbt = PSBT.from_string(psbt_b64)
-        return min(len(i.partial_sigs) for i in psbt.inputs), self.k
+        return min(len(i.partial_sigs) + len(i.taproot_sigs) for i in psbt.inputs), self.k
 
     @staticmethod
     def combine(a_b64: str, b_b64: str) -> str:
@@ -825,6 +856,7 @@ class WalletService:
             raise WalletError("that PSBT is for a different transaction")
         for ia, ib in zip(a.inputs, b.inputs):
             ia.partial_sigs.update(ib.partial_sigs)
+            ia.taproot_sigs.update(ib.taproot_sigs)
         return a.to_string()
 
     def finalize(self, signed_b64: str) -> SignedTx:
@@ -842,6 +874,9 @@ class WalletService:
                     tx.vin[i].witness = Witness([sig])
                 else:
                     raise WalletError("signatures missing; couldn't finalize")
+                continue
+            if self.ms_taproot:
+                tx.vin[i].witness = self._tap_multisig_witness(inp)
                 continue
             if not self.multisig:
                 if len(inp.partial_sigs) != 1:
@@ -863,6 +898,30 @@ class WalletService:
                 raise WalletError(f"needs {self.k - len(sigs)} more signature(s)")
             tx.vin[i].witness = Witness([b""] + sigs + [data])
         return SignedTx(tx.txid().hex(), tx.serialize())
+
+    def _tap_multisig_witness(self, inp) -> Witness:
+        """sortedmulti_a's script path: one signature (or an empty push) per
+        key, last key first, exactly k of them, then the script and its
+        control block."""
+        if len(inp.taproot_scripts) != 1:
+            raise WalletError("PSBT is missing the multisig script")
+        cb, sc = next(iter(inp.taproot_scripts.items()))
+        script = bytes(sc[:-1])
+        keys, j = [], 0
+        while j + 33 < len(script) and script[j] == 0x20:          # <32-byte key> CHECKSIG(ADD)
+            keys.append(script[j + 1:j + 33])
+            j += 34
+        by_key = {pub.xonly(): sig for (pub, _leaf), sig in inp.taproot_sigs.items()}
+        stack, used = [], 0
+        for key in keys:
+            if key in by_key and used < self.k:
+                stack.append(by_key[key])
+                used += 1
+            else:
+                stack.append(b"")
+        if used < self.k:
+            raise WalletError(f"needs {self.k - used} more signature(s)")
+        return Witness(list(reversed(stack)) + [script, bytes(cb)])
 
     def _inherit_witness(self, inp, script: bytes, tx, i) -> Witness:
         owner_pub = script[1:34]                     # <33-byte owner key> CHECKSIG ...

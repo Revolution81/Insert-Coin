@@ -170,6 +170,7 @@ def test_create_two_of_three_and_spend_in_the_ui(app):  # noqa: F811
 
     app.visible.sel = next(i for i, it in enumerate(app.visible.items) if it[0] == "NEW MULTISIG")
     enter(app)
+    enter(app)                                         # SEGWIT
     use_camera(app, [keys[0]])
     enter(app)                                         # 2 OF 3
     pump_until(app, lambda: app.visible.title == "COSIGNER 2/3")

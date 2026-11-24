@@ -357,7 +357,8 @@ class Signer:
         recv, change = seedlib.public_descriptors(root, self._network)
         info = {"fingerprint": seedlib.fingerprint(root), "network": self._network,
                 "descriptor": recv, "change_descriptor": change,
-                "multisig_key": ms.cosigner_key(root, self._network)}
+                "multisig_key": ms.cosigner_key(root, self._network),
+                "multisig_key_tr": ms.cosigner_key(root, self._network, taproot=True)}
         if self._temp is not None:
             info["temporary"] = {"label": self._temp["label"]}
         return info
@@ -597,7 +598,7 @@ class Signer:
 
     def _policy_info(self, p: ms.Policy) -> dict:
         info = {"id": p.id, "name": p.label, "k": p.k, "n": p.n, "kind": p.kind,
-                "descriptor": p.descriptor, "cosigners": p.cosigners}
+                "descriptor": p.descriptor, "cosigners": p.cosigners, "taproot": p.taproot}
         if p.kind == "inherit":
             mine = self._root.my_fingerprint.hex()
             info["delay"] = p.delay
@@ -611,12 +612,12 @@ class Signer:
     def check_multisig(self, descriptor: str) -> dict:
         """Validate without saving (for the confirm screen)."""
         root = self._need_root()
-        p = ms.parse_any(descriptor, self._network, ms.cosigner_key(root, self._network))
+        p = ms.parse_any(descriptor, self._network, ms.my_keys(root, self._network))
         return self._policy_info(p)
 
     def register_multisig(self, descriptor: str, name: str = "") -> dict:
         root = self._need_root()
-        p = ms.parse_any(descriptor, self._network, ms.cosigner_key(root, self._network),
+        p = ms.parse_any(descriptor, self._network, ms.my_keys(root, self._network),
                          name=name.strip()[:24])
         self._registry = [q for q in self._registry if q.id != p.id] + [p]
         self._save_registry()
@@ -1225,23 +1226,38 @@ class Signer:
                     return accts.make_id("tr", path[2] - H), path[3]
             return None, None
 
-        ms_acct = [48 + H, coin + H, 0 + H, 2 + H]
+        ms_accts = ([48 + H, coin + H, 0 + H, 2 + H], [48 + H, coin + H, 0 + H, 3 + H])
 
-        def multisig_branch(derivs, script):
+        def multisig_branch(scope, script):
             """(policy, branch) if script belongs to a registered multisig
             wallet: our key's path picks the index, the whole policy is
-            re-derived and must give exactly this script."""
-            for pub, der in derivs.items():
+            re-derived and must give exactly this script. Taproot multisig
+            names keys in its Taproot fields; any script leaf the PSBT carries
+            must be one of the re-derived wallet's own leaves."""
+            derivs = [(pub, der, False) for pub, der in scope.bip32_derivations.items()]
+            derivs += [(pub, der, True) for pub, (_leaves, der) in
+                       scope.taproot_bip32_derivations.items()]
+            for pub, der, tap in derivs:
                 if der.fingerprint != root.my_fingerprint:
                     continue
                 path = list(der.derivation)
-                if path[:4] != ms_acct or len(path) != 6 or path[4] not in (0, 1):
+                if path[:4] not in ms_accts or len(path) != 6 or path[4] not in (0, 1):
                     continue
-                if root.derive(path).get_public_key().sec() != pub.sec():
+                mine = root.derive(path).get_public_key()
+                if (mine.xonly() != pub.xonly()) if tap else (mine.sec() != pub.sec()):
                     continue
                 for pol in self._registry:
-                    if pol.derive(path[4], path[5]).script_pubkey().data == script.data:
-                        return pol, path[4]
+                    if pol.taproot != tap or (path[3] == 3 + H) != pol.taproot:
+                        continue
+                    d = pol.derive(path[4], path[5])
+                    if d.script_pubkey().data != script.data:
+                        continue
+                    if tap:
+                        leaves = {(sc, cb) for sc, _v, cb in ms.tap_leaves(d)}
+                        for cb, sc in getattr(scope, "taproot_scripts", {}).items():
+                            if (bytes(sc[:-1]), bytes(cb)) not in leaves:
+                                raise SignerError("a script in the PSBT isn't this wallet's")
+                    return pol, path[4]
             return None, None
 
         total_in, wallet, vbytes, sigs_present = 0, None, 10.5, 0
@@ -1256,11 +1272,11 @@ class Signer:
                     raise SignerError(f"input {i} has scripts this wallet didn't make")
                 this, vb = acct, accts.KINDS[accts.parse(acct)[0]]["input_vb"]
             else:
-                pol, _ = multisig_branch(inp.bip32_derivations, utxo.script_pubkey)
+                pol, _ = multisig_branch(inp, utxo.script_pubkey)
                 if pol is None:
                     raise SignerError(f"input {i} is not from this wallet")
                 this, vb = pol, pol.input_vbytes()
-                sigs_present = max(sigs_present, len(inp.partial_sigs))
+                sigs_present = max(sigs_present, len(inp.partial_sigs) + len(inp.taproot_sigs))
             if wallet is None:
                 wallet = this
             elif wallet != this:
@@ -1278,7 +1294,7 @@ class Signer:
                     branch = None
             else:
                 # change only counts as change inside the same multisig wallet
-                pol, branch = multisig_branch(out.bip32_derivations, vout.script_pubkey)
+                pol, branch = multisig_branch(out, vout.script_pubkey)
                 if pol is not wallet:
                     branch = None
             kind = {1: "change", 0: "self"}.get(branch, "send")

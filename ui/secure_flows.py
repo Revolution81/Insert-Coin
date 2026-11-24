@@ -1420,7 +1420,8 @@ def register(c, descriptor, name=""):
                  f"Heir waits {describe_delay(info['delay'])}",
                  f"({info['delay']:,} blocks) per coin."]
     else:
-        lines = [f"{info['k']} of {info['n']} signatures."]
+        lines = [f"{info['k']} of {info['n']} signatures" +
+                 (", Taproot (no key path)." if info.get("taproot") else ", SegWit.")]
         for fp in info["cosigners"]:
             lines.append(f"  {fp}" + ("  THIS DEVICE" if fp == mine else ""))
 

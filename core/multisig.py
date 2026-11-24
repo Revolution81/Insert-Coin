@@ -1,6 +1,8 @@
 """
 Multisig wallets: wsh(sortedmulti(k, ...)) with BIP48 keys, the kind Sparrow,
-Coldcard, SeedSigner, Keystone and Nunchuk all share.
+Coldcard, SeedSigner, Keystone and Nunchuk all share; and Taproot multisig,
+tr(NUMS, sortedmulti_a(k, ...)): one script leaf, no key path (the internal
+key is BIP341's provably unspendable point), keys at m/48'/coin'/0'/3'.
 
 This device contributes one key:  [fp/48'/coin'/0'/2']xpub
 A wallet is described by one output descriptor, e.g.
@@ -28,14 +30,25 @@ class PolicyError(Exception):
     pass
 
 
-def multisig_path(network: str, account: int = 0) -> str:
-    return f"m/48h/{NETWORKS[network][2]}h/{account}h/2h"
+# BIP341's "nothing up my sleeve" point: no one knows its private key, so a
+# Taproot output with it as the internal key can only be spent by a script.
+NUMS = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
 
 
-def cosigner_key(root: bip32.HDKey, network: str) -> str:
-    """This device's key for multisig, with its origin: [fp/48h/c'h/0h/2h]xpub."""
+def multisig_path(network: str, account: int = 0, taproot: bool = False) -> str:
+    return f"m/48h/{NETWORKS[network][2]}h/{account}h/{3 if taproot else 2}h"
+
+
+def my_keys(root: bip32.HDKey, network: str) -> tuple[str, str]:
+    """This device's multisig keys: (SegWit /2h, Taproot /3h)."""
+    return cosigner_key(root, network), cosigner_key(root, network, taproot=True)
+
+
+def cosigner_key(root: bip32.HDKey, network: str, taproot: bool = False) -> str:
+    """This device's key for multisig, with its origin: [fp/48h/c'h/0h/2h]xpub
+    (3h for Taproot multisig)."""
     emb = EMBIT_NETS[NETWORKS[network][1]]
-    path = multisig_path(network)
+    path = multisig_path(network, taproot=taproot)
     xpub = root.derive(path).to_public().to_string(version=emb["xpub"])
     return f"[{root.my_fingerprint.hex()}/{path[2:]}]{xpub}"
 
@@ -66,10 +79,13 @@ def parse_key(text: str, network: str) -> str:
     return f"[{fp.lower()}{path}]{k.to_string(version=emb['xpub'])}"
 
 
-def build_descriptor(k: int, keys: list[str]) -> str:
-    if not 1 <= k <= len(keys) <= 15:
-        raise PolicyError("need 1 <= k <= n <= 15")
-    return f"wsh(sortedmulti({k},{','.join(key + '/<0;1>/*' for key in keys)}))"
+def build_descriptor(k: int, keys: list[str], taproot: bool = False) -> str:
+    if not 1 <= k <= len(keys) <= (20 if taproot else 15):
+        raise PolicyError(f"need 1 <= k <= n <= {20 if taproot else 15}")
+    body = ",".join(key + "/<0;1>/*" for key in keys)
+    if taproot:
+        return f"tr({NUMS},sortedmulti_a({k},{body}))"
+    return f"wsh(sortedmulti({k},{body}))"
 
 
 @dataclass
@@ -82,6 +98,7 @@ class Policy:
     kind: str = "multisig"     # "multisig" | "inherit"
     delay: int = 0             # inherit: blocks before the heir can spend
     ws_len: int = 0            # inherit: witness script length
+    taproot: bool = False      # tr(NUMS, sortedmulti_a(...))
 
     @property
     def id(self) -> str:
@@ -91,12 +108,16 @@ class Policy:
     def label(self) -> str:
         if self.name:
             return self.name
-        return "Inheritance" if self.kind == "inherit" else f"{self.k}-of-{self.n}"
+        if self.kind == "inherit":
+            return "Inheritance"
+        return f"{self.k}-of-{self.n}" + (" Taproot" if self.taproot else "")
 
     def input_vbytes(self) -> float:
         if self.kind == "inherit":
             from .inherit import input_vbytes as iv
             return iv(self.ws_len)
+        if self.taproot:
+            return tr_input_vbytes(self.k, self.n)
         return input_vbytes(self.k, self.n)
 
     def desc(self) -> Descriptor:
@@ -123,35 +144,73 @@ def normalize_descriptor(text: str) -> str:
     return t
 
 
-def parse_policy(text: str, network: str, my_key: str | None = None, name: str = "") -> Policy:
-    """Check a multisig descriptor: native SegWit sorted multisig, every key
-    an xpub with origin, distinct signers, right network, and (if given)
-    includes this device's key exactly once."""
+def _mine(keys: list[str], my_key) -> bool:
+    mine = [my_key] if isinstance(my_key, str) else list(my_key)
+    return sum(keys.count(k) for k in mine) == 1
+
+
+def parse_policy(text: str, network: str, my_key=None, name: str = "") -> Policy:
+    """Check a multisig descriptor: native SegWit or Taproot sorted multisig,
+    every key an xpub with origin, distinct signers, right network, and (if
+    given) includes this device's key (one of my_keys()) exactly once."""
     t = normalize_descriptor(text)
-    m = re.match(r"^wsh\((sorted)?multi\((\d+),(.+)\)\)$", t)
-    if not m:
-        raise PolicyError("only wsh(sortedmulti(...)) wallets are supported")
-    if not m.group(1):
-        raise PolicyError("use sortedmulti (unsorted multi isn't supported)")
-    k = int(m.group(2))
-    raw_keys = m.group(3).split(",")
+    taproot = t.startswith("tr(")
+    if taproot:
+        m = re.match(r"^tr\(([0-9a-fA-F]{64}),sortedmulti_a\((\d+),(.+)\)\)$", t)
+        if not m:
+            raise PolicyError("Taproot multisig: tr(NUMS,sortedmulti_a(k,...)) only")
+        if m.group(1).lower() != NUMS:
+            raise PolicyError("its key path must be unspendable (the NUMS point)")
+        k, raw = int(m.group(2)), m.group(3)
+    else:
+        m = re.match(r"^wsh\((sorted)?multi\((\d+),(.+)\)\)$", t)
+        if not m:
+            raise PolicyError("only wsh(sortedmulti(...)) and tr(NUMS,sortedmulti_a(...))")
+        if not m.group(1):
+            raise PolicyError("use sortedmulti (unsorted multi isn't supported)")
+        k, raw = int(m.group(2)), m.group(3)
     keys, fps = [], []
-    for rk in raw_keys:
+    for rk in raw.split(","):
         if not rk.endswith("/<0;1>/*"):
             raise PolicyError("each key needs /<0;1>/* (or /0/*)")
         keys.append(parse_key(rk[:-len("/<0;1>/*")], network))
         fps.append(keys[-1][1:9])
     if len(set(fps)) != len(fps):
         raise PolicyError("the same signer appears twice")
-    desc = build_descriptor(k, keys)
+    desc = build_descriptor(k, keys, taproot)
     try:
         d = Descriptor.from_string(desc)
         d.branch(0).derive(0).script_pubkey()
     except Exception as e:
         raise PolicyError(f"descriptor doesn't work: {e}")
-    if my_key is not None and keys.count(my_key) != 1:
+    if my_key is not None and not _mine(keys, my_key):
         raise PolicyError("this device's key isn't in that wallet")
-    return Policy(desc, k, len(keys), fps, name)
+    return Policy(desc, k, len(keys), fps, name, taproot=taproot)
+
+
+def tr_input_vbytes(k: int, n: int) -> float:
+    """tr(NUMS, sortedmulti_a) script-path input: 41 bytes + witness/4.
+    Witness: k signatures (65), n-k empty pushes, the leaf script
+    (n keys of 34 bytes, k and OP_NUMEQUAL), a 33-byte control block."""
+    witness = 1 + k * 65 + (n - k) * 1 + (3 + 34 * n + 2) + (1 + 33)
+    return 41 + witness / 4
+
+
+def tap_leaves(derived: Descriptor) -> list[tuple[bytes, int, bytes]]:
+    """(leaf script, leaf version, control block) of every leaf of a derived
+    tr(...) descriptor: what a PSBT's taproot_scripts may hold for it."""
+    from embit.descriptor.taptree import _tweak_helper
+    internal = derived.key.get_public_key()
+    leaves, h = _tweak_helper(derived.taptree)
+    parity = derived.key.get_public_key().taproot_tweak(h).sec()[0] & 1
+    out = []
+    for leaf, path in leaves:
+        ser = leaf.serialize()                   # version byte + compact-size script
+        from embit.script import Script
+        script = Script.parse(ser[1:]).data
+        out.append((script, leaf.version, bytes([leaf.version | parity]) + internal.xonly() + path))
+    assert internal is not None
+    return out
 
 
 def witness_k_n(witness_script: bytes) -> tuple[int, int] | None:
@@ -170,7 +229,7 @@ def input_vbytes(k: int, n: int) -> float:
     return 41 + witness / 4
 
 
-def parse_any(text: str, network: str, my_key: str | None = None, name: str = "") -> Policy:
+def parse_any(text: str, network: str, my_key=None, name: str = "") -> Policy:
     """A multisig or an inheritance descriptor, whichever it is."""
     t = normalize_descriptor(text)
     if t.startswith("wsh(or_d("):
