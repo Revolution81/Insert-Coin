@@ -125,7 +125,8 @@ def main():
     import app as appmod
     appmod.traceback.print_exc = catch
     problems, allseen = [], collections.Counter()
-    for s in range(seeds):
+    first = int(os.environ.get("CZ_MONKEY_FIRST", "0"))
+    for s in range(first, first + seeds):
         t0 = time.time()
         prob, seen = run(s, steps, swallowed)
         allseen.update(seen)
