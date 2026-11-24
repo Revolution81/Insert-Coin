@@ -94,7 +94,8 @@ id czprint  >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sb
 usermod -aG czshare czprint
 getent group czscreen >/dev/null || groupadd --system czscreen
 getent group spi >/dev/null || groupadd --system spi
-usermod -aG czsigner,cznet,czscan,czprint,spi czapp
+getent group gpio >/dev/null || groupadd --system gpio
+usermod -aG czsigner,cznet,czscan,czprint,spi,gpio czapp
 usermod -aG video czscan
 # the app used to read the keyboard and the camera itself; now only the
 # signer reads keys and only czscan opens the camera

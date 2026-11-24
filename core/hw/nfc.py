@@ -97,6 +97,37 @@ class SPI:
         self.s.close()
 
 
+class GpioCsSPI(SPI):
+    """SPI whose chip select is a plain GPIO. On the Cardputer Zero the Cap's
+    NFC chip sits on GPIO22 (hardware CE0 is the screen, CE1 the CC1101), so
+    the bus runs with no_cs and this pin frames each transfer."""
+
+    def __init__(self, bus: int, dev: int, mode: int, cs: int, hz: int = 4_000_000):
+        from .gpio import OutputPin
+        super().__init__(bus, dev, mode, hz)
+        try:
+            self.s.no_cs = True                         # leave CE1 (the CC1101) high
+            self.cs = OutputPin(cs, 1, "czwallet-nfc-cs")
+        except Exception:
+            self.s.close()
+            raise
+
+    def xfer(self, data: list[int]) -> list[int]:
+        self.cs.set(0)
+        try:
+            return self.s.xfer2(list(data))
+        finally:
+            self.cs.set(1)
+
+    def close(self):
+        try:
+            self.s.no_cs = False
+        except Exception:  # noqa: BLE001
+            pass
+        self.s.close()
+        self.cs.close()
+
+
 # --------------------------------------------------------------- I2C bus
 I2C_RDWR, I2C_M_RD = 0x0707, 0x0001
 SHARED_BUS = "/dev/i2c-1"          # keyboard, I/O expander, codec: never from the app
@@ -171,6 +202,42 @@ def _i2c_from_env() -> I2C:
 def _spi_from_env(var: str, default: str, mode: int) -> SPI:
     bus, dev = os.environ.get(var, default).split(".")
     return SPI(int(bus), int(dev), mode)
+
+
+# The Cap CC1101 & NFC on the Cardputer Zero's EXT header (M5's Cap-Bus map,
+# matched pin for pin to the Zero's header): SPI0 CLK/MOSI/MISO, CC1101 CS
+# on CE1 (GPIO7, spidev0.1), NFC CS on GPIO22, NFC IRQ on GPIO23, the Cap's
+# power switch on GPIO26, CC1101 GDO0 on GPIO14 (the UART's TX!).
+CAP_POWER = 26
+CAP_NFC_CS = 22
+_CAP: dict = {}
+
+
+class _Skip(Exception):
+    pass
+
+
+def _cap_power() -> None:
+    """Switch the Cap on (once per process). Refused if the pin belongs to
+    the Unit NFC's i2c-gpio bus."""
+    if "power" in _CAP:
+        return
+    unit_bus = os.environ.get("CZ_NFC_I2C", "/dev/i2c-3:0x50").split(":")[0]
+    if os.path.exists(unit_bus):                         # GPIO23/26 are the Unit's I2C
+        raise OSError("EXT pins set up for Unit NFC")
+    from .gpio import OutputPin
+    pin = int(os.environ.get("CZ_CAP_POWER", CAP_POWER))
+    _CAP["power"] = OutputPin(pin, 1, "czwallet-cap-power")
+    time.sleep(0.05)
+
+
+def _cap_nfc_spi() -> SPI:
+    spec = os.environ.get("CZ_NFC_SPI", "0.1")
+    bus, dev = spec.split(".")
+    cs = os.environ.get("CZ_NFC_CS", str(CAP_NFC_CS))
+    if cs == "hw":                                       # the spidev's own CE line
+        return SPI(int(bus), int(dev), 1)
+    return GpioCsSPI(int(bus), int(dev), 1, int(cs))
 
 
 # --------------------------------------------------------------- ST25R3916
@@ -522,10 +589,16 @@ class CC1101:
     def status(self, reg: int) -> int:
         return self.spi.xfer([reg | 0xC0, 0])[1]            # burst bit = status register
 
+    IOCFG0, GDO_HIZ = 0x02, 0x2E
+
     def sleep(self) -> dict:
         self.spi.xfer([self.SRES])
         time.sleep(0.002)
         part, ver = self.status(self.PARTNUM), self.status(self.VERSION)
+        # after reset GDO0 puts out a clock, and on the Zero GDO0 is wired to
+        # the UART's TX pin (the Grove port): tri-state it so the fingerprint
+        # sensor's line is left alone
+        self.spi.xfer([self.IOCFG0, self.GDO_HIZ])
         self.spi.xfer([self.SIDLE])
         self.spi.xfer([self.SPWD])
         ok = part == 0x00 and ver in (0x04, 0x14)
@@ -555,18 +628,36 @@ def open_reader() -> tuple[object | None, dict]:
                                 "reader": "unit" if unit else "cap",
                                 "bus": "I2C (simulated)" if unit else "SPI (simulated)",
                                 "subghz": {"state": "absent" if unit else "asleep"}}
-    try:
-        sub = CC1101(_spi_from_env("CZ_CC1101_SPI", "0.1", mode=0)).sleep()
-    except Exception as e:  # noqa: BLE001
-        sub = {"state": "absent", "error": str(e)[:40]}
     errors = []
+    sub = {"state": "absent"}
+    try:
+        _cap_power()
+    except Exception as e:  # noqa: BLE001 - no GPIO access, or the Unit's bus owns it
+        errors.append(f"Cap power: {e}"[:40])
+    if not errors:
+        try:
+            cc = _spi_from_env("CZ_CC1101_SPI", "0.1", mode=0)
+            try:
+                sub = CC1101(cc).sleep()
+            finally:
+                cc.close()                             # the NFC side reuses this spidev
+        except Exception as e:  # noqa: BLE001
+            sub = {"state": "absent", "error": str(e)[:40]}
     try:                                               # the Cap, on SPI
-        chip = ST25R3916(_spi_from_env("CZ_NFC_SPI", "0.0", mode=1),
-                         vdd_5v=os.environ.get("CZ_NFC_5V") == "1")
-        chip.start()
+        if errors:
+            raise _Skip
+        bus = _cap_nfc_spi()
+        chip = ST25R3916(bus, vdd_5v=os.environ.get("CZ_NFC_5V") == "1")
+        try:
+            chip.start()
+        except Exception:
+            bus.close()
+            raise
         kind, rev = chip.identity()
         return Reader(chip), {"state": "ready", "reader": "cap", "kind": f"ST25R3916 rev {rev}",
                               "bus": "SPI", "subghz": sub}
+    except _Skip:
+        pass
     except Exception as e:  # noqa: BLE001 - no Cap, no spidev, wrong bus
         errors.append(f"Cap: {e}"[:40])
     try:                                               # the Unit, on its own I2C bus

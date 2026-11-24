@@ -140,7 +140,8 @@ def finger_menu(app):
     if f.get("state") != "ready":
         app.push(MessageScreen("FINGERPRINT", ["No sensor found. Plug the",
                                                "Unit Fingerprint2 into the",
-                                               "Grove port, then RESCAN."]))
+                                               "Grove port, then RESCAN.", ""]
+                               + list(f.get("errors") or [])))
         return
     on = app.settings.finger_unlock
 

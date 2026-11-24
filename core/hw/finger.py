@@ -203,18 +203,31 @@ def open_sensor() -> tuple[Fingerprint | None, dict]:
         _SIM = _SIM or SimulatedSensor()
         f = Fingerprint(_SIM)
         return f, {"state": "ready", "saved": f.count(), "port": "sim"}
+    errors, seen = [], set()
     for path in PORTS:
         if not os.path.exists(path):
             continue
+        real = os.path.realpath(path)
+        if real in seen:
+            continue
+        seen.add(real)
+        name = os.path.basename(real)
         try:
             f = Fingerprint(SerialPort(path))
+        except OSError as e:
+            errors.append(f"{name}: {e.strerror or e}"[:40])
+            continue
+        try:
             f.wake()
             if f.connected():
                 return f, {"state": "ready", "saved": f.count(), "port": path}
-            f.port.close()
-        except (OSError, FingerError):
-            continue
-    return None, {"state": "absent"}
+            errors.append(f"{name}: no answer")
+        except (OSError, FingerError) as e:
+            errors.append(f"{name}: {e}"[:40])
+        f.port.close()
+    if not seen:
+        errors.append("No serial port (UART off)")
+    return None, {"state": "absent", "errors": errors}
 
 
 def simulator() -> SimulatedSensor | None:

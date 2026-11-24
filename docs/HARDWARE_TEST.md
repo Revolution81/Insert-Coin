@@ -151,8 +151,14 @@ missing, we change the boot config and reboot.
       is missing (not "wrong PIN") and must not cost a heart.
 - [ ] **Fingerprint:** ADD A FINGER (3 touches), turn on QUICK UNLOCK, lock,
       unlock with the finger. A different finger must fail.
-- [ ] **NFC Cap:** `sudo python3 tools/hwtest.py nfc`. If no reader is found,
-      try `CZ_NFC_SPI=0.1` and `CZ_CC1101_SPI=0.0` (the buses may be swapped).
+- [ ] **NFC Cap:** `sudo python3 tools/hwtest.py nfc`. Pins, from M5's Cap-Bus
+      map matched to the Zero's EXT header: Cap power GPIO26 (driven high),
+      NFC CS GPIO22 (a plain GPIO, the bus runs no_cs), CC1101 CS on CE1
+      (spidev0.1), NFC IRQ GPIO23, CC1101 GDO0 on GPIO14 (UART TX, so it is
+      tri-stated before sleep). If no reader is found, the NFC detail screen
+      lists why; try `CZ_NFC_CS=hw CZ_NFC_SPI=0.0` as a last guess.
+- [ ] **Fingerprint with the Cap fitted:** check it works both with and
+      without the Cap (the Cap's GDO0 shares the UART TX line).
 - [ ] **Unit NFC (U216) instead of the Cap:** wire it to the EXT header,
       not the Grove port (that's I2C1, the keyboard's bus, which the app is
       never given): yellow (SDA) to pin 3, white (SCL) to pin 1, red to

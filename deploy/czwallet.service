@@ -11,9 +11,10 @@ User=czapp
 Group=czapp
 # No camera (czscan has it), no keyboard, no panel: keys and frames go
 # through the signer, QR texts come from czscan. dialout: fingerprint sensor.
-# spi: the Cap CC1101 & NFC (the app keeps the CC1101 asleep).
+# spi, gpio: the Cap CC1101 & NFC (its power switch and NFC chip select
+# are plain GPIOs; the app keeps the CC1101 asleep).
 # audio: the coin chime on the title screen (aplay, the 1 W speaker).
-SupplementaryGroups=czsigner cznet czscan czprint dialout spi audio
+SupplementaryGroups=czsigner cznet czscan czprint dialout spi gpio audio
 WorkingDirectory=/opt/czwallet
 Environment=CZ_DATA=/var/lib/czwallet CZ_SIGNER_SOCK=/run/czwallet/signer.sock
 Environment=CZ_NET_SOCK=/run/cznet/net.sock CZ_SCREEN_SOCK=/run/czwallet/screen.sock CZ_SCAN_SOCK=/run/czscan/scan.sock

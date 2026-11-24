@@ -6,6 +6,13 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fixed: NFC Cap not detected.** The Cap's pins are now matched to the
+  Zero's EXT header: its power switch (GPIO26) is switched on, the NFC chip
+  is selected on GPIO22 instead of the screen's CE0, and the CC1101's GDO0,
+  wired to the Grove port's UART TX, is tri-stated so it can't jam the
+  fingerprint sensor. Needs the app in the gpio group (new image or
+  install.sh). The NFC and FINGERPRINT screens now say why nothing was found.
+
 - **ADDRESS EXPLORER** (SETUP › TOOLS): every receive and change address with
   its balance and label, verified on the signer's screen, 20 more at a time.
 - **CARD BACKUP › VERIFY**: opens every backup on the device, card and USB
