@@ -48,17 +48,23 @@ Tor by default, and sends straight from the device, limited by a daily
 online cap.
 
 **Wallet**
-- BIP39 seeds (12 or 24 words). New seeds mix the kernel RNG, the secure chip
+- BIP39 seeds (12, 18 or 24 words) or a master xprv. New seeds mix the kernel RNG, the secure chip
   if fitted, and any dice rolls, coin flips, card shuffles or key mashing you add
 - Native SegWit (BIP84) and Taproot (BIP86), several accounts per seed, optional passphrase
 - Coin control, labels, fee bumps and cancels (RBF), CSV history export
 - Multisig cosigner (BIP48, descriptors) and inheritance wallets with a time-locked heir key
-- Child seeds (BIP85), message signing (BIP137, BIP322)
+- Child seeds and passwords (BIP85), message signing (BIP137, BIP322)
+- Temporary seeds and a Seed Vault of extra seeds; an address explorer
+- Key Teleport (COLDCARD-compatible): seeds, notes and PSBTs to another device by QR
+- Co-Sign: a 2-of-3 where a second key on the device signs only inside its own rules
 - QR in every format that matters: PSBT, UR, BBQr, SeedQR
 - SATSCARD and TAPSIGNER over NFC
 
-**Backups**: seed words, SeedQR, SLIP39 split shares, and an encrypted card
-backup of accounts, multisig wallets, labels and settings (no seed inside).
+**Backups**: seed words, SeedQR, SLIP39 split shares, Seed XOR, and an encrypted card
+backup of accounts, multisig wallets, labels, notes, the seed vault and settings
+(not your seed itself), with a check that it opens.
+
+**Notes & passwords** kept by the signer, encrypted with the seed.
 
 **Guards**, all on the signer and all changed only with your PIN:
 - **Spending policy**: per payment, per day, cooldown, address allow-list, max fee rate

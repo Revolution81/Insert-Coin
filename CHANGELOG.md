@@ -2,6 +2,32 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## Unreleased: the toolbox
+
+Not in an image or update yet; the next release carries all of it.
+
+- **ADDRESS EXPLORER** (SETUP › TOOLS): every receive and change address with
+  its balance and label, verified on the signer's screen, 20 more at a time.
+- **CARD BACKUP › VERIFY**: opens every backup on the device, card and USB
+  stick and shows which open with this seed.
+- **18-word seeds** everywhere 12 and 24 work (create, dice, restore, child
+  seeds, split shares of 27 words).
+- **IMPORT XPRV**: restore from a master private key (typed or scanned).
+- **NOTES & PASSWORDS** (SETUP › TOOLS): notes and passwords kept by the
+  signer, encrypted with the seed, carried in card backups; passwords as QR;
+  **BIP85 passwords** derived from the seed.
+- **SEED XOR** (COLDCARD's format): split a seed into 2 to 4 normal-looking
+  seeds, and restore from them.
+- **TEMPORARY SEED** and the **SEED VAULT** (SETUP › TOOLS): use another seed
+  (words, xprv, Seed XOR parts, a child seed) until LOCK without touching the
+  stored one; keep up to 20 extra seeds encrypted with the main one.
+- **KEY TELEPORT** (SETUP › TOOLS, COLDCARD's protocol): send a message,
+  notes, a vault seed or the seed in use to another device by QR, with two
+  passwords said out loud; multisig PSBTs go to a co-signer with no setup.
+- **CO-SIGN** (SETUP › SECURITY, COLDCARD's CCC idea): key C on the device
+  signs a 2-of-3 only inside its own rules; the rules change only with key
+  C's words.
+
 ## 0.8.27: first update with the new names
 
 An update for the 0.8.26 wallet image, delivered as

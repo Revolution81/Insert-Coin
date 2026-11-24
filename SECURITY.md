@@ -280,6 +280,36 @@ in the changelog and, if you like, a public advisory. Reviewing, testing and
 publishing findings is explicitly allowed by the license, paid work included
 (see LICENSE, Additional Permissions).
 
+## The toolbox (unreleased)
+
+**Notes & passwords, seed vault, co-sign key, teleport key.** Each is a file
+in the signer's folder, AES-GCM with a key from HMAC(main seed key, label),
+file name hashed from that key. None of the methods that read them are on
+the app's lists: the app asks for a prompt and gets nothing back (or only
+public keys). Card backups carry the notes and the seed vault, inside the
+backup's own encryption. Gap: the seed vault and notes open with the main
+seed, so whoever has your seed words has them too, by design.
+
+**Temporary seed.** The main key waits in memory; LOCK, auto lock and the
+next unlock all go back to it. The PIN stays the device's. Off while a
+spending policy is locked (otherwise the main seed could be loaded as a
+"temporary" one to walk around it).
+
+**Key Teleport.** COLDCARD's protocol (secp256k1 ECDH, AES-256-CTR in two
+layers, PBKDF2-SHA512 over the teleport password, 2-byte checks). The
+receiver password is only 8 digits and the teleport password 40 bits: they
+stop someone who sees only the QR, not someone who hears both passwords
+and sees the QR. Say them by another channel. Checked against COLDCARD's
+documentation and reference code, not yet against a real COLDCARD.
+
+**Co-Sign.** Key C signs only when describe() and, again, sign() find the
+payment inside C's rules (its own day total and cooldown). Seeing or
+changing the rules takes C's words; three wrong tries lock the signer.
+Gap: key C sits on the device, so someone with the device, the PIN and
+the rules' limits in mind can still spend up to the limits, which is the
+point of the limits. A BIP85 key C is offered but marked weaker: then the
+seed backup alone holds 2 of the 3 keys.
+
 ## Wipe PIN, login countdown, spending policy (0.8.20)
 
 **Wipe PIN.** The vault header always carries a 32-byte tag. With no wipe PIN
