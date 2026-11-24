@@ -131,8 +131,23 @@ def card_backup_menu(app):
              (lambda p: lambda app: restore_card_backup(app, p))(p))
             for p in files[:6]], info=["Newest first."]))
 
+    def verify(app):
+        found = backup.copies(app.signer.backup_tag())[:12]
+        if not found:
+            app.push(MessageScreen("NO BACKUP", ["No backup for this seed", "on the device, card or",
+                                                 "USB stick yet. SAVE BACKUP", "makes one."]))
+            return
+        files = []
+        for where, p in found:
+            try:
+                files.append([f"{where} {_stamp(os.path.basename(p))[5:]}",
+                              backup.b64(backup.read(p))])
+            except (OSError, backup.BackupError):
+                files.append([f"{where} {_stamp(os.path.basename(p))[5:]}", ""])
+        app.prompt("verify_backup_prompt", lambda app, r: None, files=files)
+
     app.push(MenuScreen("CARD BACKUP", [
-        ("SAVE BACKUP", save), ("RESTORE BACKUP", restore)],
+        ("SAVE BACKUP", save), ("VERIFY BACKUP", verify), ("RESTORE BACKUP", restore)],
         info=["Accounts, multisig wallets,", "rules, labels and settings.",
               "Not the seed: keep your words."]))
 

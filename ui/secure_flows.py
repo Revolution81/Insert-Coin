@@ -875,6 +875,38 @@ def restore_backup(c, blob):
                          ["Adds to what's here;", "removes nothing."], yes, yes="RESTORE"))
 
 
+def verify_backup(c, files):
+    """VERIFY BACKUP: open each copy of this seed's card backups with the
+    seed's key and say which are whole, changing nothing. AES-GCM fails on
+    any changed byte, so OK means the file is exactly as it was saved.
+    files: up to 12 [label, base64] pairs from the app (labels are only
+    shown, after being cleaned)."""
+    from core import backup
+    if not isinstance(files, list) or not 0 < len(files) <= 12:
+        raise BadRequest("bad file list")
+    lines, ok, newest = [], [], None
+    for item in files:
+        if (not isinstance(item, list) or len(item) != 2 or not all(isinstance(x, str) for x in item)
+                or len(item[1]) > backup.MAX_BYTES * 2):
+            raise BadRequest("bad file list")
+        label = "".join(ch for ch in item[0] if ch.isalnum() or ch in " -:")[:22]
+        try:
+            payload = c.signer.open_backup(blob_b64=item[1])
+            ok.append(True)
+            newest = newest or payload
+            lines.append(f"OK    {label}")
+        except Exception:  # noqa: BLE001 - damaged, changed or not this seed's
+            ok.append(False)
+            lines.append(f"BAD   {label}")
+    if newest is not None:
+        lines += ["", "Newest holds:"] + backup.summary(newest)[1:4]
+    bad = ok.count(False)
+    head = ["Every copy opens and is", "unchanged."] if not bad else [
+        f"{bad} of {len(ok)} won't open: damaged,", "changed, or another seed's."]
+    _final(c, MessageScreen("BACKUP CHECK", (head + [""] + lines)[:12],
+                            border="red" if bad else "green"), {"ok": ok})
+
+
 def child_seed(c):
     """BIP85: a separate seed for another wallet, re-creatable from this one."""
     def pick(n):

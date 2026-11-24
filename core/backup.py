@@ -207,6 +207,23 @@ def find(tag: str | None = None) -> list[str]:
     return sorted(out, key=lambda p: os.path.basename(p)[-19:], reverse=True)
 
 
+def copies(tag: str) -> list[tuple[str, str]]:
+    """Every copy of this seed's backups, newest first, as (where, path):
+    DEVICE, CARD or USB. Same-named copies in different places all count,
+    so VERIFY BACKUP checks each one."""
+    out = []
+    for d in search_dirs():
+        where = "DEVICE" if d == local_dir() else "USB" if d.startswith("/media") else "CARD"
+        pattern = "**/czw-*.bak" if d.startswith("/media") else "czw-*.bak"
+        for p in glob.glob(os.path.join(d, pattern), recursive=True):
+            name = os.path.basename(p)
+            if NAME_RE.match(name) and name.startswith(f"czw-{tag}-"):
+                out.append((where, p))
+    order = {"DEVICE": 0, "CARD": 1, "USB": 2}
+    return sorted(out, key=lambda wp: (os.path.basename(wp[1])[-19:], -order[wp[0]]),
+                  reverse=True)
+
+
 def read(path: str) -> bytes:
     with open(path, "rb") as f:
         data = f.read(MAX_BYTES + 65)
