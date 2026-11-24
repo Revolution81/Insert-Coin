@@ -30,7 +30,7 @@ from .vault import _atomic_write
 SAFE = {"status", "public_info", "account_info", "account_rules", "backup_tag", "make_backup",
         "lock", "describe", "list_multisig",
         "check_multisig", "remove_multisig", "chip_status", "touch", "shorten_auto_lock",
-        "policy_info", "set_screen_sleep", "main_seed"}
+        "policy_info", "set_screen_sleep", "main_seed", "cosign_status"}
 
 PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "shares_prompt", "sign_prompt", "words_prompt", "seedqr_prompt", "split_prompt",
@@ -39,7 +39,7 @@ PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "register_prompt", "address_prompt", "message_prompt",
            "child_seed_prompt", "account_rule_prompt", "restore_backup_prompt", "xprv_prompt", "notes_prompt",
            "seed_xor_prompt", "temp_seed_prompt", "kt_receive_prompt", "kt_send_prompt",
-    "kt_incoming_prompt", "kt_psbt_prompt",
+    "kt_incoming_prompt", "kt_psbt_prompt", "cosign_prompt",
            "verify_backup_prompt",
            "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "countdown_prompt",
            "policy_prompt", "bypass_prompt", "totp_prompt"}
@@ -172,6 +172,9 @@ class TrustedSigner:
 
     def temp_seed_prompt(self):
         return self._ask("temporary_seed")
+
+    def cosign_prompt(self):
+        return self._ask("cosign")
 
     def kt_receive_prompt(self):
         return self._ask("teleport_receive")

@@ -117,8 +117,13 @@ class ConfirmSendScreen(Screen):
             note = f"OVER ONLINE CAP ({fmt_sats(left)} LEFT). USE VAULT MODE."
         elif s["warnings"]:
             note = s["warnings"][0].upper()
+        cs = s.get("cosign")
         if note:
             t.text(d, (14, 98), note[:52], TINY, "red")
+        elif cs:                         # CO-SIGN: will key C add its signature?
+            t.text(d, (14, 98), ("CO-SIGN: KEY C SIGNS TOO" if cs["will"] else
+                                 "CO-SIGN: NO. " + cs["why"])[:52], TINY,
+                   "green" if cs["will"] else "orange")
         elif any(o["kind"] != "change" for o in s["outputs"]):
             t.text(d, (14, 98), "TAB: SHOW FULL ADDRESS", TINY, "grey")
         t.dialog(img, d, [self.question], box=(4, 120, 214, H - 4))
@@ -922,7 +927,8 @@ def sign(c, psbt):
             title = s["wallet"].upper()[:16]
         q = "Sign this?"
         if s.get("sigs_needed", 1) > 1:
-            q = f"Sign? ({s['sigs_present'] + 1} of {s['sigs_needed']})"
+            mine = 2 if (s.get("cosign") or {}).get("will") else 1
+            q = f"Sign? ({min(s['sigs_present'] + mine, s['sigs_needed'])} of {s['sigs_needed']})"
 
         def go(c, code=None):
             c.job("SIGNING...", lambda: c.signer.sign(psbt=psbt, digest=s["digest"], code=code),
@@ -1032,6 +1038,16 @@ def _b64(v, most=200_000) -> bytes:
         return base64.b64decode(v, validate=True)
     except ValueError:
         raise BadRequest("bad data")
+
+
+def cosign(c):
+    """SETUP › SECURITY › CO-SIGN (ui/cosign_flow.py)."""
+    if c.signer.status().get("temporary"):
+        _final(c, MessageScreen("TEMPORARY SEED", ["Co-sign belongs to your main", "seed: go back to it first."],
+                                border="red"))
+        return
+    from .cosign_flow import cosign as run
+    run(c)
 
 
 def teleport_receive(c):

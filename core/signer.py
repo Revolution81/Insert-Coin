@@ -759,6 +759,18 @@ class Signer:
         e = entries[index]
         return self.use_temporary(e["secret"], e["passphrase"], e["label"])
 
+    def seedvault_words(self, index: int) -> str:
+        """A vault entry's words (no passphrase), e.g. to become CO-SIGN key C."""
+        self._need_root()
+        self._hobbled("the seed vault")
+        entries = self._load_seedvault()
+        if not isinstance(index, int) or not 0 <= index < len(entries):
+            raise SignerError("no such seed")
+        e = entries[index]
+        if seedlib.is_xprv(e["secret"]) or e["passphrase"]:
+            raise SignerError("needs plain seed words (no passphrase)")
+        return e["secret"]
+
     def seedvault_rename(self, index: int, label: str) -> list[dict]:
         self._need_root()
         entries = self._load_seedvault()
@@ -898,6 +910,126 @@ class Signer:
         if pol is None:
             raise SignerError("unknown wallet")
         return [fp for fp, _, _ in self._ms_keys(pol)]
+
+    # ------------------------------------------------------------ co-sign
+    # CO-SIGN (COLDCARD's CCC): a second key, C, kept here with its own
+    # spending rules. In a 2-of-3 wallet of A (this seed), C and B (a backup
+    # key kept elsewhere), the device signs with A as always and adds C's
+    # signature only when the payment fits C's rules: inside the rules one
+    # device spends alone; past them it takes B. The rules can't be seen,
+    # changed or removed without C's seed words (not the PIN): someone who
+    # forces the PIN out of you still meets the limits.
+    def _cc_file(self) -> tuple[str, bytes]:
+        key = hmac.new(self._main_key().secret, b"czwallet-cosign-v1", hashlib.sha256).digest()
+        return os.path.join(self.dir, f"cc-{hashlib.sha256(key).hexdigest()[:16]}.bin"), key
+
+    def _load_cc(self) -> dict | None:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        path, key = self._cc_file()
+        if not os.path.exists(path):
+            return None
+        with open(path, "rb") as f:
+            blob = f.read()
+        return json.loads(AESGCM(key).decrypt(blob[:12], blob[12:], None))
+
+    def _save_cc(self, cc: dict | None) -> None:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        path, key = self._cc_file()
+        if cc is None:
+            if os.path.exists(path):
+                os.remove(path)
+            return
+        nonce = os.urandom(12)
+        _atomic_write(path, nonce + AESGCM(key).encrypt(nonce, json.dumps(cc).encode(), None))
+
+    def _cc_root(self, cc: dict) -> bip32.HDKey:
+        return seedlib.root_key(cc["secret"], "", self._network)
+
+    def cosign_status(self) -> dict:
+        """Public only: is it on, and key C's fingerprint and multisig key."""
+        self._need_root()
+        cc = self._load_cc()
+        if not cc:
+            return {"on": False}
+        root = self._cc_root(cc)
+        return {"on": True, "fingerprint": seedlib.fingerprint(root),
+                "key": ms.cosigner_key(root, self._network)}
+
+    def cosign_setup(self, secret: str, rules: dict) -> dict:
+        self._need_root()
+        if self._load_cc():
+            raise SignerError("co-sign is already set up")
+        m = seedlib.normalize(secret) if isinstance(secret, str) else ""
+        if not seedlib.is_valid(m):
+            raise SignerError("key C must be valid seed words")
+        if seedlib.fingerprint(seedlib.root_key(m, "", self._network)) == \
+                self._main_key().my_fingerprint.hex():
+            raise SignerError("key C can't be your main seed")
+        p = {k: v for k, v in spolicy.DEFAULT.items()}
+        try:
+            for field, value in (rules or {}).items():
+                p = spolicy.change(p, field, value, self._check_address)
+        except spolicy.PolicyError as e:
+            raise SignerError(str(e))
+        p["state"] = {}
+        self._save_cc({"secret": m, "rules": p})
+        return self.cosign_status()
+
+    _cc_fails = 0
+
+    def _cc_words(self, words: str) -> dict:
+        """Proof of key C: its seed words. Three wrong tries lock the signer."""
+        self._need_root()
+        cc = self._load_cc()
+        if not cc:
+            raise SignerError("co-sign isn't set up")
+        if not isinstance(words, str) or not hmac.compare_digest(
+                seedlib.normalize(words).encode(), cc["secret"].encode()):
+            Signer._cc_fails += 1
+            if Signer._cc_fails >= 3:
+                Signer._cc_fails = 0
+                self.lock()
+                raise SignerError("wrong key C words 3 times: locked")
+            raise SignerError("those aren't key C's words")
+        Signer._cc_fails = 0
+        return cc
+
+    def cosign_rules(self, words: str) -> dict:
+        return spolicy.public(dict(self._cc_words(words)["rules"], bypass=None, totp=None))
+
+    def cosign_change(self, words: str, field: str, value) -> dict:
+        cc = self._cc_words(words)
+        try:
+            state = cc["rules"].get("state", {})
+            cc["rules"] = spolicy.change(cc["rules"], field, value, self._check_address)
+            cc["rules"]["state"] = state
+        except spolicy.PolicyError as e:
+            raise SignerError(str(e))
+        self._save_cc(cc)
+        return spolicy.public(dict(cc["rules"], bypass=None, totp=None))
+
+    def cosign_remove(self, words: str) -> None:
+        """Forget key C (its words still sign anywhere; wallets stay registered)."""
+        self._cc_words(words)
+        self._save_cc(None)
+
+    def _cc_judge(self, wallet, sends, spend, fee, fee_rate, outpoints) -> dict | None:
+        """For a multisig wallet that has key C: would C sign this, and why not."""
+        if wallet is None or isinstance(wallet, str):
+            return None
+        cc = self._load_cc()
+        if not cc:
+            return None
+        cfp = seedlib.fingerprint(self._cc_root(cc))
+        if cfp not in [fp for fp, _, _ in self._ms_keys(wallet)]:
+            return None
+        rules = dict(cc["rules"], bypass=None, totp=None)
+        st = self._policy_day(rules)
+        added, replaced = self._cost(st, outpoints, spend + fee)
+        why, _ = spolicy.check(rules, sends, spend, fee, fee_rate, time.time(), st["spent"],
+                               st.get("last_sign"), day_cost=added, replaces=bool(replaced))
+        return {"will": not why, "why": why[0] if why else "", "fingerprint": cfp,
+                "cc": cc, "state": st, "added": added, "replaced": replaced}
 
     # ------------------------------------------------------ spending policy
     def _policy_day(self, rules: dict) -> dict:
@@ -1211,7 +1343,11 @@ class Signer:
                    if isinstance(wallet, str) else wallet.id,
                    "sigs_needed": 1 if isinstance(wallet, str) else wallet.k,
                    "sigs_present": sigs_present}
-        self._pending = {digest: dict(summary, psbt_hash=whole)}
+        cc = self._cc_judge(wallet, sends, spend, fee, fee_rate, outpoints)
+        if cc:
+            summary["cosign"] = {"will": cc["will"], "why": cc["why"],
+                                 "fingerprint": cc["fingerprint"]}
+        self._pending = {digest: dict(summary, psbt_hash=whole, _wallet=wallet)}
         self._touch()
         return summary
 
@@ -1264,6 +1400,20 @@ class Signer:
         n = psbt.sign_with(root)
         if n < len(psbt.inputs):
             raise SignerError("could not sign every input")
+        if summary.get("cosign", {}).get("will"):
+            # key C: checked again now, with its own day total and cooldown
+            cc = self._cc_judge(summary["_wallet"], sends, summary["spend"], summary["fee"],
+                                summary["fee_rate"], ins)
+            if cc and cc["will"] and psbt.sign_with(self._cc_root(cc["cc"])):
+                st = cc["state"]
+                if summary["spend"]:
+                    st["spent"] += cc["added"]
+                    st["signed"] = [e for e in st["signed"] if e not in cc["replaced"]]
+                    st["signed"].append({"in": sorted(ins), "cost": summary["spend"] + summary["fee"]})
+                    if not cc["replaced"]:
+                        st["last_sign"] = time.time()
+                cc["cc"]["rules"]["state"] = st
+                self._save_cc(cc["cc"])
         if summary["spend"] or step is not None:
             if summary["spend"]:
                 pstate["spent"] += p_added

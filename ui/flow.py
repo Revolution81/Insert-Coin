@@ -1258,7 +1258,7 @@ def sound_label(settings) -> str:
 
 SETUP_GROUPS = [
     ("SECURITY", ["CHANGE PIN", "AUTO LOCK", "LOGIN COUNTDOWN", "WIPE PIN", "DURESS PIN",
-                  "SPENDING POLICY", "ONLINE CAP", "HARDWARE", "LOCK NOW"]),
+                  "SPENDING POLICY", "CO-SIGN", "ONLINE CAP", "HARDWARE", "LOCK NOW"]),
     ("BACKUP", ["SHOW SEED WORDS", "SEEDQR BACKUP", "SPLIT BACKUP", "CARD BACKUP"]),
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
@@ -1391,6 +1391,7 @@ def settings_screen(app, at: str | None = None):
              _sec()._mins(st.get("countdown_s", 0)), "gold" if st.get("countdown_s") else "grey"),
             ("WIPE PIN", lambda app: _sec().wipe_pin_menu(app),
              "ON" if st.get("wipe_pin") else "OFF", "red" if st.get("wipe_pin") else "grey"),
+            ("CO-SIGN", lambda app: cosign(app), "2 OF 3", "grey"),
             ("SPENDING POLICY", lambda app: _sec().policy_menu(app),
              "LOCKED" if st["policy"]["locked"] else "ON" if st["policy"]["active"] else "OFF",
              "red" if st["policy"]["locked"] else "green" if st["policy"]["active"] else "grey"),
@@ -1481,6 +1482,38 @@ def scan_anything(app):
         else:
             app.push(MessageScreen("SCANNED TEXT", [res.text[:200]]))
     app.push(ScanScreen("SCAN", got, hint="ADDRESS, PSBT OR SIGNED TX"))
+
+
+# ================================================================ CO-SIGN
+def cosign(app):
+    """SETUP › SECURITY › CO-SIGN: key C and its rules are set on the
+    signer's screens; here the 2-of-3 wallet A + C + B is registered."""
+    from core.multisig import PolicyError, build_descriptor, parse_key
+    from .multisig_flow import _confirm_and_register
+
+    def register(app, keys):
+        _confirm_and_register(app, build_descriptor(2, keys), "Co-Sign")
+
+    def done(app, r):
+        if not r:
+            return
+        if r.get("b"):
+            register(app, [r["a"], r["c"], r["b"]])
+            return
+
+        def got(app, res):
+            try:
+                b = parse_key(res.text or res.address, app.settings.network)
+            except PolicyError as e:
+                app.push(MessageScreen("NOT A KEY", [str(e)], border="red"))
+                return
+            if b[1:9] in (r["a"][1:9], r["c"][1:9]):
+                app.push(MessageScreen("NOT KEY B", ["That's key A or C. Key B", "is a third, separate key."],
+                                       border="red"))
+                return
+            register(app, [r["a"], r["c"], b])
+        app.push(ScanScreen("KEY B", got, accept=("text", "address"), hint="SCAN KEY B'S XPUB QR"))
+    app.prompt("cosign_prompt", done)
 
 
 # ========================================================== KEY TELEPORT
