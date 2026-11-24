@@ -19,7 +19,10 @@ net_was=$(nmcli -t networking 2>/dev/null || echo enabled)
 bright=$(cat "$BL/brightness" 2>/dev/null || echo "")
 
 stop_all() {
-  systemctl stop czwallet czshare czprint czscan cznet czsigner tor 2>/dev/null
+  systemctl stop czwallet czshare czprint czscan cznet czsigner tor czwallet-power 2>/dev/null
+  # screen sleep may have switched the light off: switch it back on, then the
+  # brightness below hands it back to the launcher's dimmer as it was
+  /usr/local/sbin/cz-light on >/dev/null 2>&1
   if [ "$net_was" = "enabled" ]; then /usr/local/sbin/cz-radio online; fi
   if [ -n "$bright" ] && [ "$bright" != "0" ]; then echo "$bright" > "$BL/brightness" 2>/dev/null; fi
 }
@@ -32,6 +35,9 @@ if [ "$(cat "$BL/brightness" 2>/dev/null || echo 1)" = "0" ]; then
 fi
 
 systemctl start czwallet-vault                 # every session starts in Vault mode
+# the power helper reads the real battery gauge (Linux's own reading is
+# wrong on this board) and switches the light off for SCREEN SLEEP
+systemctl start czwallet-power 2>/dev/null
 systemctl start tor czsigner cznet czscan czprint czwallet || exit 1
 sleep 2
 while systemctl is-active -q czwallet; do
