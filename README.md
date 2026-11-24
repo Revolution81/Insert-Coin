@@ -52,6 +52,7 @@ online cap.
   if fitted, and any dice rolls, coin flips, card shuffles or key mashing you add
 - Native SegWit (BIP84) and Taproot (BIP86), several accounts per seed, optional passphrase
 - Coin control, labels, fee bumps and cancels (RBF), CSV history export
+- Pay silent payment addresses (BIP-352) and PayJoin requests (BIP-78)
 - Multisig cosigner (BIP48, SegWit or Taproot), inheritance wallets with a time-locked heir key,
   and any miniscript wallet (Liana, Coldcard, Bitcoin Core) with this device's key
 - Child seeds and passwords (BIP85), message signing (BIP137, BIP322)

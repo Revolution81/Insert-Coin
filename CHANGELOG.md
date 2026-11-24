@@ -39,6 +39,14 @@ Not in an image or update yet; the next release carries all of it.
   port. Nothing to switch or install.
 - **Unit NFC (U216)** as a second NFC reader (its own I2C bus, never the
   keyboard's); HARDWARE › NFC says CAP or UNIT NFC.
+- **Silent payments, sending** (BIP-352): pay an sp1q… address from any
+  single-sig account; the signer works out the real output and shows the
+  sp1q address on the confirm screen. Checked against all of BIP-352's
+  test vectors.
+- **PayJoin, sending** (BIP-78): paying a request with a PayJoin link
+  (BTCPay and others) lets the receiver add a coin, for privacy; the
+  signer checks the receiver can't take a sat more, and the normal payment
+  goes out if anything fails.
 - Text always fits its window: wrapped by real width, reflowed, and split
   into pages (LEFT/RIGHT) when long.
 
