@@ -688,6 +688,17 @@ def restore(c, network, words=12):
 def import_seed(c, network, mnemonic):
     """A seed the app scanned (SeedQR): it passed through the app, so say so."""
     network = _network(network)
+    if seedlib.is_xprv(str(mnemonic)):
+        try:
+            k = seedlib.check_xprv(str(mnemonic), network)
+        except ValueError as e:
+            c.fail(BadRequest(str(e)))
+            return
+        c.push(MessageScreen("XPRV READ", ["Master key, checksum OK.", f"Starts {k[:12]}...", "",
+                                          "Scanned keys pass through", "the app process. Typing",
+                                          "it here is more private."],
+                             then=lambda c: _set_pin(c, k, network, "", True)))
+        return
     m = seedlib.normalize(str(mnemonic))
     if not seedlib.is_valid(m):
         c.fail(BadRequest("not a valid seed"))
@@ -698,6 +709,61 @@ def import_seed(c, network, mnemonic):
                                          "", "Scanned seeds pass through", "the app process. Typing",
                                          "them here is more private."],
                          then=lambda c: _passphrase(c, m, network)))
+
+
+class XprvScreen(Screen):
+    """An imported master key: the text in groups of 4, LEFT/RIGHT for its
+    QR. Shown only here, on the signer's screen, after the PIN."""
+
+    def __init__(self, key: str):
+        self.key, self.page = key, 0
+
+    def handle(self, ev, app):
+        if ev.kind is Kind.NAV and ev.value in ("LEFT", "RIGHT"):
+            self.page ^= 1
+        elif ev.kind in (Kind.SELECT, Kind.BACK, Kind.HOME):
+            self.key = ""
+            app.pop()
+
+    def render(self, app, frame):
+        img, d = t.new_canvas()
+        t.sky(img, d, hills=False)
+        app.status_bar(img, d, self)
+        if self.page:
+            size = t.qr(img, self.key, (8, 18), module=3, border=2)
+            t.window(d, (size + 16, 22, W - 5, H - 8), "XPRV QR")
+            for i, line in enumerate(["Your master key.", "Anyone who scans", "it can spend.",
+                                      "", "LEFT/RIGHT: TEXT"]):
+                t.text(d, (size + 26, 40 + i * 14), line, TINY, "light")
+            return img
+        t.window(d, (5, 22, W - 5, H - 8), "XPRV (THE BACKUP)")
+        gs = [self.key[i:i + 4] for i in range(0, len(self.key), 4)]
+        for n, g in enumerate(gs):
+            row, col = divmod(n, 7)
+            t.text(d, (16 + col * 42, 38 + row * 13), g, BODY, "gold" if n % 2 == 0 else "light")
+        t.text(d, (16, H - 22), "LEFT/RIGHT: QR   OK: DONE", TINY, "grey")
+        return img
+
+
+def restore_xprv(c, network):
+    """IMPORT XPRV, typed here: a master extended private key (xprv, or tprv
+    on test networks) instead of seed words. No passphrase: the key is
+    everything. Back it up as carefully as words."""
+    network = _network(network)
+
+    def ok(c, text):
+        try:
+            k = seedlib.check_xprv(text, network)
+        except ValueError as e:
+            return str(e)[:40]
+        c.pop()
+        c.push(MessageScreen("NO SEED WORDS", [
+            "This wallet will have no seed", "words: the key IS the backup.",
+            "Keep it as safely as words.", "SHOW SEED WORDS shows it, and",
+            "card backups still work."], then=lambda c: _set_pin(c, k, network, "", True)))
+        return None
+    c.push(TextInputScreen("IMPORT XPRV", "Master key (xprv...):", ok, allowed=seedlib.XPRV_CHARS,
+                           max_len=120, info=lambda s: f"{len(s)}/111 characters"))
 
 
 def shares(c, network):
@@ -832,6 +898,9 @@ def sign(c, psbt):
 # ============================================================ secrets
 def show_words(c):
     def show(c, m):
+        if seedlib.is_xprv(m):
+            _final(c, XprvScreen(m))
+            return
         _final(c, ShowWordsScreen(m.split(), None, title="BACKUP"))
     _pin_job(c, "BACKUP", "CHECKING PIN...", lambda pin: c.signer.reveal_words(pin=pin), show,
              note="To show your seed words")
@@ -839,6 +908,10 @@ def show_words(c):
 
 def seedqr(c):
     def show(c, m):
+        if seedlib.is_xprv(m):
+            _final(c, MessageScreen("NO SEEDQR", ["This wallet came from an", "XPRV: it has no seed words.",
+                                                  "SHOW SEED WORDS shows the", "key itself."]))
+            return
         n = len(m.split())
         if n not in (12, 24):                  # SeedQR is defined for 12 and 24 only
             _final(c, MessageScreen("NO SEEDQR", [
@@ -951,11 +1024,18 @@ def child_seed(c):
 
 def split(c):
     """SPLIT BACKUP: K-of-N SLIP39 shares, each checked."""
+    def write(c, m, k, n):
+        if seedlib.is_xprv(m):
+            _final(c, MessageScreen("NO SPLIT", ["Split backups are made from", "seed words; this wallet",
+                                                 "came from an XPRV."]))
+            return
+        _write_shares(c, splitlib.split(m, k, n), k)
+
     def scheme(k, n):
         def go(c):
             _pin_job(c, "SPLIT BACKUP", "CHECKING PIN...",
                      lambda pin: c.signer.reveal_words(pin=pin),
-                     lambda c, m: _write_shares(c, splitlib.split(m, k, n), k),
+                     lambda c, m: write(c, m, k, n),
                      note=f"To write {k}-of-{n} shares")
         return go
 

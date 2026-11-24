@@ -206,9 +206,32 @@ def restore_flow(app):
             app.prompt("import_prompt", _ready, network=app.settings.network, mnemonic=m)
         app.push(ScanScreen("SCAN SEEDQR", got, accept=("seedqr",), hint="POINT AT A SEEDQR"))
 
+    def import_xprv(app):
+        def scan_key(app):
+            def got(app, res):
+                text = res.text.strip()
+                if not seedlib.is_xprv(text):
+                    app.push(MessageScreen("NOT AN XPRV", ["That QR isn't an extended", "private key."],
+                                           border="red"))
+                    return
+                app.pop()                         # the IMPORT XPRV menu
+                app.pop()                         # the RESTORE menu
+                app.prompt("import_prompt", _ready, network=app.settings.network, mnemonic=text)
+            app.push(ScanScreen("SCAN XPRV", got, accept=("text",), hint="POINT AT THE KEY'S QR"))
+
+        def type_key(app):
+            app.pop()
+            app.pop()
+            app.prompt("xprv_prompt", _ready, network=app.settings.network)
+
+        app.push(MenuScreen("IMPORT XPRV", [("TYPE IT", type_key), ("SCAN IT", scan_key)],
+                            info=["A master private key (xprv,", "tprv on test networks)",
+                                  "instead of seed words."]))
+
     app.push(MenuScreen("RESTORE", [
         ("12 WORDS", words(12)), ("18 WORDS", words(18)), ("24 WORDS", words(24)),
         ("SCAN SEEDQR", scan),
+        ("IMPORT XPRV", import_xprv, "ADVANCED", "grey"),
         ("SPLIT SHARES", lambda app: app.prompt("shares_prompt", _ready,
                                                 network=app.settings.network))],
         info=["Type 4 letters of each", "word, then SPACE."]))

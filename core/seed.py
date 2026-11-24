@@ -139,9 +139,47 @@ def last_word_options(first_words: list[str]) -> list[str]:
 
 
 def root_key(mnemonic: str, passphrase: str, network: str) -> bip32.HDKey:
+    """The master key from seed words, or an imported master xprv/tprv
+    (then there's no passphrase: the key is the whole secret)."""
+    if is_xprv(mnemonic):
+        return bip32.HDKey.from_string(check_xprv(mnemonic, network))
     _, emb, _ = NETWORKS[network]
     seed = bip39.mnemonic_to_seed(normalize(mnemonic), password=passphrase)
     return bip32.HDKey.from_seed(seed, version=EMBIT_NETS[emb]["xprv"])
+
+
+# ------------------------------------------------- an imported master key
+XPRV_CHARS = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"   # base58
+
+
+def is_xprv(text: str) -> bool:
+    """Seed words or an extended private key? (xprv mainnet, tprv test nets)"""
+    return str(text).strip()[:4] in ("xprv", "tprv")
+
+
+def check_xprv(text: str, network: str) -> str:
+    """The master extended private key, checked: base58 checksum, private,
+    depth 0 (the wallet derives every account from the master, so an
+    account-level key would give different addresses), and the right kind
+    for the network. Returns it as given (it's case-sensitive). ValueError."""
+    s = str(text).strip()
+    if not s or any(ch not in XPRV_CHARS for ch in s):
+        raise ValueError("not an extended private key")
+    try:
+        k = bip32.HDKey.from_string(s)
+    except Exception:  # noqa: BLE001 - embit raises several kinds
+        raise ValueError("checksum failed: a character is wrong") from None
+    if not k.is_private:
+        raise ValueError("that's a public key (xpub): it can't sign")
+    if k.depth != 0:
+        raise ValueError(f"that's a depth-{k.depth} key: import the master (depth 0)")
+    if network not in NETWORKS:
+        raise ValueError("unknown network")
+    _, emb, _ = NETWORKS[network]
+    if k.version != EMBIT_NETS[emb]["xprv"]:
+        want = "xprv" if emb == "main" else "tprv"
+        raise ValueError(f"wrong network: this wallet needs a {want}")
+    return s
 
 
 def account_path(network: str, account: int = 0, kind: str = "wpkh") -> str:

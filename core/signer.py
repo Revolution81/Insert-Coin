@@ -152,9 +152,16 @@ class Signer:
             raise SignerError("a seed already exists; wipe first")
         if network not in NETWORKS:
             raise SignerError("unknown network")
-        mnemonic = seedlib.normalize(mnemonic)
-        if not seedlib.is_valid(mnemonic):
-            raise SignerError("invalid mnemonic")
+        if seedlib.is_xprv(mnemonic):              # an imported master key, no words
+            try:
+                mnemonic = seedlib.check_xprv(mnemonic, network)
+            except ValueError as e:
+                raise SignerError(str(e))
+            passphrase, store_passphrase = "", True
+        else:
+            mnemonic = seedlib.normalize(mnemonic)
+            if not seedlib.is_valid(mnemonic):
+                raise SignerError("invalid mnemonic")
         self.vault.create(pin, mnemonic, network,
                           passphrase if store_passphrase else None, max_tries)
         return self._open(self.vault.unlock(pin), passphrase)
@@ -521,7 +528,8 @@ class Signer:
         return True
 
     def reveal_words(self, pin: str) -> str:
-        """For the backup screen. Needs the PIN again even when unlocked."""
+        """For the backup screen. Needs the PIN again even when unlocked.
+        For a wallet imported from an xprv, that key (there are no words)."""
         self._hobbled("showing the seed")
         mnemonic, _ = self.vault.unlock(pin)
         return mnemonic
