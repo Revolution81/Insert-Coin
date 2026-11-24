@@ -11,6 +11,14 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
   0.8.25 or older only know the old names: for them, rename the two files
   to `czwallet-X.Y.Z.tar.gz` and `czwallet-X.Y.Z.tar.gz.sig` (the signature
   doesn't cover the file name, only the version and contents).
+- Release checks: 480 tests, fuzzer, menu crawler, random-key runs and the
+  memory-leak run all clean. Fixed in the review:
+  - Names of keys that do nothing were written to the system log on every
+    device; now only on test cards, as intended (never letters or digits).
+  - On the device, PRINT and VIEW ALL always ask the printing service, so a
+    stopped service shows as such instead of "no paper wallets".
+  - SHARE FILES' 30-second give-up can't itself fail.
+- Booklet: a hint at the title screen's secret, on the last page.
 
 ## 0.8.25: the first signed update
 
