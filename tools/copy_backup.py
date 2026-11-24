@@ -248,7 +248,24 @@ def usbstick() -> int:
     return 0
 
 
+def migrate() -> int:
+    """The system steps of tools/migrate.py, for a device whose last update
+    was installed by an older helper that didn't run them. If anything
+    changed, the app is restarted so it picks up its new groups."""
+    import subprocess
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import migrate as m
+    changed = m.run()
+    if changed:
+        subprocess.run(["systemd-run", "--on-active=3", "systemctl", "restart", "czwallet"],
+                       check=False)
+    print("changed" if changed else "ok")
+    return 0
+
+
 def main(argv) -> int:
+    if len(argv) == 2 and argv[1] == "migrate":
+        return migrate()
     if len(argv) == 2 and argv[1] == "usbstick":
         return usbstick()
     if len(argv) == 2 and argv[1] == "paper":

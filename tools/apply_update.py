@@ -24,6 +24,9 @@ def main():
     except update.UpdateError as e:
         sys.exit(f"refused: {e}")
     print(f"installed {info['version']} (was {info['previous']})")
+    # the new release's system steps (groups, permissions), with its own code
+    subprocess.run(["/opt/czwallet-venv/bin/python", "-I", "/opt/czwallet/tools/migrate.py"],
+                   check=False, timeout=120)
     # restart after we've answered, so the app sees the result first
     subprocess.run(["systemd-run", "--on-active=3", "systemctl", "restart",
                     "czsigner", "cznet", "czwallet"], check=False)

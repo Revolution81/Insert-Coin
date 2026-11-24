@@ -10,8 +10,13 @@ Not in an image or update yet; the next release carries all of it.
   Zero's EXT header: its power switch (GPIO26) is switched on, the NFC chip
   is selected on GPIO22 instead of the screen's CE0, and the CC1101's GDO0,
   wired to the Grove port's UART TX, is tri-stated so it can't jam the
-  fingerprint sensor. Needs the app in the gpio group (new image or
-  install.sh). The NFC and FINGERPRINT screens now say why nothing was found.
+  fingerprint sensor. The NFC and FINGERPRINT screens now say why nothing
+  was found.
+- **Updates can bring system changes.** A signed update now carries a fixed
+  list of system steps (tools/migrate.py; the first gives the app the gpio
+  group the Cap needs), run as root right after installing. On a device
+  updated by an older helper, the app asks for them once at start and
+  restarts itself.
 
 - **ADDRESS EXPLORER** (SETUP › TOOLS): every receive and change address with
   its balance and label, verified on the signer's screen, 20 more at a time.

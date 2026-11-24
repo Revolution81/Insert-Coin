@@ -123,6 +123,25 @@ class App:
             self._shown()
 
     # -------------------------------------------------------------- start
+    @staticmethod
+    def system_steps():
+        """An update installed by an older helper didn't run tools/migrate.py
+        (new groups and permissions): ask the root helper once. It restarts
+        the app if anything changed; nothing changes the second time."""
+        import grp
+        import pwd
+        import subprocess
+        helper = "/usr/local/sbin/cz-backup"
+        try:
+            if pwd.getpwuid(os.getuid()).pw_name != "czapp" or not os.path.exists(helper):
+                return
+            if any(grp.getgrgid(g).gr_name == "gpio" for g in os.getgroups()):
+                return
+            subprocess.Popen(["sudo", "-n", helper, "migrate"], stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:  # noqa: BLE001 - never stop the app over this
+            pass
+
     def refresh_hardware(self):
         from core.hw.finger import open_sensor
         try:
@@ -144,6 +163,7 @@ class App:
         first; OK plays the coin chime and carries on."""
         if title:
             from ui.title import TitleScreen
+            self.system_steps()
             self.refresh_hardware()
             self.replace(TitleScreen(lambda app: app.start()))
             return
