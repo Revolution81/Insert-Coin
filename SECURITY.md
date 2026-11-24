@@ -303,6 +303,21 @@ writes the files into InsertCoin/, flushes and unmounts. It never reads or
 runs anything from the stick. The kernel's FAT/exFAT driver parsing a
 hostile stick is the attack surface, only while saving.
 
+**Silent payments (sending).** The app puts a stand-in output and the
+receiver's two keys in the PSBT; the signer computes the real output from
+its own input keys (BIP-352) before it shows or signs anything, so what
+you confirm (the sp1q address) is what's signed. Only from single-sig
+accounts, with every input this wallet's.
+
+**PayJoin (sending, BIP-78).** The signer signs the original as usual and
+keeps a copy for five minutes. The receiver's proposal is checked against
+that copy (not against anything the app says): the payment keeps its
+address (output substitution is always disabled) and doesn't shrink, none
+of your other outputs go, your change pays at most about 110 vB of extra
+fee and only toward fee, your inputs are exactly the original's. Then it
+signs only its own inputs, once. Any failure sends the original. The
+request goes out through cznet: https anywhere, or http to a .onion only.
+
 **LAN.** The Ethernet port (USB, on the hub) is switched with the radios:
 every wired interface goes down in Vault mode, whatever its name.
 

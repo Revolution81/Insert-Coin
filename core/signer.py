@@ -230,6 +230,7 @@ class Signer:
         return self.public_info()
 
     def lock(self) -> None:
+        self._payjoin = None
         self._root = None
         self._main = None
         self._temp = None
@@ -1394,6 +1395,65 @@ class Signer:
         self._touch()
         return summary
 
+    # ----------------------------------------------------------- PayJoin
+    _payjoin: dict | None = None
+
+    def _keep_payjoin(self, unsigned: PSBT, summary: dict) -> None:
+        """The payment just signed, as the PayJoin original: a single-sig
+        payment to one address. The receiver's proposal is checked against
+        this copy (core/payjoin.py), never against what the app sends back."""
+        from . import payjoin as pj
+        sends = [i for i, o in enumerate(summary["outputs"]) if o["kind"] == "send"]
+        wallet = summary.get("_wallet")
+        if not isinstance(wallet, str) or len(sends) != 1 or summary.get("silent"):
+            return
+        change = [i for i, o in enumerate(summary["outputs"]) if o["kind"] != "send"]
+        contribution = int(summary["fee_rate"] * pj.EXTRA_VB) if change else 0
+        self._payjoin = {"original": unsigned, "pay": sends[0],
+                         "ours": {bytes(unsigned.tx.vout[i].script_pubkey.data) for i in change},
+                         "fee_index": change[0] if change else None, "max": contribution,
+                         "expires": time.monotonic() + 300}
+
+    def payjoin_params(self) -> dict | None:
+        """What the app puts in the PayJoin request (BIP-78's optional params)."""
+        p = self._payjoin
+        if not p or time.monotonic() > p["expires"]:
+            return None
+        return {"fee_index": p["fee_index"], "max": p["max"]}
+
+    def sign_payjoin(self, psbt: str) -> str:
+        """Sign the receiver's PayJoin proposal, if it passes every check
+        against the original kept above: same payment, nothing of yours
+        missing, at most the agreed extra fee, your inputs only. One try."""
+        from . import payjoin as pj
+        root = self._need_root()
+        p, self._payjoin = self._payjoin, None
+        if not p or time.monotonic() > p["expires"]:
+            raise SignerError("no PayJoin payment waiting")
+        try:
+            prop = PSBT.from_string(psbt)
+            res = pj.check_proposal(p["original"], prop, p["pay"], p["ours"], p["max"],
+                                    p["fee_index"])
+        except pj.PayjoinError as e:
+            raise SignerError(f"PayJoin refused: {e}")
+        except Exception as e:  # noqa: BLE001 - unreadable proposal
+            raise SignerError(f"PayJoin refused: {str(e)[:60]}")
+        extra = res["extra_fee"]
+        if extra:                                      # count the extra fee like any spend
+            online = network_is_up()
+            cap = self._cap_state()
+            if online and cap["spent"] + extra > cap["cap"]:
+                raise SignerError("PayJoin refused: over today's online cap")
+            if online:
+                cap["spent"] += extra
+                _atomic_write(self.cap_path, json.dumps(cap).encode())
+        pj.restore_ours(prop, p["original"])
+        mine = len(p["original"].inputs)
+        if prop.sign_with(root) != mine:
+            raise SignerError("PayJoin refused: couldn't sign exactly your inputs")
+        self._touch()
+        return prop.to_string()
+
     SP_INFO = b"\x09"                                  # BIP-375 PSBT_OUT_SP_V0_INFO
 
     def _silent_outputs(self, psbt, root, wallet) -> dict[int, str]:
@@ -1438,9 +1498,10 @@ class Signer:
             psbt.outputs[i].script_pubkey = spk          # psbt.tx is built from these
         return addrs
 
-    def sign(self, psbt: str, digest: str, code: str | None = None) -> str:
+    def sign(self, psbt: str, digest: str, code: str | None = None, payjoin: bool = False) -> str:
         """Sign only the exact transaction the user just confirmed. code: the
-        phone 2FA code, when the spending policy asks for one."""
+        phone 2FA code, when the spending policy asks for one. payjoin: keep
+        this payment as a PayJoin original (sign_payjoin)."""
         root = self._need_root()
         summary = self._pending.get(digest)
         if summary is None:
@@ -1484,9 +1545,13 @@ class Signer:
                 step = spolicy.verify_code(rules["totp"], code, pstate.get("last_step", 0))
             except spolicy.PolicyError as e:
                 raise SignerError(str(e))
+        unsigned = PSBT.parse(psbt.serialize())
         n = psbt.sign_with(root)
         if n < len(psbt.inputs):
             raise SignerError("could not sign every input")
+        self._payjoin = None
+        if payjoin:
+            self._keep_payjoin(unsigned, summary)
         if summary.get("cosign", {}).get("will"):
             # key C: checked again now, with its own day total and cooldown
             cc = self._cc_judge(summary["_wallet"], sends, summary["spend"], summary["fee"],

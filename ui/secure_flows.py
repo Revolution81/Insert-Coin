@@ -910,10 +910,14 @@ def _set_pin(c, mnemonic, network, passphrase, store):
 
 
 # ============================================================ signing
-def sign(c, psbt):
-    """Read the PSBT, show what it does, sign only on YES."""
+def sign(c, psbt, payjoin=False):
+    """Read the PSBT, show what it does, sign only on YES. payjoin: the
+    payment request offered PayJoin (BIP-78); the signer then keeps the
+    original to check the receiver's proposal against."""
     if not isinstance(psbt, str) or len(psbt) > 2_000_000:
         raise BadRequest("not a PSBT")
+    if not isinstance(payjoin, bool):
+        raise BadRequest("bad payjoin flag")
 
     def described(c, s):
         sends = [o for o in s["outputs"] if o["kind"] == "send"]
@@ -932,7 +936,7 @@ def sign(c, psbt):
 
         def go(c, code=None):
             c.job("SIGNING...", lambda: c.signer.sign(psbt=s.get("psbt") or psbt, digest=s["digest"],
-                                                      code=code),
+                                                      code=code, payjoin=payjoin),
                   lambda c, out: c.finish({"psbt": out, "summary": s}),
                   lambda c, e: c.fail(e))
 

@@ -39,6 +39,7 @@ class Scanned:
     message: str = ""
     data: bytes = b""             # PSBT or tx bytes
     text: str = ""
+    payjoin: str = ""             # BIP-78 pj= endpoint in a payment request
 
 
 class QRFormatError(Exception):
@@ -62,9 +63,16 @@ def parse_bip21(s: str) -> Scanned:
             sats = int(whole or "0") * 100_000_000 + int((frac + "00000000")[:8])
         except ValueError:
             raise QRFormatError("bad amount in payment request")
+    pj = q.get("pj", [""])[0]
+    if pj:
+        from .payjoin import PayjoinError, check_url
+        try:
+            check_url(pj)
+        except PayjoinError:
+            pj = ""                                     # ignore a bad one: pay normally
     return Scanned("address", address=addr, sats=sats,
                    label=unquote(q.get("label", [""])[0]),
-                   message=unquote(q.get("message", [""])[0]))
+                   message=unquote(q.get("message", [""])[0]), payjoin=pj)
 
 
 # ---------------------------------------------------------------- BBQr

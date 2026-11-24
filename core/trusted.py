@@ -30,7 +30,7 @@ from .vault import _atomic_write
 SAFE = {"status", "public_info", "account_info", "account_rules", "backup_tag", "make_backup",
         "lock", "describe", "list_multisig",
         "check_multisig", "remove_multisig", "chip_status", "touch", "shorten_auto_lock",
-        "policy_info", "set_screen_sleep", "main_seed", "cosign_status"}
+        "policy_info", "set_screen_sleep", "main_seed", "cosign_status", "sign_payjoin", "payjoin_params"}
 
 PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "shares_prompt", "sign_prompt", "words_prompt", "seedqr_prompt", "split_prompt",
@@ -125,7 +125,9 @@ class TrustedSigner:
     def shares_prompt(self, network: str):
         return self._ask("shares", network=network)
 
-    def sign_prompt(self, psbt: str):
+    def sign_prompt(self, psbt: str, payjoin: bool = False):
+        if payjoin:
+            return self._ask("sign", psbt=psbt, payjoin=True)
         return self._ask("sign", psbt=psbt)
 
     def words_prompt(self):

@@ -908,6 +908,14 @@ class WalletService:
         psbt = PSBT.from_string(signed_b64)
         tx = Transaction.parse(psbt.tx.serialize())
         for i, inp in enumerate(psbt.inputs):
+            if not self.multisig and not inp.partial_sigs and (
+                    inp.final_scriptwitness is not None or inp.final_scriptsig is not None):
+                # already final: a PayJoin receiver's own input (or our Taproot one)
+                if inp.final_scriptwitness is not None:
+                    tx.vin[i].witness = inp.final_scriptwitness
+                if inp.final_scriptsig is not None:
+                    tx.vin[i].script_sig = inp.final_scriptsig
+                continue
             if self.taproot:
                 # key-path spend: one Schnorr signature (embit puts it in the
                 # final witness when it signs; BIP174 signers use taproot_key_sig)
@@ -967,6 +975,24 @@ class WalletService:
                 scope.taproot_scripts[cb] = sc + bytes([v])
             if d.taptree:
                 scope.taproot_merkle_root = d.taptree.tweak()
+
+    def finalized_psbt(self, signed_b64: str) -> str:
+        """A signed single-sig PSBT made final (BIP-174 final witnesses), with
+        our key paths and partial signatures taken out: the PayJoin
+        "original" the receiver gets (it can broadcast it as it is)."""
+        tx = Transaction.parse(self.finalize(signed_b64).raw)
+        p = PSBT.from_string(signed_b64)
+        for i, inp in enumerate(p.inputs):
+            inp.final_scriptwitness = tx.vin[i].witness
+            inp.partial_sigs.clear()
+            inp.bip32_derivations.clear()
+            inp.taproot_bip32_derivations.clear()
+            inp.taproot_internal_key = None
+        for out in p.outputs:
+            out.bip32_derivations.clear()
+            out.taproot_bip32_derivations.clear()
+            out.taproot_internal_key = None
+        return p.to_string()
 
     def _tap_multisig_witness(self, inp) -> Witness:
         """sortedmulti_a's script path: one signature (or an empty push) per

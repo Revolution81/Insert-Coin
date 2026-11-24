@@ -13,8 +13,13 @@ Protocol over a Unix socket, one JSON object per line:
   {"op": "call", "calls": [["blockchain.scripthash.get_history", ["..."]], ...]}
 -> {"ok": true, "result": ...}  or  {"ok": false, "error": "..."}
 
+  {"op": "payjoin", "url": "https://...", "body": "<base64 PSBT>", "tor": ...}
+-> {"ok": true, "result": {"status": 200, "body": "<base64 PSBT>"}}
+
 Only the Electrum methods the wallet uses are relayed, with checked
-parameters, and only the app's user may connect (SO_PEERCRED).
+parameters, plus one HTTPS POST of a PSBT to a PayJoin endpoint (BIP-78:
+https, or http to a .onion), and only the app's user may connect
+(SO_PEERCRED).
 """
 from __future__ import annotations
 
@@ -28,6 +33,7 @@ import sys
 import threading
 
 from .electrum import ElectrumClient, ElectrumError
+from .payjoin import PayjoinError
 
 SOCKET = os.environ.get("CZ_NET_SOCK", "/run/cznet/net.sock")
 MAX_LINE = 4 * 1024 * 1024          # requests are small; replies can be big transactions
@@ -115,6 +121,20 @@ class _Handler(socketserver.StreamRequestHandler):
                             upstream.close()
                         upstream = srv.client_factory(req["server"], socks5=tor).connect()
                         resp = {"ok": True, "result": None}
+                    elif op == "payjoin":
+                        from . import payjoin as pj
+                        url, body, tor = req.get("url"), req.get("body"), req.get("tor")
+                        pj.check_url(url)
+                        if not isinstance(body, str) or not 10 < len(body) < 300_000 or \
+                                not re.fullmatch(r"[A-Za-z0-9+/=]+", body):
+                            raise RelayError("bad PSBT")
+                        if tor is not None and not _PROXY.match(str(tor)):
+                            raise RelayError("Tor proxy must be on this device")
+                        try:
+                            status, text = pj.http_post(url, body, tor)
+                        except pj.PayjoinError as e:
+                            raise RelayError(str(e))
+                        resp = {"ok": True, "result": {"status": status, "body": text}}
                     elif op == "call":
                         calls = check_calls(req.get("calls"))
                         if upstream is None:
@@ -122,7 +142,8 @@ class _Handler(socketserver.StreamRequestHandler):
                         resp = {"ok": True, "result": upstream.call_many(calls)}
                     else:
                         raise RelayError("bad request")
-                except (RelayError, ElectrumError, ValueError, OSError, KeyError) as e:
+                except (RelayError, ElectrumError, PayjoinError, ValueError, OSError,
+                        KeyError) as e:
                     if isinstance(e, OSError) and upstream:
                         upstream.close()
                         upstream = None
@@ -198,6 +219,26 @@ class RelayClient:
 
     def call(self, method: str, *params):
         return self.call_many([(method, list(params))])[0]
+
+    def payjoin_post(self, url: str, body: str) -> tuple[int, str]:
+        """BIP-78: POST the original PSBT to the receiver, through cznet."""
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(self.timeout)
+        try:
+            s.connect(self.path)
+            f = s.makefile("rwb")
+            f.write(json.dumps({"op": "payjoin", "url": url, "body": body,
+                                "tor": self.socks5}).encode() + b"\n")
+            f.flush()
+            resp = json.loads(f.readline(4 * 1024 * 1024) or b"null")
+        except (OSError, ValueError) as e:
+            raise ElectrumError(f"network service: {e}") from e
+        finally:
+            s.close()
+        if not isinstance(resp, dict) or not resp.get("ok"):
+            raise ElectrumError(str((resp or {}).get("error", "network service error")))
+        r = resp["result"]
+        return int(r["status"]), str(r["body"])
 
     def call_many(self, calls):
         if self._f is None:

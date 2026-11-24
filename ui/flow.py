@@ -533,6 +533,7 @@ def send_flow(app, coins=None, prefill=None):
     """prefill: a Scanned address (from the camera) to skip typing."""
     avail = sum(c.sats for c in app.wallet.coins() if not coins or c.outpoint in coins) \
         if app.wallet else 0
+    pj = {"url": getattr(prefill, "payjoin", "") if prefill else ""}   # BIP-78, from a QR
 
     def got_addr(app, text):
         try:
@@ -551,6 +552,7 @@ def send_flow(app, coins=None, prefill=None):
                 scr.error = str(e)[:40]
                 return
             app.pop()                    # the typing screen
+            pj["url"] = res.payjoin
             ask_amount(app, addr, res.sats, res.label)
         app.push(ScanScreen("SCAN ADDRESS", got, accept=("address",),
                             hint="POINT AT AN ADDRESS QR"))
@@ -618,6 +620,8 @@ def send_flow(app, coins=None, prefill=None):
         def work():
             built = app.wallet.build(addr, sats, rate, coins, fee_from_amount=fee_from_amount)
             built["label"] = label
+            if pj["url"] and app.wallet.kind == "single" and not built.get("silent"):
+                built["payjoin"] = pj["url"]
             return built
 
         def failed(app, err):
@@ -669,6 +673,12 @@ def sign_and_send(app, built):
                 lambda: work(r["psbt"], r["summary"]), done)
 
     def work(signed, summary):
+        note = ""
+        if built.get("payjoin") and app.online and app.wallet.connected:
+            from core import payjoin
+            signed, note = payjoin.run(app.wallet, app.settings, app.signer, built["payjoin"],
+                                       signed, summary["fee_rate"])
+            app.last_payjoin = note
         if app.wallet.multisig:
             have, need = app.wallet.signatures(signed)
             if have < need:                         # cosigners still to sign
@@ -687,6 +697,8 @@ def sign_and_send(app, built):
         return "saved", str(tx.compute_txid())
 
     def done(app, r):
+        note = getattr(app, "last_payjoin", "")
+        app.last_payjoin = ""
         kind, txid = r
         app.home()
         app.refresh_balance()
@@ -702,14 +714,23 @@ def sign_and_send(app, built):
                                       [f"Signed {have} of {need}.", "Scan this with a",
                                        "cosigner, then press", "Q here to scan its", "signature back."]))
         elif kind == "sent":
-            app.push(MessageScreen("SENT!", ["Broadcast to the network.", "",
-                                             "TXID", txid[:32], txid[32:]], big="QUEST DONE"))
+            pjline = []
+            if note == "PAYJOIN":
+                pjline = ["PayJoin: the receiver added", "a coin. More private.", ""]
+            elif note:
+                pjline = ["Sent without PayJoin:", note[:30], ""]
+            app.push(MessageScreen("SENT!", pjline + ["Broadcast to the network.", "",
+                                                      "TXID", txid[:32], txid[32:]], big="QUEST DONE"))
         else:
             raw = open(os.path.join(app.outbox_dir, f"{txid}.hex")).read().strip()
             app.push(outbox_qr_screen(raw))
 
-    app.prompt("sign_prompt", signed_by_signer, on_cancel=lambda app: app.home(),
-               psbt=built["psbt"])
+    if built.get("payjoin") and app.online:
+        app.prompt("sign_prompt", signed_by_signer, on_cancel=lambda app: app.home(),
+                   psbt=built["psbt"], payjoin=True)
+    else:
+        app.prompt("sign_prompt", signed_by_signer, on_cancel=lambda app: app.home(),
+                   psbt=built["psbt"])
 
 
 # A small signed transaction fits one BBQr frame, which is easier to scan
