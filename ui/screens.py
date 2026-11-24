@@ -40,7 +40,7 @@ def choose_mode(selected=1, frame=0):
         ("VAULT", t.LOCK, {"k": PAL["purple_dk"], "w": PAL["white"], "y": PAL["purple"]},
          ["Radios off", "QR + SD signing", "Cold storage"]),
         ("ONLINE", t.WIFI, {"w": PAL["cyan"]},
-         ["Wi-Fi + Tor", "Send direct", "Hot wallet"]),
+         ["Wi-Fi/LAN + Tor", "Send direct", "Hot wallet"]),
     ]
     for n, (box, (name, icon, colors, lines)) in enumerate(zip(boxes, info)):
         sel = n == selected

@@ -203,6 +203,16 @@ WIFI = [
     "...ww...",
     "...ww...",
 ]
+LAN = [                                   # a network cable's plug
+    "........",
+    ".wwwwww.",
+    ".w....w.",
+    ".w.ww.w.",
+    ".wwwwww.",
+    "..wwww..",
+    "...ww...",
+    "...ww...",
+]
 SHIELD = [
     "kkkkkkk",
     "kwwwwwk",
@@ -471,7 +481,8 @@ def ago_short(seconds: float) -> str:
 
 
 def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="", online=False,
-               typing=None, icons=(), charging=False, own_server=False, temp=False):
+               typing=None, icons=(), charging=False, own_server=False, temp=False,
+               lan=False):
     """typing: None in menu mode, or the translator's indicators dict
     ({"shift": bool, "fn": bool, "sym": bool}) in text mode, which shows an
     ABC badge plus whichever modifiers are active."""
@@ -500,8 +511,9 @@ def status_bar(img, d, mode="VAULT", battery_frac=0.8, clock="", online=False,
                                     "y": PAL["purple"]})
     else:
         # connected: green = your own server, blue = the public default
+        # LAN: a cable is plugged in and up (it's used before Wi-Fi)
         col = (PAL["green"] if own_server else PAL["cyan"]) if online else PAL["dim"]
-        sprite(img, WIFI, (ix, 2), {"w": col})
+        sprite(img, LAN if lan else WIFI, (ix, 2), {"w": col})
         if not online:
             d.line((ix, 9, ix + 7, 2), fill=PAL["red"])
     if temp:                                   # a temporary seed is in use (until LOCK)

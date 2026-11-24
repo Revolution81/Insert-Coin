@@ -148,3 +148,35 @@ if __name__ == "__main__":
     if len(sys.argv) != 2 or sys.argv[1] not in ("vault", "online"):
         sys.exit("usage: radios.py vault|online")
     _apply(sys.argv[1])
+
+
+def wired_link(root: str = "/sys/class/net") -> str | None:
+    """A wired network that's plugged in and up (the Cardputer Zero's
+    SR9900A USB Ethernet, or a USB network adapter), else None. Read from
+    sysfs only. CZ_SIM_LAN names one in the simulator."""
+    sim = os.environ.get("CZ_SIM_LAN")
+    if sim is not None:
+        return sim or None
+    try:
+        names = sorted(os.listdir(root))
+    except OSError:
+        return None
+    for name in names:
+        base = os.path.join(root, name)
+        if name == "lo" or os.path.exists(os.path.join(base, "wireless")) or \
+                not os.path.exists(os.path.join(base, "device")):       # real hardware only
+            continue
+        try:
+            with open(os.path.join(base, "type")) as f:
+                if f.read().strip() != "1":                          # ARPHRD_ETHER
+                    continue
+            with open(os.path.join(base, "carrier")) as f:
+                if f.read().strip() != "1":
+                    continue
+            with open(os.path.join(base, "operstate")) as f:
+                if f.read().strip() not in ("up", "unknown"):
+                    continue
+        except OSError:                                              # down: carrier unreadable
+            continue
+        return name
+    return None

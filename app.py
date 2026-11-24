@@ -463,6 +463,18 @@ class App:
             threading.Thread(target=read, daemon=True).start()
         return getattr(self, "_wifi_ssid", None) if self.online else None
 
+    def lan_name(self) -> str | None:
+        """A plugged-in, working network cable (read from sysfs, at most
+        every 2 s: it's drawn on every frame)."""
+        now = time.monotonic()
+        if now - getattr(self, "_lan_at", -99) > 2:
+            self._lan_at = now
+            try:
+                self._lan = radios.wired_link()
+            except Exception:  # noqa: BLE001
+                self._lan = None
+        return getattr(self, "_lan", None)
+
     def wifi_joined(self, ssid: str | None) -> None:
         self._wifi_ssid, self._wifi_at = ssid, time.monotonic()
 
@@ -575,7 +587,8 @@ class App:
                      battery_frac=level, charging=charging,
                      online=bool(self.wallet and self.wallet.connected), typing=typing,
                      own_server=self.settings.own_server,
-                     icons=status_icons(self), temp=bool((self.public or {}).get("temporary")))
+                     icons=status_icons(self), temp=bool((self.public or {}).get("temporary")),
+                     lan=bool(self.online and self.lan_name()))
 
     def feed(self, name: str, value: int):
         self.last_input = time.monotonic()

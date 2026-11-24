@@ -1113,6 +1113,29 @@ def _wifi_value(app) -> tuple[str, str]:
     return ((name[:14], "cyan") if name else ("NOT JOINED", "grey"))
 
 
+def _lan_value(app) -> tuple[str, str]:
+    """What SETUP › NETWORK shows next to LAN."""
+    if not app.online:
+        return ("OFF", "grey")
+    name = app.lan_name() if hasattr(app, "lan_name") else None
+    return ("CONNECTED", "cyan") if name else ("NO CABLE", "grey")
+
+
+def lan_info(app):
+    name = app.lan_name() if hasattr(app, "lan_name") else None
+    if not app.online:
+        lines = ["Off in Vault mode: the", "cable port is switched off", "with the radios.",
+                 "", "Go Online (MODE) to use it."]
+    elif name:
+        lines = [f"Cable connected ({name}).", "", "The wallet uses it before",
+                 "Wi-Fi, through Tor and your", "server as usual. Nothing to",
+                 "set: the address comes from", "your router (DHCP)."]
+    else:
+        lines = ["No cable plugged in.", "", "Plug a network cable into", "the LAN port in Online",
+                 "mode: it's used straight away", "(address from your router)."]
+    app.push(MessageScreen("LAN", lines))
+
+
 def wifi_flow(app):
     from core import radios
 
@@ -1260,7 +1283,7 @@ SETUP_GROUPS = [
     ("SECURITY", ["CHANGE PIN", "AUTO LOCK", "LOGIN COUNTDOWN", "WIPE PIN", "DURESS PIN",
                   "SPENDING POLICY", "CO-SIGN", "ONLINE CAP", "HARDWARE", "LOCK NOW"]),
     ("BACKUP", ["SHOW SEED WORDS", "SEEDQR BACKUP", "SPLIT BACKUP", "CARD BACKUP"]),
-    ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
+    ("NETWORK", ["WI-FI", "LAN", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["NOTES & PASSWORDS", "ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS",
                "TEMPORARY SEED", "KEY TELEPORT", "WALLETS"]),
@@ -1400,6 +1423,7 @@ def settings_screen(app, at: str | None = None):
             ("WI-FI", lambda app: wifi_flow(app) if app.online else app.push(MessageScreen(
                 "VAULT MODE", ["Go Online first (MODE)."])),
              *_wifi_value(app)),
+            ("LAN", lambda app: lan_info(app), *_lan_value(app)),
             ("SHOW SEED WORDS", ask("words_prompt")),
             ("SEEDQR BACKUP", ask("seedqr_prompt")),
             ("SPLIT BACKUP", split_backup),

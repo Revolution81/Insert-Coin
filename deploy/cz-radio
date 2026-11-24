@@ -3,14 +3,25 @@
 # rfkill is the real switch (the kernel cuts the radios); NetworkManager is
 # then told too, but never waited on for long: at boot it may not be ready,
 # and an nmcli that blocks forever once kept the wallet from starting.
+# Every wired interface, not just eth0: the Cardputer Zero's USB Ethernet
+# (SR9900A) or a USB adapter can come up under another name (enx...).
+wired() {
+  for d in /sys/class/net/*; do
+    n=${d##*/}
+    [ "$n" = lo ] && continue
+    [ -e "$d/wireless" ] && continue
+    [ -e "$d/device" ] || continue
+    echo "$n"
+  done
+}
 case "$1" in
   vault)
     rfkill block wifi; rfkill block bluetooth
-    ip link set eth0 down 2>/dev/null
+    for n in $(wired); do ip link set "$n" down 2>/dev/null; done
     timeout 10 nmcli networking off 2>/dev/null ;;
   online)
     rfkill unblock wifi
-    ip link set eth0 up 2>/dev/null
+    for n in $(wired); do ip link set "$n" up 2>/dev/null; done
     timeout 10 nmcli networking on 2>/dev/null
     # NetworkManager keeps its own Wi-Fi switch, separate from rfkill: on the
     # wallet image it starts off (M5Stack's first-boot wizard, switched off
