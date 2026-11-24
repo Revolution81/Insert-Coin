@@ -319,7 +319,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
       <div class="section-head">
         <span class="eyebrow">How it keeps your keys safe</span>
         <h2>Four characters, and only one holds the keys.</h2>
-        <p>Insert Coin is split into four programs, each running as its own Linux user with only the permissions it needs. If one part goes wrong, it still can't reach what the others guard.</p>
+        <p>Insert Coin is split into separate programs, each running as its own Linux user with only the permissions it needs; these four do the main work. If one part goes wrong, it still can't reach what the others guard.</p>
       </div>
       <div class="party-wrap">
         <div class="party">
@@ -458,6 +458,7 @@ footer .run { font-family: var(--display); font-size: 9px; color: var(--muted); 
             <dt>Backups</dt><dd>Seed words, SeedQR, SLIP39 split shares, encrypted card backup</dd>
             <dt>Network</dt><dd>Electrum protocol over TLS and Tor, or your own node (Umbrel, Start9) by scanning its QR</dd>
             <dt>Guards</dt><dd>Wipe PIN, duress PIN, login countdown, auto lock, spending policy with TOTP 2FA and bypass PIN</dd>
+            <dt>Updates</dt><dd>Signed (Ed25519) and installed from the card with SETUP › UPDATE, no download on the device</dd>
           </dl>
         </div>
         <div class="win">

@@ -27,7 +27,7 @@ reviewed the code. Each fixed finding has a regression test in
 | F2 | Medium | The confirmation covered the transaction, not the whole PSBT | Fixed |
 | F3 | Medium | Moving the clock could refill the online spend cap | Fixed |
 | F4 | Medium | Paper wallet keys on the card were readable by the app | Fixed |
-| F5 | Medium | Paper wallets could be shared behind the default password | Fixed |
+| F5 | Medium | Paper wallets could be shared behind the default password | Fixed; a warning since 0.8.26 |
 | F6 | Low | Change sent to a far-away address index wasn't flagged | Fixed |
 | F7 | Low | The app can remove a registered multisig wallet without asking | Noted |
 | F8 | Low | Odd signature types were only refused at signing time | Fixed |
@@ -83,6 +83,10 @@ the card by an older version are moved in and the card folder removed.
 SHARE FILES uses admin / bitcoin until changed. That's fine for history
 CSVs, but paper wallets are private keys. Including them is now refused
 until you set your own password.
+
+*0.8.26:* relaxed, at the owner's request, to a warning that starts on BACK
+and names the risk; SHARE ANYWAY goes ahead. The page is still local-network
+only, HTTPS, time-limited and locks out after 5 wrong logins.
 
 ### F6 Far-away change (Low, fixed)
 

@@ -20,6 +20,14 @@ Five Linux users, four long-running services and three root helpers.
 | `cz-update` | root, via sudo | release keys (public) | none | installs releases | takes one path; re-verifies everything itself |
 | `cz-backup` | root, via sudo | nothing | none | copies one backup file to the card's FAT side | takes one file name (pattern-checked), opens it without following symlinks, must be a sealed backup |
 
+The helpers that write files (`cz-backup`, `cz-share`, `cz-update`) first
+re-run themselves with `systemd-run --wait --pipe`: sudo keeps the app's
+sandbox (`ProtectSystem=strict`, the whole disk read-only), so without this
+they couldn't write where they must. This doesn't widen what the app can
+do: sudo still lets it start only those helpers, each checks its own
+arguments as before, and sudo clears the environment, so the app can't set
+the `CZ_OUTSIDE` marker itself.
+
 Boot order: `czwallet-vault` turns all radios off first, so the device
 always starts in Vault mode.
 
@@ -362,7 +370,9 @@ HTTPS, login lockout, cookies Secure/HttpOnly/SameSite=Strict, Origin check
 on every form, strict Content-Security-Policy, files served only by names in
 the folder's own listing. The default password (`bitcoin`) is public, so on
 shared networks change it. Paper wallets are left out unless you choose to
-include them for that session.
+include them for that session; with the default password still set, the
+wallet warns first (CHANGE PASSWORD?, with BACK picked) and SHARE ANYWAY is
+the owner's call (since 0.8.26; it used to refuse).
 
 ## The title screen's secret
 
