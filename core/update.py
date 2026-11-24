@@ -89,7 +89,25 @@ def collect(src: str) -> list[str]:
                     if f.endswith((".pyc", ".pyo")) or f.startswith("."):
                         continue
                     out.append(os.path.relpath(os.path.join(root, f), src))
-    return sorted(out)
+    # names inside a release always use "/": built on Windows, relpath gives
+    # "core\\x.py", which the device rightly refuses as an unsafe entry
+    return sorted(r.replace(os.sep, "/").replace("\\", "/") for r in out)
+
+
+# text files get Linux line endings whatever the checkout did (Git for
+# Windows turns LF into CRLF), so a release is the same from any computer
+TEXT = (".py", ".sh", ".txt", ".md", ".json", ".lock", ".cfg", ".ini", ".toml",
+        ".service", ".rules", ".conf", ".html", ".css", ".js", ".svg", ".csv", ".in")
+
+
+def normalise(rel: str, data: bytes) -> tuple[bytes, int]:
+    """(the file as it goes in a release, its mode). Executable means it
+    starts with #!, which works the same on Windows, where every file looks
+    executable to os.access."""
+    name = rel.rsplit("/", 1)[-1]
+    if (name.endswith(TEXT) or "." not in name) and b"\0" not in data:
+        data = data.replace(b"\r\n", b"\n")
+    return data, (0o755 if data.startswith(b"#!") else 0o644)
 
 
 def build(src: str, out_dir: str, version: str = VERSION) -> tuple[str, str]:
@@ -100,13 +118,13 @@ def build(src: str, out_dir: str, version: str = VERSION) -> tuple[str, str]:
     raw = io.BytesIO()
     with tarfile.open(fileobj=raw, mode="w", format=tarfile.USTAR_FORMAT) as tar:
         for rel in collect(src):
-            full = os.path.join(src, rel)
+            full = os.path.join(src, *rel.split("/"))
             with open(full, "rb") as f:
-                data = f.read()
+                data, mode = normalise(rel, f.read())
             info = tarfile.TarInfo(f"czwallet-{version}/{rel}")
             info.size = len(data)
             info.mtime = EPOCH
-            info.mode = 0o755 if os.access(full, os.X_OK) else 0o644
+            info.mode = mode
             info.uid = info.gid = 0
             info.uname = info.gname = ""
             tar.addfile(info, io.BytesIO(data))

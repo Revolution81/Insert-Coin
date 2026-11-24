@@ -272,3 +272,48 @@ def test_update_precompiles_the_new_code(tmp_path):
     (src / "ui" / "x.py").write_text("A = 1\n")
     update.precompile(str(src), str(tmp_path / "0.9.0"))
     assert list((src / "ui" / "__pycache__").glob("x.*.pyc"))
+
+
+def test_a_release_built_on_windows_matches_one_built_on_linux(tmp_path, monkeypatch):
+    """Built on Windows, names came out as core\\x.py (refused on the device
+    as an unsafe entry), every file looked executable and text files had
+    CRLF line endings. A release is now the same bytes from any computer."""
+    import os
+    import shutil
+    import tarfile
+    from core import update
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    lin = tmp_path / "lin"
+    win = tmp_path / "win"
+    for d in (lin, win):
+        d.mkdir()
+        for item in ("app.py", "core", "deploy"):
+            s = os.path.join(root, item)
+            (shutil.copytree if os.path.isdir(s) else shutil.copy)(
+                s, d / item, **({"ignore": shutil.ignore_patterns("__pycache__")}
+                                if os.path.isdir(s) else {}))
+    for p in win.rglob("*"):                       # what a Windows checkout looks like
+        if p.is_file():
+            data = p.read_bytes()
+            if b"\0" not in data and p.suffix in (".py", ".service", ".sh", ""):
+                p.write_bytes(data.replace(b"\n", b"\r\n"))
+            p.chmod(0o755)
+    monkeypatch.setattr(update, "INCLUDE", ["app.py", "core", "deploy"])
+    a, ha = update.build(str(lin), str(tmp_path / "out1"), "9.9.9")
+    b, hb = update.build(str(win), str(tmp_path / "out2"), "9.9.9")
+    assert ha == hb
+    with tarfile.open(b, "r:gz") as t:
+        names = t.getnames()
+        assert names and not any("\\" in n for n in names)
+        modes = {m.name.split("/", 1)[1]: m.mode for m in t.getmembers()}
+    assert modes["core/update.py"] == 0o644 and modes["deploy/cz-backup"] == 0o755
+    update.safe_extract(b, "9.9.9", str(tmp_path / "x"))      # the device's own check
+
+
+def test_backslash_names_become_slashes(monkeypatch, tmp_path):
+    from core import update
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core" / "a.py").write_text("x")
+    monkeypatch.setattr(update, "INCLUDE", ["core"])
+    monkeypatch.setattr(update.os.path, "relpath", lambda p, s: "core\\a.py")
+    assert update.collect(str(tmp_path)) == ["core/a.py"]

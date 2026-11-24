@@ -11,6 +11,11 @@ the same as 0.8.24, plus:
 - After an update, the printing, camera and file-sharing services restart
   on the new code too (only those already running), not just the signer,
   the network relay and the wallet.
+- **Fixed: a release built on Windows was refused** as an "unsafe entry"
+  (correctly: its file names used `\`). `release.py build` now writes `/`
+  names, Linux line endings and executable bits from the file's own `#!`
+  line, so a release is the same bytes on Windows, macOS or Linux; a
+  `.gitattributes` keeps Windows checkouts from changing line endings.
 
 ## 0.8.24: steadier outbox screen
 

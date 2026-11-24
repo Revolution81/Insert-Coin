@@ -1,0 +1,15 @@
+# Keep Linux line endings in every checkout, Windows included (GitHub
+# Desktop would otherwise turn LF into CRLF), so a release built on any
+# computer is byte-for-byte the same.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.pdf binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.xz binary
+*.gz binary
+*.wav binary
