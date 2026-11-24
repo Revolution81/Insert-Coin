@@ -393,3 +393,13 @@ def test_paper_wallets_view_all_lists_them(app):  # noqa: F811
     enter(app)
     assert isinstance(app.visible, AnimatedQRScreen)
     assert app.visible.frames == [w["address"].upper()]
+
+
+def test_keys_are_never_logged_outside_test_cards(app, capsys):  # noqa: F811
+    """Key names go to the journal only on test cards (insert-coin-debug.txt)."""
+    import app as appmod
+    assert not appmod.DEBUG_KEYS
+    for name in ("KEY_DOT", "KEY_SPACE", "KEY_F13", "KEY_COMMA"):
+        app.feed(name, 1)
+        app.feed(name, 0)
+    assert "key:" not in capsys.readouterr().err

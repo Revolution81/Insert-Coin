@@ -585,10 +585,10 @@ class App:
             # learn what this keyboard sends. Never while typing text.
             print(f"key: {name} {value} -> {[(e.kind.value, e.value) for e in evs]}",
                   file=sys.stderr, flush=True)
-        elif value == 1 and not evs and not name.startswith("CHR:") and not (
+        elif DEBUG_KEYS and value == 1 and not evs and not name.startswith("CHR:") and not (
                 len(name) == 5 and name.startswith("KEY_") and name[4].isalnum()):
-            # a key that does nothing here: its name (never a letter or digit,
-            # so nothing typed) goes to the journal, to learn what the keyboard sends
+            # test cards only: a key that does nothing here (its name, never a
+            # letter or digit) goes to the journal, to learn what the keyboard sends
             print(f"key: unused {name}", file=sys.stderr, flush=True)
         for ev in evs:
             if ev.kind is Kind.VOLUME:

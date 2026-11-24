@@ -188,12 +188,9 @@ def test_the_socket_server_and_client(wallet_dir, printer, tmp_path):
     d, w = wallet_dir
     svc = svc_for(d, tmp_path)
     path = os.path.join(tempfile.mkdtemp(), "p.sock")
-    calls = [("files", {}), ("check", {"host": "127.0.0.1", "port": printer.port}),
-             ("print", {"address": "../x", "host": "127.0.0.1", "port": printer.port})]
 
-    def run():
-        for _ in calls:
-            serve(svc, path, once=True)
+    def run():                      # one listener for all calls, like the service
+        serve(svc, path)
     t = threading.Thread(target=run, daemon=True)
     t.start()
     c = printing.Client(path)
@@ -207,7 +204,6 @@ def test_the_socket_server_and_client(wallet_dir, printer, tmp_path):
     time.sleep(0.1)
     with pytest.raises(printing.PrintError, match="no such paper wallet"):
         c.call("print", address="../x", host="127.0.0.1", port=printer.port)
-    t.join(5)
 
 
 # ------------------------------------------------------------------ the screens
