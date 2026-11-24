@@ -1,0 +1,12 @@
+#!/bin/sh
+# Root helper: SETUP › FILES › USB DISK (tools/usb_disk.py). Mounting the
+# image and the USB gadget need root outside the app's sandbox, so it re-runs
+# as a one-off systemd job (sudo clears the environment: the app can't skip it).
+if [ -z "${CZ_OUTSIDE:-}" ]; then
+  exec systemd-run --quiet --wait --pipe --collect --service-type=exec \
+    --setenv=CZ_OUTSIDE=1 "$0" "$@"
+fi
+case "$1" in
+  start|stop|status) exec /opt/czwallet-venv/bin/python -I /opt/czwallet/tools/usb_disk.py "$1" ;;
+  *) echo "usage: cz-usbdisk start|stop|status" >&2; exit 2 ;;
+esac

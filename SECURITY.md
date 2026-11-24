@@ -295,6 +295,17 @@ public keys). Card backups carry the notes and the seed vault, inside the
 backup's own encryption. Gap: the seed vault and notes open with the main
 seed, so whoever has your seed words has them too, by design.
 
+**USB disk.** The app stages public files only (history, PSBTs, signed
+transactions, labels, descriptors) in its own folder; the root helper
+copies plain, well-named files from there (no links) into a FAT image and
+attaches it read-only through the USB gadget, for at most 10 minutes. The
+PC can't write to it. The kernel's mass-storage gadget parses the PC's
+SCSI commands while it's on: that's the attack surface, and why it's off
+unless its screen is up.
+
+**LAN.** The Ethernet port (USB, on the hub) is switched with the radios:
+every wired interface goes down in Vault mode, whatever its name.
+
 **Temporary seed.** The main key waits in memory; LOCK, auto lock and the
 next unlock all go back to it. The PIN stays the device's. Off while a
 spending policy is locked (otherwise the main seed could be loaded as a
