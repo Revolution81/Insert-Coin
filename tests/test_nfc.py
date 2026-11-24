@@ -353,10 +353,92 @@ def test_hardware_screen_and_subghz(app):  # noqa: F811
     assert any(icon is t.NFC for icon, _ in status_icons(app))
     hardware_menu(app)
     m = app.visible
-    m.sel = [it[0] for it in m.items].index("NFC + SUB-GHZ")
+    row = [it for it in m.items if it[0] == "NFC"][0]
+    assert row[2] == "CAP"
+    m.sel = m.items.index(row)
     enter(app)
-    assert app.visible.title == "NFC + SUB-GHZ"
-    assert any("ASLEEP" in line for line in app.visible.lines)
+    assert app.visible.title == "NFC CAP"
+    assert any("asleep" in line for line in app.visible.lines)
+
+
+def test_hardware_screen_tells_the_unit_apart(app):  # noqa: F811
+    from ui.hardware_flow import hardware_menu
+    create_wallet(app)
+    with_card(app, cktap.SimSatscard())
+    app.hw["nfc"] = {"state": "ready", "reader": "unit", "kind": "ST25R3916 rev 2",
+                     "bus": "I2C /dev/i2c-3 0x50", "subghz": {"state": "absent"}}
+    hardware_menu(app)
+    m = app.visible
+    row = [it for it in m.items if it[0] == "NFC"][0]
+    assert row[2] == "UNIT NFC"
+    m.sel = m.items.index(row)
+    enter(app)
+    assert app.visible.title == "UNIT NFC"
+    text = " ".join(app.visible.lines)
+    assert "I2C" in text and "sub-GHz" in text and "CC1101" not in text
+    enter(app)
+    app.hw["nfc"] = {"state": "absent", "errors": ["Cap: no", "Unit: no"]}
+    hardware_menu(app)
+    assert [it for it in app.visible.items if it[0] == "NFC"][0][2] == "NONE"
+
+
+def test_i2c_reads_and_writes_like_the_library(monkeypatch, tmp_path):
+    """Writes are one message; reads (registers, FIFO, space B) are the
+    header, a repeated start, then the data."""
+    sent = []
+    fake = tmp_path / "i2c-3"
+    fake.write_bytes(b"")
+    bus = nfc.I2C(str(fake))
+    monkeypatch.setattr(bus, "_rdwr", lambda msgs: (sent.append(msgs),
+                                                    bytes(range(1, msgs[-1][1] + 1))
+                                                    if msgs[-1][0] & nfc.I2C_M_RD else b"")[1])
+    chip = nfc.ST25R3916(bus, i2c=True)
+    assert chip.read(nfc.REG_IC_ID, 1) == b"\x01"
+    assert sent[-1] == [(0, bytes([0x40 | nfc.REG_IC_ID])), (nfc.I2C_M_RD, 1)]
+    chip.write(nfc.REG_IO2, 0x84)
+    assert sent[-1] == [(0, bytes([nfc.REG_IO2, 0x84]))]
+    chip.write_b(nfc.B_EMD, 0x40)
+    assert sent[-1] == [(0, bytes([nfc.SPACE_B, nfc.B_EMD, 0x40]))]
+    assert chip.fifo_read(3) == b"\x01\x02\x03"
+    assert sent[-1] == [(0, bytes([nfc.OP_READ_FIFO])), (nfc.I2C_M_RD, 3)]
+    chip.fifo_load(b"\x50\x00")
+    assert sent[-1] == [(0, bytes([nfc.OP_LOAD_FIFO, 0x50, 0x00]))]
+    chip.cmd(nfc.CMD_REQA)
+    assert sent[-1] == [(0, bytes([nfc.CMD_REQA]))]
+    assert nfc.I2C.header_len([nfc.SPACE_B, 0x40 | 0x05]) == 2
+
+
+def test_unit_refused_on_the_keyboards_bus(monkeypatch):
+    monkeypatch.delenv("CZ_NFC_I2C_SHARED", raising=False)
+    with pytest.raises(nfc.NFCError, match="keyboard"):
+        nfc.I2C("/dev/i2c-1")
+
+
+def test_reader_found_says_which(monkeypatch):
+    """No Cap on SPI, a Unit on its own bus: HARDWARE is told it's the Unit."""
+    class FakeChip:
+        def __init__(self, bus, vdd_5v=False, i2c=False):
+            self.i2c = i2c
+
+        def start(self):
+            if not self.i2c:
+                raise nfc.NFCError("no ST25R3916 answering on SPI")
+
+        def identity(self):
+            return 5, 2
+
+    class FakeBus:
+        path, address = "/dev/i2c-3", 0x50
+
+        def close(self):
+            pass
+    monkeypatch.setenv("CZ_NFC", "auto")
+    monkeypatch.setattr(nfc, "ST25R3916", FakeChip)
+    monkeypatch.setattr(nfc, "_spi_from_env", lambda *a, **k: object())
+    monkeypatch.setattr(nfc, "CC1101", lambda spi: type("C", (), {"sleep": lambda self: {"state": "absent"}})())
+    monkeypatch.setattr(nfc, "_i2c_from_env", lambda: FakeBus())
+    reader, st = nfc.open_reader()
+    assert reader is not None and st["reader"] == "unit" and "i2c-3" in st["bus"]
 
 
 def test_cc1101_put_to_sleep():

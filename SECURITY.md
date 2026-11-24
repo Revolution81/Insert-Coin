@@ -156,8 +156,13 @@ goes through the same checks (a scanned PSBT still needs your YES on the
 signer's screen). It can also see what the camera sees while it's open;
 the camera is opened only while a scan screen is up.
 
-**A malicious NFC card.** Cards talk to the app process (the reader is on
-its SPI bus), through a strict CBOR parser with size and depth limits.
+**A malicious NFC card.** Cards talk to the app process (the Cap's reader
+is on its SPI bus; the Unit NFC is on a software I2C bus of its own,
+/dev/i2c-3, which only the app may open), through a strict CBOR parser
+with size and depth limits. The app is never given /dev/i2c-1: the
+keyboard controller sits on it, and an app that could read it could read
+your PIN as you type it. So the Unit NFC is refused there, even if wired
+to it.
 Every claim a card makes that can be checked is: slot keys by their
 signatures, an unsealed key against the slot's public key, a TAPSIGNER
 signature against the key the PSBT names, genuineness by the certificate

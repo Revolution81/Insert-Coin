@@ -355,12 +355,21 @@ def sign_pending(app, s: Session):
 def nfc_info(app):
     st = app.hw.get("nfc", {})
     sub = st.get("subghz", {})
-    if st.get("state") == "ready":
-        lines = [f"NFC: {st.get('kind', 'reader')}", "Ready. The field is on only",
-                 "while a TAP screen is up.", ""]
+    if st.get("state") == "ready" and st.get("reader") == "unit":
+        title = "UNIT NFC"
+        lines = ["Unit NFC (U216) on I2C.", f"{st.get('kind', 'reader')}, {st.get('bus', '')}",
+                 "", "Ready. Its field is on only", "while a TAP screen is up.",
+                 "", "No sub-GHz radio on it."]
+    elif st.get("state") == "ready":
+        title = "NFC CAP"
+        lines = ["Cap CC1101 & NFC on SPI.", f"{st.get('kind', 'reader')}",
+                 "", "Ready. Its field is on only", "while a TAP screen is up.", "",
+                 "Its sub-GHz radio (CC1101): " + {"asleep": "asleep, never used",
+                                                   "absent": "not found"}.get(sub.get("state"),
+                                                                              "state unknown")]
     else:
-        lines = ["NFC: not found", (st.get("error") or "Fit the Cap CC1101 & NFC")[:34], ""]
-    lines += ["Sub-GHz radio (CC1101):",
-              {"asleep": "ASLEEP, never used", "absent": "not found"}.get(sub.get("state"),
-                                                                       "state unknown")]
-    app.push(MessageScreen("NFC + SUB-GHZ", lines))
+        title = "NFC"
+        lines = ["No NFC reader found.", "", "Fit either one:",
+                 "Cap CC1101 & NFC (EXT header)", "Unit NFC (U216): its own",
+                 "I2C bus, see the README.", ""] + list(st.get("errors") or [st.get("error") or ""])
+    app.push(MessageScreen(title, lines))

@@ -153,6 +153,16 @@ missing, we change the boot config and reboot.
       unlock with the finger. A different finger must fail.
 - [ ] **NFC Cap:** `sudo python3 tools/hwtest.py nfc`. If no reader is found,
       try `CZ_NFC_SPI=0.1` and `CZ_CC1101_SPI=0.0` (the buses may be swapped).
+- [ ] **Unit NFC (U216) instead of the Cap:** wire it to the EXT header,
+      not the Grove port (that's I2C1, the keyboard's bus, which the app is
+      never given): yellow (SDA) to pin 3, white (SCL) to pin 1, red to
+      pin 6 (5V), black to pin 4 (GND). Not with the Cap fitted (same
+      header). `sudo sh deploy/install.sh --nfc-unit`, or on the wallet
+      image add these two lines to `config.txt` on the boot partition:
+      `gpio=23,26=pu` and
+      `dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=26,i2c_gpio_delay_us=10`.
+      Reboot, then `sudo python3 tools/hwtest.py unit`. HARDWARE › NFC
+      should say UNIT NFC.
 - [ ] Tap a SATSCARD (T on home): slot and address show; GENUINE check passes.
 - [ ] Tap a TAPSIGNER: its key can be added to a 2-of-2 multisig on signet.
 

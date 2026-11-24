@@ -1,6 +1,13 @@
 """
-The Cap CC1101 & NFC: an ST25R3916 NFC reader and a CC1101 sub-GHz radio
-on one SPI bus.
+Two NFC readers, both built on ST's ST25R3916:
+
+  Cap CC1101 & NFC   plugs onto the EXT header; the NFC chip and a CC1101
+                     sub-GHz radio share SPI0.
+  Unit NFC (U216)    a small Grove unit on I2C, address 0x50. Wired to its
+                     own I2C bus (EXT pins 1 and 3, /dev/i2c-3, see
+                     deploy/install.sh --nfc-unit), never to I2C1: that bus
+                     carries the keyboard controller, and the app must not
+                     be able to reach it. CZ_NFC_I2C=/dev/i2c-N:0x50.
 
 NFC: reader mode only, ISO 14443-A up to ISO-DEP (14443-4), which is what
 Coinkite's SATSCARD and TAPSIGNER speak (core/cktap.py). The field is on
@@ -90,6 +97,77 @@ class SPI:
         self.s.close()
 
 
+# --------------------------------------------------------------- I2C bus
+I2C_RDWR, I2C_M_RD = 0x0707, 0x0001
+SHARED_BUS = "/dev/i2c-1"          # keyboard, I/O expander, codec: never from the app
+
+
+class I2C:
+    """The ST25R3916's I2C mode, behind the same xfer() as SPI: the first
+    byte (and the space-B prefix) says whether it's a read; a read is a
+    write of that header, a repeated start, then the data (as M5Stack's
+    library does it). Writes are one message."""
+
+    def __init__(self, path: str, address: int = 0x50):
+        if os.path.realpath(path) == os.path.realpath(SHARED_BUS) and \
+                os.environ.get("CZ_NFC_I2C_SHARED") != "1":
+            raise NFCError("not on I2C1: it's the keyboard's bus")
+        self.path, self.address = path, address
+        self.fd = os.open(path, os.O_RDWR)
+
+    @staticmethod
+    def header_len(data) -> int:
+        """0 for a write; else how many bytes of data are the read header."""
+        b = data[0]
+        if b == OP_READ_FIFO or 0x40 <= b <= 0x7F:
+            return 1
+        if b == SPACE_B and len(data) > 1 and 0x40 <= data[1] <= 0x7F:
+            return 2
+        return 0
+
+    def _rdwr(self, msgs: list[tuple[int, bytes | int]]) -> bytes:
+        import ctypes
+        import fcntl
+
+        class Msg(ctypes.Structure):
+            _fields_ = [("addr", ctypes.c_uint16), ("flags", ctypes.c_uint16),
+                        ("len", ctypes.c_uint16), ("buf", ctypes.POINTER(ctypes.c_uint8))]
+
+        class Data(ctypes.Structure):
+            _fields_ = [("msgs", ctypes.POINTER(Msg)), ("nmsgs", ctypes.c_uint32)]
+        arr = (Msg * len(msgs))()
+        bufs = []
+        for i, (flags, payload) in enumerate(msgs):
+            if flags & I2C_M_RD:
+                buf = (ctypes.c_uint8 * payload)()
+                n = payload
+            else:
+                buf = (ctypes.c_uint8 * len(payload)).from_buffer_copy(bytes(payload))
+                n = len(payload)
+            bufs.append(buf)
+            arr[i] = Msg(self.address, flags, n, ctypes.cast(buf, ctypes.POINTER(ctypes.c_uint8)))
+        fcntl.ioctl(self.fd, I2C_RDWR, Data(arr, len(msgs)))
+        return bytes(bufs[-1]) if msgs[-1][0] & I2C_M_RD else b""
+
+    def xfer(self, data: list[int]) -> list[int]:
+        data = list(data)
+        h = self.header_len(data)
+        if not h:
+            self._rdwr([(0, bytes(data))])
+            return [0] * len(data)
+        got = self._rdwr([(0, bytes(data[:h])), (I2C_M_RD, len(data) - h)])
+        return [0] * h + list(got)
+
+    def close(self):
+        os.close(self.fd)
+
+
+def _i2c_from_env() -> I2C:
+    spec = os.environ.get("CZ_NFC_I2C", "/dev/i2c-3:0x50")
+    path, _, addr = spec.partition(":")
+    return I2C(path, int(addr or "0x50", 16))
+
+
 def _spi_from_env(var: str, default: str, mode: int) -> SPI:
     bus, dev = os.environ.get(var, default).split(".")
     return SPI(int(bus), int(dev), mode)
@@ -97,9 +175,10 @@ def _spi_from_env(var: str, default: str, mode: int) -> SPI:
 
 # --------------------------------------------------------------- ST25R3916
 class ST25R3916:
-    def __init__(self, spi: SPI, vdd_5v: bool = False):
-        self.spi = spi
+    def __init__(self, spi, vdd_5v: bool = False, i2c: bool = False):
+        self.spi = spi                                 # SPI, or I2C (same xfer)
         self.vdd_5v = vdd_5v
+        self.i2c = i2c
         self.field = False
 
     # register access ---------------------------------------------------
@@ -163,15 +242,16 @@ class ST25R3916:
                 break
             time.sleep(0.02)
         else:
-            raise NFCError("no ST25R3916 answering on SPI")
+            raise NFCError("no ST25R3916 answering on " + ("I2C" if self.i2c else "SPI"))
         self.cmd(CMD_STOP)
         self.modify(REG_OPCTRL, 0, TX_EN | RX_EN)
         time.sleep(0.002)
         self.cmd(CMD_SET_DEFAULT)
         self.cmd(CMD_TEST_ACCESS, 0x04, 0x10)          # overheat-protection workaround
-        # SPI: MISO pull-downs, IO drive level; 3.3 V supply unless told otherwise
+        # SPI: MISO pull-downs + IO drive level; I2C: drive level only (and
+        # i2c_thd 0: the Pi's I2C runs at 100 kHz). 3.3 V supply unless told.
         self.write(REG_IO1, 0x00)
-        self.write(REG_IO2, 0x1C | (0x00 if self.vdd_5v else 0x80))
+        self.write(REG_IO2, (0x04 if self.i2c else 0x1C) | (0x00 if self.vdd_5v else 0x80))
         self.write(REG_TXDRV, (13 & 0x0F) << 4)
         self.modify(REG_IO1, 0x07, 0x07)                # no MCU clock output
         self.write_b(B_RES_AM, 0x80)
@@ -470,20 +550,36 @@ def open_reader() -> tuple[object | None, dict]:
             from core.cktap import SimSatscard, SimTapsigner
             card = SimTapsigner() if mode == "sim-tapsigner" else SimSatscard()
             _SIM["reader"] = SimReader(card)
+        unit = os.environ.get("CZ_NFC_SIM_READER") == "unit"
         return _SIM["reader"], {"state": "ready", "kind": "simulated",
-                                "subghz": {"state": "asleep"}}
-    st: dict = {"state": "absent"}
+                                "reader": "unit" if unit else "cap",
+                                "bus": "I2C (simulated)" if unit else "SPI (simulated)",
+                                "subghz": {"state": "absent" if unit else "asleep"}}
     try:
         sub = CC1101(_spi_from_env("CZ_CC1101_SPI", "0.1", mode=0)).sleep()
     except Exception as e:  # noqa: BLE001
         sub = {"state": "absent", "error": str(e)[:40]}
-    try:
+    errors = []
+    try:                                               # the Cap, on SPI
         chip = ST25R3916(_spi_from_env("CZ_NFC_SPI", "0.0", mode=1),
                          vdd_5v=os.environ.get("CZ_NFC_5V") == "1")
         chip.start()
         kind, rev = chip.identity()
-        st = {"state": "ready", "kind": f"ST25R3916 rev {rev}", "subghz": sub}
-        return Reader(chip), st
+        return Reader(chip), {"state": "ready", "reader": "cap", "kind": f"ST25R3916 rev {rev}",
+                              "bus": "SPI", "subghz": sub}
     except Exception as e:  # noqa: BLE001 - no Cap, no spidev, wrong bus
-        st = {"state": "absent", "error": str(e)[:40], "subghz": sub}
-        return None, st
+        errors.append(f"Cap: {e}"[:40])
+    try:                                               # the Unit, on its own I2C bus
+        bus = _i2c_from_env()
+        chip = ST25R3916(bus, vdd_5v=os.environ.get("CZ_NFC_5V") == "1", i2c=True)
+        try:
+            chip.start()
+        except Exception:
+            bus.close()
+            raise
+        kind, rev = chip.identity()
+        return Reader(chip), {"state": "ready", "reader": "unit", "kind": f"ST25R3916 rev {rev}",
+                              "bus": f"I2C {bus.path} 0x{bus.address:02x}", "subghz": sub}
+    except Exception as e:  # noqa: BLE001 - no Unit, no bus
+        errors.append(f"Unit: {e}"[:40])
+    return None, {"state": "absent", "error": errors[0], "errors": errors, "subghz": sub}

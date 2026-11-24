@@ -11,6 +11,11 @@
 #                                          skip steps that need a running system
 #   ... --full                             redo every step, even ones an earlier
 #                                          run already finished
+#   ... --nfc-unit                         a Unit NFC (U216) wired to EXT pins 1
+#                                          (SCL) and 3 (SDA): give it its own I2C
+#                                          bus, /dev/i2c-3 (needs a reboot). Not
+#                                          with the NFC Cap fitted: it uses the
+#                                          same header.
 #
 # Running it again is how you update. Steps that are already done (system
 # packages, Python packages with the same lock file, interface setup) are
@@ -26,13 +31,15 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 MODE=""
 IMAGE=0
 FULL=0
+NFC_UNIT=0
 for a in "$@"; do
   case "$a" in
     --app) MODE=app ;;
     --dedicated) MODE=dedicated ;;
     --image) IMAGE=1 ;;
     --full) FULL=1 ;;
-    *) echo "usage: install.sh [--app|--dedicated] [--image] [--full]" >&2; exit 2 ;;
+    --nfc-unit) NFC_UNIT=1 ;;
+    *) echo "usage: install.sh [--app|--dedicated] [--image] [--full] [--nfc-unit]" >&2; exit 2 ;;
   esac
 done
 if [ -z "$MODE" ]; then
@@ -179,6 +186,7 @@ chmod 440 /etc/sudoers.d/czwallet
 install -m 644 "$SRC/deploy/50-czwallet-nm.rules" /etc/polkit-1/rules.d/
 # a fixed name for the built-in keyboard (M5's image has one; ours may not)
 install -m 644 "$SRC/deploy/62-czwallet-keyboard.rules" /etc/udev/rules.d/
+install -m 644 "$SRC/deploy/63-czwallet-nfc-unit.rules" /etc/udev/rules.d/
 if [ "$MODE" = dedicated ]; then
   # only the signer may draw on the panel or set the backlight
   install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/
@@ -207,6 +215,19 @@ else
   echo "== interfaces for add-ons: left as they are (no live changes)"
 fi
 getent group i2c >/dev/null && usermod -aG i2c czsigner
+
+# Unit NFC: a bus of its own (software I2C on GPIO23 = SDA, GPIO26 = SCL,
+# with the Pi's pull-ups, slowed for them). Never I2C1, which the keyboard
+# is on: the app may open this bus, and must not reach the keyboard.
+if [ "$NFC_UNIT" = 1 ]; then
+  CFG=/boot/firmware/config.txt
+  if ! grep -q "^dtoverlay=i2c-gpio,bus=3" "$CFG"; then
+    printf '\n# Insert Coin: Unit NFC on its own I2C bus (EXT pin 3 SDA, pin 1 SCL)\ngpio=23,26=pu\ndtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=26,i2c_gpio_delay_us=10\n' >> "$CFG"
+    echo "== Unit NFC: /dev/i2c-3 set up; reboot to use it"
+  else
+    echo "== Unit NFC: /dev/i2c-3 already set up"
+  fi
+fi
 
 echo "== services"
 install -m 644 "$SRC"/deploy/*.service /etc/systemd/system/

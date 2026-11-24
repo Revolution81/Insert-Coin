@@ -58,7 +58,7 @@ online cap.
 - Key Teleport (COLDCARD-compatible): seeds, notes and PSBTs to another device by QR
 - Co-Sign: a 2-of-3 where a second key on the device signs only inside its own rules
 - QR in every format that matters: PSBT, UR, BBQr, SeedQR
-- SATSCARD and TAPSIGNER over NFC
+- SATSCARD and TAPSIGNER over NFC (M5Stack's Cap CC1101 & NFC, or the Unit NFC)
 
 **Backups**: seed words, SeedQR, SLIP39 split shares, Seed XOR, and an encrypted card
 backup of accounts, multisig wallets, labels, notes, the seed vault and settings

@@ -65,10 +65,18 @@ def hardware_menu(app):
     app.push(MenuScreen("HARDWARE", [
         ("SECURE CHIP", chip_menu, cl, cc),
         ("FINGERPRINT", finger_menu, fl, fc),
-        ("NFC + SUB-GHZ", _nfc_info, *(("READY", "light") if app.hw.get("nfc", {}).get("state")
-                                       == "ready" else ("NONE", "grey"))),
+        ("NFC", _nfc_info, *nfc_label(app)),
         ("RESCAN", rescan),
     ], info=["Add-ons on the Grove port", "or the EXT header."]))
+
+
+def nfc_label(app) -> tuple[str, str]:
+    """Which NFC reader is fitted: the Cap (SPI, with the sub-GHz radio) or
+    the Unit NFC (I2C)."""
+    st = app.hw.get("nfc", {})
+    if st.get("state") != "ready":
+        return "NONE", "grey"
+    return ("UNIT NFC", "light") if st.get("reader") == "unit" else ("CAP", "light")
 
 
 def _nfc_info(app):
