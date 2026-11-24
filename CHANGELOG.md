@@ -939,7 +939,7 @@ A new seed hashes together every source the device has (`new_mnemonic` in
 - **Linux's random number generator**, always: 32 bytes from `getrandom`,
   which waits until the kernel's generator is seeded (the Pi's hardware
   RNG and hardware timing noise feed it);
-- **camera noise**: czscan hashes four raw full-resolution frames (image
+- **camera noise**: czscan hashes four 640x480 brightness (Y) frames (image
   sensors are noisy even in the dark); skipped if there's no camera or the
   frames come out identical;
 - **the secure chip's hardware RNG**, only if a chip is connected (a blank,

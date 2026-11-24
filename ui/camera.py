@@ -102,7 +102,7 @@ def decode(img: Image.Image) -> list[str]:
 
 
 def frame_noise(camera, frames: int = 4) -> bytes:
-    """Hash of a few full-resolution frames: camera sensors are noisy, so
+    """Hash of a few 640x480 brightness (Y) frames: camera sensors are noisy, so
     even a still scene in the dark gives fresh random bits each frame.
     Returns b"" if every frame came out identical (no noise to use)."""
     h = hashlib.sha256(b"czwallet-camera-noise-v1")
