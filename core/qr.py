@@ -242,4 +242,7 @@ def classify(text: str) -> Scanned:
         return Scanned("seedqr", text=t)               # SeedSigner Standard SeedQR
     if " " not in t and 25 <= len(t) <= 90:
         return Scanned("address", address=t)
+    from .silentpay import is_address as _is_sp
+    if " " not in t and _is_sp(t) and len(t) <= 1023:
+        return Scanned("address", address=t)          # a silent payment address
     return Scanned("text", text=t)

@@ -931,7 +931,8 @@ def sign(c, psbt):
             q = f"Sign? ({min(s['sigs_present'] + mine, s['sigs_needed'])} of {s['sigs_needed']})"
 
         def go(c, code=None):
-            c.job("SIGNING...", lambda: c.signer.sign(psbt=psbt, digest=s["digest"], code=code),
+            c.job("SIGNING...", lambda: c.signer.sign(psbt=s.get("psbt") or psbt, digest=s["digest"],
+                                                      code=code),
                   lambda c, out: c.finish({"psbt": out, "summary": s}),
                   lambda c, e: c.fail(e))
 

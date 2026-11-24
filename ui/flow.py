@@ -644,7 +644,7 @@ def send_flow(app, coins=None, prefill=None):
             return
         ask_amount(app, addr, prefill.sats, prefill.label)
         return
-    app.push(TextInputScreen("SEND TO", "Bitcoin address:", got_addr, max_len=90,
+    app.push(TextInputScreen("SEND TO", "Bitcoin address:", got_addr, max_len=130,
                              info=lambda s: f"{len(s)} chars" if s else "Type it, or TAB to scan a QR",
                              tab=("SCAN", scan)))
 

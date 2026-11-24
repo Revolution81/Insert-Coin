@@ -1083,6 +1083,13 @@ class Signer:
         if not isinstance(addr, str) or len(addr) > 100:
             raise SignerError("not an address for this network")
         a = addr.strip()
+        from . import silentpay
+        if silentpay.is_address(a):                    # allow-list a silent payment address
+            try:
+                silentpay.decode(a, self._network or self.vault.info()["network"])
+            except silentpay.SilentPaymentError:
+                raise SignerError("not an address for this network")
+            return a.lower()
         try:
             spk = address_to_scriptpubkey(a)
             net = EMBIT_NETS[NETWORKS[self._network or self.vault.info()["network"]][1]]
@@ -1299,6 +1306,8 @@ class Signer:
             total_in += utxo.value
             vbytes += vb
 
+        sp_addrs = self._silent_outputs(psbt, root, wallet)
+
         outputs, total_out, spend, far = [], 0, 0, []
         for i, out in enumerate(psbt.outputs):
             vout = psbt.tx.vout[i]
@@ -1319,7 +1328,7 @@ class Signer:
                     far.append(f"{'Change' if kind == 'change' else 'Self'} goes to address "
                                f"#{idx}: your wallet may not show it")
             try:
-                addr = vout.script_pubkey.address(emb)
+                addr = sp_addrs.get(i) or vout.script_pubkey.address(emb)
             except Exception:
                 addr = "(non-standard)"
             outputs.append({"address": addr, "sats": vout.value, "kind": kind})
@@ -1378,9 +1387,56 @@ class Signer:
         if cc:
             summary["cosign"] = {"will": cc["will"], "why": cc["why"],
                                  "fingerprint": cc["fingerprint"]}
+        if sp_addrs:                                   # the outputs were filled in here:
+            summary["psbt"] = psbt.to_string()         # this is the PSBT to sign
+            summary["silent"] = len(sp_addrs)
         self._pending = {digest: dict(summary, psbt_hash=whole, _wallet=wallet)}
         self._touch()
         return summary
+
+    SP_INFO = b"\x09"                                  # BIP-375 PSBT_OUT_SP_V0_INFO
+
+    def _silent_outputs(self, psbt, root, wallet) -> dict[int, str]:
+        """Silent payment outputs (BIP-375's SP_V0_INFO: scan + spend key):
+        work out each one's real Taproot output from this wallet's input
+        keys (BIP-352) and put it in the transaction, before anything is
+        shown or signed. Returns {output index: sp1... address}."""
+        from embit.script import Script
+        from . import silentpay as sp
+        wanted = [(i, out.unknown[self.SP_INFO]) for i, out in enumerate(psbt.outputs)
+                  if self.SP_INFO in getattr(out, "unknown", {})]
+        if not wanted:
+            return {}
+        if not isinstance(wallet, str):
+            raise SignerError("silent payments go from a single-sig account")
+        keys, outpoints = [], []
+        for i, inp in enumerate(psbt.inputs):
+            vin = psbt.tx.vin[i]
+            outpoints.append((vin.txid.hex(), vin.vout))
+            ders = [(der, False) for der in inp.bip32_derivations.values()] + \
+                [(der, True) for _l, der in inp.taproot_bip32_derivations.values()]
+            mine = [(d, tap) for d, tap in ders if d.fingerprint == root.my_fingerprint]
+            if len(mine) != 1:
+                raise SignerError("silent payments need every input to be this wallet's")
+            der, tap = mine[0]
+            k = root.derive(list(der.derivation)).key
+            if tap:
+                k = k.taproot_tweak(b"")
+            keys.append((int.from_bytes(k.secret, "big"), tap))
+        recips, addrs = [], {}
+        for i, info in wanted:
+            if len(info) != 66:
+                raise SignerError("damaged silent payment output")
+            recips.append((bytes(info[:33]), bytes(info[33:])))
+            addrs[i] = sp.encode(bytes(info[:33]), bytes(info[33:]), self._network)
+        try:
+            xonly = sp.outputs(keys, outpoints, recips)
+        except sp.SilentPaymentError as e:
+            raise SignerError(f"silent payment: {e}")
+        for (i, _info), key in zip(wanted, xonly):
+            spk = Script(b"\x51\x20" + key)
+            psbt.outputs[i].script_pubkey = spk          # psbt.tx is built from these
+        return addrs
 
     def sign(self, psbt: str, digest: str, code: str | None = None) -> str:
         """Sign only the exact transaction the user just confirmed. code: the

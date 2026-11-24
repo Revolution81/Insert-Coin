@@ -537,10 +537,21 @@ class WalletService:
         return out
 
     def validate_address(self, text: str) -> str:
-        """Returns the cleaned address or raises WalletError."""
+        """Returns the cleaned address or raises WalletError. A silent
+        payment address (sp1q.../tsp1q...) is fine from a single-sig
+        account: the signer works out the real output (BIP-352)."""
         text = text.strip()
         if text.lower().startswith("bitcoin:"):
             text = text[8:].split("?")[0]
+        from . import silentpay
+        if silentpay.is_address(text):
+            if self.kind != "single":
+                raise WalletError("silent payments go from a single-sig account")
+            try:
+                silentpay.decode(text, self.settings.network)
+            except silentpay.SilentPaymentError as e:
+                raise WalletError(str(e))
+            return text.lower()
         try:
             sc = address_to_scriptpubkey(text)
             ok = sc.address(self.net).lower() == text.lower()
@@ -556,7 +567,16 @@ class WalletService:
         """sats=None sends everything (minus fee). fee_from_amount: the fee
         comes out of `sats`, so the recipient gets sats - fee and exactly
         `sats` leaves your wallet. Returns {psbt, fee, amount}."""
-        dest = address_to_scriptpubkey(self.validate_address(address))
+        address = self.validate_address(address)
+        from . import silentpay
+        sp_keys = None
+        if silentpay.is_address(address):
+            # a stand-in Taproot output of the right size; the signer puts the
+            # real one in from this wallet's input keys (BIP-352, BIP-375)
+            sp_keys = silentpay.decode(address, self.settings.network)
+            dest = Script(b"\x51\x20" + sp_keys[1][1:])
+        else:
+            dest = address_to_scriptpubkey(address)
         rate = int(fee_rate)
         if rate < 1:
             raise WalletError("fee rate must be at least 1 sat/vB")
@@ -636,7 +656,12 @@ class WalletService:
                 fee = fee_for(len(chosen), 2)
             else:
                 fee = total - sats                   # tiny remainder goes to the fee
-        return {"psbt": self._psbt(chosen, outputs), "fee": fee, "amount": outputs[0][1]}
+        psbt = self._psbt(chosen, outputs)
+        if sp_keys:
+            p = PSBT.from_string(psbt)
+            p.outputs[0].unknown[b"\x09"] = sp_keys[0] + sp_keys[1]   # BIP-375 SP_V0_INFO
+            psbt = p.to_string()
+        return {"psbt": psbt, "fee": fee, "amount": outputs[0][1], "silent": bool(sp_keys)}
 
     def consolidate(self, coins: list[str] | None, fee_rate: int) -> dict:
         """Merge coins into one, sent to this wallet's next unused change
