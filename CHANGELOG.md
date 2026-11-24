@@ -2,6 +2,16 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.25: the first signed update
+
+The first release delivered through SETUP › UPDATE instead of a new card
+image, to check updates end to end on a 0.8.24 wallet image. The wallet is
+the same as 0.8.24, plus:
+
+- After an update, the printing, camera and file-sharing services restart
+  on the new code too (only those already running), not just the signer,
+  the network relay and the wallet.
+
 ## 0.8.24: steadier outbox screen
 
 From the second session on the device:

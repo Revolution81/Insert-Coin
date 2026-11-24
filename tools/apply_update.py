@@ -27,6 +27,9 @@ def main():
     # restart after we've answered, so the app sees the result first
     subprocess.run(["systemd-run", "--on-active=3", "systemctl", "restart",
                     "czsigner", "cznet", "czwallet"], check=False)
+    # the helpers' services run the same code: restart those that are running
+    subprocess.run(["systemd-run", "--on-active=3", "systemctl", "try-restart",
+                    "czprint", "czscan", "czshare"], check=False)
 
 
 if __name__ == "__main__":

@@ -70,7 +70,7 @@ backup of accounts, multisig wallets, labels and settings (no seed inside).
 - Ten wrong PINs erase the wallet; every kind of PIN costs the same time to check
 
 **Extras**: paper wallets kept off the microSD card, printed at home over
-encrypted IPP with a pinned printer certificate, or downloaded with SHARE
+encrypted IPP (any AirPrint or IPP Everywhere printer) with a pinned printer certificate, or downloaded with SHARE
 FILES (password-protected, local network only, switches itself off). Optional
 secure chip and fingerprint sensor. One sound switch for the menu boop and
 the title fanfare.
@@ -139,6 +139,16 @@ wallet image* workflow, so anyone can see what went in. It fits an 8 GB card
 or bigger. It takes **no logins at all**: SSH is off and every account's
 password is locked, so the screen and keyboard are the only way in. Browsers,
 media players and remote-desktop servers are removed from it.
+
+**Updating.** Releases that only change the wallet come as two files,
+`czwallet-<version>.tar.gz` and its `.sig`. Put the card in a PC, copy both
+into a folder named `czwallet-update` on its boot partition (or onto a USB
+stick), put the card back and open SETUP › UPDATE. The wallet checks the
+signature against the release key built into the image, shows the version
+and SHA-256, and installs; the previous version is kept. Releases that need a
+newer M5Stack OS come as a new image instead: have your seed words, copy the
+card's `czwallet-backup` folder off first, burn, restore from words, and the
+wallet offers to bring back your accounts and settings.
 
 *If the image won't start:* put the card in a PC, create an empty file named
 `insert-coin-debug.txt` on its boot partition (the part Windows can read),
