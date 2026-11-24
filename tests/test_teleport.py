@@ -108,6 +108,22 @@ def test_receive_key_kept_encrypted(tmp_path):
     assert s.kt_rx_key(make=False) is None
 
 
+def test_duress_pin_never_teleports_the_real_key(tmp_path):
+    """Found in review: the duress PIN used to send the open wallet's master
+    key. Now it gets the decoy's words, like SHOW SEED WORDS."""
+    s = Signer(str(tmp_path))
+    s.setup("1234", ABANDON, "signet")
+    decoy = OTHER
+    s.vault.set_duress("1234", "9999", decoy)
+    enc, fp = s.teleport_secret(pin="9999")
+    assert kt.decode_secret(enc, N["test"]["xprv"]) == decoy
+    assert fp != s.public_info()["fingerprint"]
+    with pytest.raises(SignerError, match="wrong PIN"):
+        s.seedvault_secret(index=0, pin="9999")
+    with pytest.raises(SignerError, match="wrong PIN"):
+        s.set_cap("9999", 10 ** 9)
+
+
 def test_teleport_secret_needs_the_pin(tmp_path):
     s = Signer(str(tmp_path))
     s.setup("1234", ABANDON, "signet")
@@ -259,6 +275,9 @@ def test_seed_from_the_vault_between_two_devices(two):
     assert b.visible.title == "SEND A SEED?"
     press(b, "KEY_Z")                                # SEND IT
     enter(b)
+    type_text(b, "1234")                             # a vault seed needs the PIN too
+    enter(b)
+    settle(b)
     pw = "".join(b.visible.lines[0].split())
     enter(b)
     got = _receive(a, _frames(b), pw)

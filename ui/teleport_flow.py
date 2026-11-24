@@ -253,8 +253,13 @@ def _what(c, pub: bytes):
         rows = []
         for i, e in enumerate(c.signer.seedvault()):
             def go(c, i=i):
-                enc, fp, label = c.signer.seedvault_secret(index=i)
-                _warn(c, lambda c: _seal(c, pub, b"v" + kt.vault_out(fp, enc, label)))
+                def pinned(c):
+                    from .secure_flows import _pin_job
+                    _pin_job(c, "SEND SEED", "CHECKING PIN...",
+                             lambda pin: c.signer.seedvault_secret(index=i, pin=pin),
+                             lambda c, r: (c.pop(), _seal(c, pub, b"v" + kt.vault_out(r[1], r[0], r[2]))),
+                             note="To send a seed from the vault")
+                _warn(c, pinned)
             rows.append((e["label"], go, e["kind"]))
         if not rows:
             _err(c, "EMPTY", ["The seed vault is empty."])

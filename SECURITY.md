@@ -309,12 +309,19 @@ its own input keys (BIP-352) before it shows or signs anything, so what
 you confirm (the sp1q address) is what's signed. Only from single-sig
 accounts, with every input this wallet's.
 
-**PayJoin (sending, BIP-78).** The signer signs the original as usual and
+**PayJoin (sending, BIP-78).** The confirm screen says PAYJOIN and the
+most extra fee it may cost. The signer signs the original as usual and
 keeps a copy for five minutes. The receiver's proposal is checked against
 that copy (not against anything the app says): the payment keeps its
 address (output substitution is always disabled) and doesn't shrink, none
 of your other outputs go, your change pays at most about 110 vB of extra
-fee and only toward fee, your inputs are exactly the original's. Then it
+fee and only toward fee, your inputs are exactly the original's. Amounts
+come from the signer's own copy for your inputs, and for the receiver's
+only from a full previous transaction that hashes to its txid; if any
+amount is unproven, your outputs must stay exactly as they were. Your
+inputs are rebuilt from the copy before signing (nothing the receiver put
+on them is used), and the extra fee counts toward the online cap and the
+day limit. Then it
 signs only its own inputs, once. Any failure sends the original. The
 request goes out through cznet: https anywhere, or http to a .onion only.
 
@@ -340,6 +347,21 @@ Gap: key C sits on the device, so someone with the device, the PIN and
 the rules' limits in mind can still spend up to the limits, which is the
 point of the limits. A BIP85 key C is offered but marked weaker: then the
 seed backup alone holds 2 of the 3 keys.
+
+**Review (2026-11-24), fixed:** an independent review of the toolbox found
+(1) the duress PIN could approve KEY TELEPORT › THE SEED IN USE and send
+the open wallet's master key: it now sends the decoy's words, like SHOW
+SEED WORDS, and device settings (online cap, policy, bypass, 2FA,
+countdown, auto lock, quick unlock) now need the open wallet's PIN, not
+any working one; (2) PayJoin's fee checks trusted amounts the receiver
+supplied, so it refused every spec-following receiver and let a lying one
+keep your fee contribution (fixed as above); (3) CO-SIGN's key B was never
+shown by fingerprint on the signer's screen, so a hostile app could swap
+it at CHECK SIGNERS: KEY B READY now shows B's and C's fingerprints;
+(4) teleporting a seed vault entry needed no PIN: it does now. Also: the
+BIP85 key C warning says the PIN alone can then change the rules, the
+whole miniscript policy is shown (paged), and cznet's PayJoin request
+takes only a real PSBT, with a time limit for the whole exchange.
 
 ## Wipe PIN, login countdown, spending policy (0.8.20)
 

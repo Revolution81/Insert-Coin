@@ -222,7 +222,10 @@ def decode_secret(raw: bytes, xprv_version: bytes) -> str:
     raw = bytes(raw) + b"\x00" * (72 - len(raw))
     m = raw[0]
     if m == 0x01:
-        k = bip32.HDKey(bip32.ec.PrivateKey(raw[33:65]), raw[1:33], version=xprv_version)
+        try:
+            k = bip32.HDKey(bip32.ec.PrivateKey(raw[33:65]), raw[1:33], version=xprv_version)
+        except Exception as e:  # noqa: BLE001 - zero or out-of-range key
+            raise TeleportError("damaged key") from e
         return k.to_string()
     if m & 0x80:
         n = ((m & 0x03) + 2) * 8
@@ -230,7 +233,10 @@ def decode_secret(raw: bytes, xprv_version: bytes) -> str:
             raise TeleportError("unknown seed length")
         return bip39.mnemonic_from_bytes(raw[1:1 + n])
     if 16 <= m <= 64:
-        return bip32.HDKey.from_seed(raw[1:1 + m], version=xprv_version).to_string()
+        try:
+            return bip32.HDKey.from_seed(raw[1:1 + m], version=xprv_version).to_string()
+        except Exception as e:  # noqa: BLE001
+            raise TeleportError("damaged seed") from e
     raise TeleportError("unknown kind of secret")
 
 
@@ -307,7 +313,11 @@ def backup_in(raw: bytes) -> tuple[bytes, list]:
         raise TeleportError("no secret in that backup")
     rs += "0" * (len(rs) % 2)
     notes = vals.get("setting.notes") or []
-    return bytes.fromhex(rs), notes if isinstance(notes, list) else []
+    try:
+        raw = bytes.fromhex(rs)
+    except ValueError as e:
+        raise TeleportError("damaged backup") from e
+    return raw, notes if isinstance(notes, list) else []
 
 
 # ------------------------------------------------------- multisig PSBTs

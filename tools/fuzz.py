@@ -203,6 +203,66 @@ def main():
                 f.write(mutate(rnd, val))
         check("power.read", power.read, tmp)
 
+    # the toolbox: silent payment addresses, PayJoin URLs and proposals,
+    # Key Teleport packages and secrets, notes from a teleport, miniscript
+    from core import notes, payjoin, silentpay, teleport
+    from embit.psbt import PSBT
+    sp_addr = silentpay.encode(b"\x02" + b"\x11" * 32, b"\x03" + b"\x22" * 32, "signet")
+    sp_addr = silentpay.encode(silentpay.ser(silentpay.base(5)), silentpay.ser(silentpay.base(7)),
+                               "signet")
+    rx, tx = teleport.new_secret(), teleport.new_secret()
+    noid, _ = teleport.new_password()
+    pkg = teleport.seal(tx, teleport.pubkey(rx), noid, b"n" + teleport.notes_out(
+        [{"kind": "note", "title": "t", "text": "x"}]))
+    mini = ("wsh(or_d(pk([73c5da0a/48h/1h/0h/2h]tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSjCC1PJY8iCNiwTL3RWZEheQ/<0;1>/*),"
+            "and_v(v:pk([f245ae38/48h/1h/0h/2h]tpubDDUBeeT8CVSEPYvDHHrjpJF4zVdrqjeYRJkS4TMdtj9F8rLkWZYodUCh2G6oN7SuxKLCvNVwSfnLPRVvBf6qbfNB7rHkGqZSHzwZCvCfFbr/<0;1>/*),older(100))))")
+    from embit.transaction import Transaction, TransactionInput, TransactionOutput
+    from embit.script import Script
+    _t = Transaction(vin=[TransactionInput(b"\x11" * 32, 0, sequence=0xfffffffd)],
+                     vout=[TransactionOutput(5000, Script(b"\x00\x14" + b"\x22" * 20)),
+                           TransactionOutput(9000, Script(b"\x00\x14" + b"\x33" * 20))])
+    orig = PSBT(_t)
+    orig.inputs[0].witness_utxo = TransactionOutput(15000, Script(b"\x00\x14" + b"\x44" * 20))
+    psbt = orig.serialize()
+    for i in range(n // 3):
+        check("silentpay.decode", lambda d: silentpay.decode(d, "signet"),
+              mutate_text(rnd, sp_addr), ok=(silentpay.SilentPaymentError,))
+        check("silentpay.input_pubkey", lambda d: silentpay.input_pubkey(d[:34], d[34:], [d[5:38]]),
+              mutate(rnd, b"\x00\x14" + b"\x01" * 20 + b"\x02" * 40))
+        check("payjoin.check_url", payjoin.check_url,
+              mutate_text(rnd, "https://btcpay.example.com/BTC/pj?x=1"), ok=(payjoin.PayjoinError,))
+        check("payjoin.error_text", payjoin.error_text, mutate_text(rnd, '{"errorCode":"x"}'))
+
+        try:                                 # embit's own parse errors: the signer
+            prop = PSBT.parse(mutate(rnd, psbt))   # catches those; fuzz what parses
+        except Exception:  # noqa: BLE001
+            prop = None
+        if prop is not None:
+            check("payjoin.check_proposal",
+                  lambda p: payjoin.check_proposal(orig, p, 0, set(), 500, None), prop,
+                  ok=(payjoin.PayjoinError,))
+        check("teleport.open_outer", lambda d: teleport.open_outer(rx, d[:33], d[33:]),
+              mutate(rnd, pkg))
+        check("teleport.decrypt_rx", lambda d: teleport.decrypt_rx("12345678", d),
+              mutate(rnd, teleport.rx_code(rx)[1]))
+        check("teleport.decode_secret", lambda d: teleport.decode_secret(d, b"\x04\x35\x83\x94"),
+              mutate(rnd, teleport.encode_secret("abandon " * 11 + "about")),
+              ok=(teleport.TeleportError,))
+        check("teleport.notes_in", teleport.notes_in, mutate(rnd, teleport.notes_out(
+            [{"kind": "password", "title": "a", "user": "", "password": "p"}])),
+            ok=(teleport.TeleportError,))
+        check("teleport.vault_in", teleport.vault_in,
+              mutate(rnd, teleport.vault_out("abcd1234", b"\x80" + b"\x01" * 16, "L")),
+              ok=(teleport.TeleportError,))
+        check("teleport.backup_in", teleport.backup_in,
+              mutate(rnd, b'raw_secret = "80' + b"11" * 16 + b'"\nsetting.notes = []\n'),
+              ok=(teleport.TeleportError,))
+        check("notes.clean", notes.clean, {"kind": rnd.choice(["note", "password", 3]),
+                                           "title": rnd.choice(junk), "text": rnd.choice(junk),
+                                           "password": rnd.choice(junk)}, ok=(notes.NoteError,))
+        check("multisig.parse_any(miniscript)", lambda d: multisig.parse_any(d, "signet"),
+              mutate_text(rnd, mini), ok=(multisig.PolicyError,))
+
     print(f"{len(FOUND)} distinct problems")
     for (name, et, line), (data, tb) in FOUND.items():
         print("=" * 70)

@@ -126,7 +126,13 @@ class _Handler(socketserver.StreamRequestHandler):
                         url, body, tor = req.get("url"), req.get("body"), req.get("tor")
                         pj.check_url(url)
                         if not isinstance(body, str) or not 10 < len(body) < 300_000 or \
+                                not body.startswith("cHNidP8") or \
                                 not re.fullmatch(r"[A-Za-z0-9+/=]+", body):
+                            raise RelayError("bad PSBT")         # a PSBT, nothing else
+                        try:
+                            from embit.psbt import PSBT
+                            PSBT.from_string(body)
+                        except Exception:  # noqa: BLE001
                             raise RelayError("bad PSBT")
                         if tor is not None and not _PROXY.match(str(tor)):
                             raise RelayError("Tor proxy must be on this device")

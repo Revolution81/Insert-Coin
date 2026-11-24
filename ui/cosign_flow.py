@@ -14,6 +14,7 @@ import random
 
 from core import seed as seedlib
 
+from .secure_flows import _final
 from .widgets import (ConfirmScreen, MenuScreen, MessageScreen, ShowWordsScreen, TextInputScreen,
                       WordEntryScreen, fmt_btc)
 
@@ -113,8 +114,8 @@ def _pick_c(c):
             c.push(TextInputScreen("BIP85 CHILD", "Child number for key C:", number,
                                    allowed="0123456789", max_len=6, initial="0"))
         c.push(ConfirmScreen("WEAKER: READ", [
-            "Key C made from your seed", "means your seed backup alone", "holds 2 of the 3 keys: whoever",
-            "finds it can spend it all, no", "rules. Only if you accept that."],
+            "Key C made from your seed", "means your seed backup alone", "holds 2 of the 3 keys, and",
+            "anyone with your PIN can get", "key C and change the rules.", "Only if you accept that."],
             yes, danger=True, yes="I ACCEPT"))
 
     c.push(MenuScreen("KEY C", [("NEW 12 WORDS", new, "BEST", "gold"),
@@ -189,7 +190,12 @@ def _key_b(c, st):
             b = cosigner_key(seedlib.root_key(" ".join(words), "", c.signer.status()["network"]),
                              c.signer.status()["network"])
             words.clear()                              # B is forgotten here: only you hold it
-            c.finish({"a": a, "c": st["key"], "b": b})
+            # its fingerprint here, on the signer's screen, so CHECK SIGNERS
+            # can be matched against it (the app builds the wallet from B's xpub)
+            _final(c, MessageScreen("KEY B READY", [
+                f"Key B fingerprint: {b[1:9].upper()}", f"Key C fingerprint: {st['fingerprint'].upper()}",
+                "", "Next, CHECK SIGNERS must list", "exactly these two and THIS", "DEVICE. If not: don't save."],
+                border="gold"), {"a": a, "c": st["key"], "b": b})
         c.push(MessageScreen("KEY B", ["12 words for key B follow.", "This device forgets them",
                                        "right after: keep them far", "from it (a safe, a relative).",
                                        "Big payments and recovery", "need them."],

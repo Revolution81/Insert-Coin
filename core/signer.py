@@ -343,7 +343,7 @@ class Signer:
         if isinstance(seconds, bool) or not isinstance(seconds, int) or \
                 not (seconds == 0 or 60 <= seconds <= 24 * 3600):
             raise SignerError("countdown must be 1 minute to 24 hours, or off")
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         _atomic_write(os.path.join(self.dir, "countdown.json"),
                       json.dumps({"seconds": seconds}).encode())
         return seconds
@@ -593,9 +593,13 @@ class Signer:
                 "notes": notes_added, "seedvault": vault_added}
 
     def _check_same_wallet(self, pin: str):
+        """The PIN of the wallet that's open, not just any working PIN: the
+        duress PIN mustn't approve changes to (or exports from) the real
+        wallet, and the real PIN not in the decoy."""
         u = self.vault.check_pin(pin)
         if hashlib.sha256(u.mnemonic.encode()).digest() != getattr(self, "_seed_tag", b""):
             raise SignerError("wrong PIN for this wallet")
+        return u
 
     def _policy_info(self, p: ms.Policy) -> dict:
         info = {"id": p.id, "name": p.label, "k": p.k, "n": p.n, "kind": p.kind,
@@ -834,20 +838,34 @@ class Signer:
 
     def teleport_secret(self, pin: str) -> tuple[bytes, str]:
         """The seed in use, in COLDCARD's encoding, after the PIN. With a
-        passphrase it goes as the master xprv it makes (as COLDCARD does)."""
+        passphrase it goes as the master xprv it makes (as COLDCARD does).
+        The duress PIN gets the decoy's words, as SHOW SEED WORDS does:
+        never the open wallet's key."""
         from . import teleport as kt
-        words = self.reveal_words(pin=pin)            # PIN, policy checks
+        self._hobbled("showing the seed")
+        u = self.vault.unlock(pin)                     # counts a try
         root = self._need_root()
+        if hashlib.sha256(u.mnemonic.encode()).digest() != getattr(self, "_seed_tag", b""):
+            return kt.encode_secret(u.mnemonic), seedlib.fingerprint(
+                seedlib.root_key(u.mnemonic, "", self._network))      # the decoy, as it is
+        if self._temp is not None:
+            secret, pp = self._temp["secret"], self._temp["passphrase"]
+        else:
+            secret, pp = u.mnemonic, ""
         fp = seedlib.fingerprint(root)
-        if seedlib.fingerprint(seedlib.root_key(words, "", self._network)) == fp:
-            return kt.encode_secret(words), fp
+        if seedlib.fingerprint(seedlib.root_key(secret, pp, self._network)) == fp and not pp:
+            return kt.encode_secret(secret), fp
+        if seedlib.fingerprint(seedlib.root_key(secret, "", self._network)) == fp:
+            return kt.encode_secret(secret), fp
         return b"\x01" + root.chain_code + root.key.secret, fp
 
-    def seedvault_secret(self, index: int) -> tuple[bytes, str, str]:
-        """(encoded, fingerprint, label) of a seed vault entry, for teleport."""
+    def seedvault_secret(self, index: int, pin: str) -> tuple[bytes, str, str]:
+        """(encoded, fingerprint, label) of a seed vault entry, for teleport.
+        Needs the open wallet's PIN, like sending the seed in use."""
         from . import teleport as kt
         self._need_root()
         self._hobbled("the seed vault")
+        self._check_same_wallet(pin)
         entries = self._load_seedvault()
         if not isinstance(index, int) or not 0 <= index < len(entries):
             raise SignerError("no such seed")
@@ -1107,7 +1125,7 @@ class Signer:
             new = spolicy.change(rules, field, value, self._check_address)
         except spolicy.PolicyError as e:
             raise SignerError(str(e))
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         _atomic_write(self.policy_path, json.dumps(new).encode())
         return spolicy.public(new)
 
@@ -1116,7 +1134,7 @@ class Signer:
         self._check_bypass(rules, bypass_pin)
         if len(new_bypass) < 4 or new_bypass == pin:
             raise SignerError("bypass PIN must differ from your PIN (4+ characters)")
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         if self.vault.pin_in_use(new_bypass):
             raise SignerError("that PIN is in use")
         rules["bypass"] = spolicy.hash_bypass(new_bypass, ARGON_T_BYPASS, ARGON_M_BYPASS)
@@ -1128,7 +1146,7 @@ class Signer:
         if not rules["bypass"]:
             return spolicy.public(rules)
         self._check_bypass(rules, bypass_pin)
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         rules["bypass"] = None
         _atomic_write(self.policy_path, json.dumps(rules).encode())
         return spolicy.public(rules)
@@ -1146,7 +1164,7 @@ class Signer:
                 step = spolicy.verify_code(secret, code, 0)
             except spolicy.PolicyError as e:
                 raise SignerError(str(e))
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         rules["totp"] = secret
         st = dict(rules.get("state") or {})
         st["last_step"] = step if secret is not None else 0
@@ -1189,7 +1207,7 @@ class Signer:
         c = self._cap_state()
         if int(cap_sats) > c["cap"]:
             self._hobbled("raising the online cap")
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         c["cap"] = max(0, int(cap_sats))
         _atomic_write(self.cap_path, json.dumps(c).encode())
         return c
@@ -1432,6 +1450,8 @@ class Signer:
             raise SignerError("no PayJoin payment waiting")
         try:
             prop = PSBT.from_string(psbt)
+            if len(prop.inputs) > MAX_INPUTS or len(prop.outputs) > MAX_OUTPUTS:
+                raise pj.PayjoinError("too big")
             res = pj.check_proposal(p["original"], prop, p["pay"], p["ours"], p["max"],
                                     p["fee_index"])
         except pj.PayjoinError as e:
@@ -1444,13 +1464,28 @@ class Signer:
             cap = self._cap_state()
             if online and cap["spent"] + extra > cap["cap"]:
                 raise SignerError("PayJoin refused: over today's online cap")
+            rules = spolicy.load(self.policy_path)
+            pstate = self._policy_day(rules)
+            if rules["per_day"] and pstate["spent"] + extra > rules["per_day"]:
+                raise SignerError("PayJoin refused: over today's spending limit")
             if online:
                 cap["spent"] += extra
                 _atomic_write(self.cap_path, json.dumps(cap).encode())
+            if rules["per_day"]:
+                pstate["spent"] += extra
+                rules["state"] = pstate
+                _atomic_write(self.policy_path, json.dumps(rules).encode())
         pj.restore_ours(prop, p["original"])
-        mine = len(p["original"].inputs)
-        if prop.sign_with(root) != mine:
+        mine = {(bytes(i.txid), i.vout) for i in p["original"].inputs}
+        if prop.sign_with(root) != len(mine):
             raise SignerError("PayJoin refused: couldn't sign exactly your inputs")
+        for inp in prop.inputs:                      # one signature on each of ours, none elsewhere
+            ours = (bytes(inp.txid), inp.vout) in mine
+            n = len(inp.partial_sigs) + len(inp.taproot_sigs) + \
+                (1 if ours and inp.final_scriptwitness is not None and
+                 len(inp.final_scriptwitness.items) == 1 else 0)
+            if ours and n != 1:
+                raise SignerError("PayJoin refused: couldn't sign exactly your inputs")
         self._touch()
         return prop.to_string()
 
@@ -1692,7 +1727,7 @@ class Signer:
     def set_auto_lock(self, pin: str, seconds: int) -> int:
         """Any value, OFF included. PIN needed."""
         seconds = self._check_lock_after(seconds)
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         return self._save_lock_after(seconds)
 
     def shorten_auto_lock(self, seconds: int) -> int:
@@ -1714,7 +1749,7 @@ class Signer:
     def set_quick_unlock(self, pin: str, hours: int) -> int:
         """Keep the seed unlocked for up to `hours` of inactivity so the
         screen can be reopened with a fingerprint. 0 turns it off. PIN needed."""
-        self.vault.unlock(pin)
+        self._check_same_wallet(pin)   # the open wallet's PIN, not the duress one
         hours = max(0, min(24, int(hours)))
         _atomic_write(os.path.join(self.dir, "quick.json"), json.dumps({"hours": hours}).encode())
         return hours

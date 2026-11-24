@@ -25,6 +25,7 @@ come finalized, yours unsigned.
 from __future__ import annotations
 
 import base64
+import copy
 import json
 import re
 import socket
@@ -47,13 +48,17 @@ def check_url(url: str) -> tuple[str, str, int, str]:
     plain http only to a .onion address (Tor encrypts that end to end)."""
     if not isinstance(url, str) or len(url) > 1000:
         raise PayjoinError("bad PayJoin address")
-    u = urlparse(url.strip())
-    host = (u.hostname or "").lower()
+    try:
+        u = urlparse(url.strip())
+        host = (u.hostname or "").lower()
+        port = u.port
+    except ValueError:                                 # e.g. "Invalid IPv6 URL", a bad port
+        raise PayjoinError("bad PayJoin address")
     if u.scheme not in ("https", "http") or not _HOST.match(host) or u.username or u.password:
         raise PayjoinError("bad PayJoin address")
     if u.scheme == "http" and not host.endswith(".onion"):
         raise PayjoinError("PayJoin needs https (or a .onion address)")
-    port = u.port or (443 if u.scheme == "https" else 80)
+    port = port or (443 if u.scheme == "https" else 80)
     path = (u.path or "/") + (f"?{u.query}" if u.query else "")
     if any(c in path for c in "\r\n "):
         raise PayjoinError("bad PayJoin address")
@@ -88,10 +93,16 @@ def http_post(url: str, body: str, socks5: str | None, timeout: float = 60) -> t
     data = body.encode()
     req = (f"POST {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: text/plain\r\n"
            f"Content-Length: {len(data)}\r\nConnection: close\r\nUser-Agent: InsertCoin\r\n\r\n")
+    import time
+    deadline = time.monotonic() + timeout             # the whole exchange, not per read
     try:
         raw.sendall(req.encode() + data)
         buf = b""
         while len(buf) <= MAX_BODY + 8192:
+            left = deadline - time.monotonic()
+            if left <= 0:
+                raise PayjoinError("the receiver took too long")
+            raw.settimeout(left)
             chunk = raw.recv(65536)
             if not chunk:
                 break
@@ -213,44 +224,74 @@ def check_proposal(original: PSBT, proposal: PSBT, pay_index: int, ours: set[byt
     for s, _v in left:                                # anything new must not be ours
         if s in ours:
             raise PayjoinError("an extra output to you (confusing)")
-    o_fee = _fee(original)
-    p_fee = _fee(proposal)
-    if p_fee is None or p_fee < o_fee:
+    # Fees from amounts the signer can trust: your inputs' from its own copy
+    # of the original; the receiver's only when it sent the full previous
+    # transaction and it matches. With any amount unproven, your outputs
+    # must stay exactly as they were (no contribution from you at all).
+    values, proven = {}, True
+    for inp in original.inputs:
+        values[_outpoint(inp)] = _value(inp)
+    for inp in proposal.inputs:
+        op = _outpoint(inp)
+        if op in values:
+            continue
+        v = _proven_value(inp)
+        if v is None:
+            proven = False
+            u = inp.witness_utxo
+            v = u.value if u is not None else 0
+        values[op] = v
+    if not proven and contribution:
+        raise PayjoinError("asks you to pay fee for a coin it didn't prove")
+    o_fee = sum(_value(i) for i in original.inputs) - sum(o.value for o in otx.vout)
+    p_fee = sum(values[_outpoint(i)] for i in proposal.inputs) - sum(o.value for o in ptx.vout)
+    if proven and p_fee < o_fee:
         raise PayjoinError("the fee went down")
-    if contribution > p_fee - o_fee:
+    if contribution > max(0, p_fee - o_fee):
         raise PayjoinError("your contribution doesn't all go to fee")
     if contribution and receiver_in == 0:
         raise PayjoinError("you'd pay more fee for no added input")
     return {"extra_fee": contribution, "receiver_inputs": receiver_in}
 
 
-def _fee(p: PSBT) -> int | None:
-    total = 0
-    for i, inp in enumerate(p.inputs):
-        u = inp.witness_utxo
-        if u is None and inp.non_witness_utxo is not None:
-            u = inp.non_witness_utxo.vout[inp.vout]
-        if u is None:
-            return None
-        total += u.value
-    return total - sum(o.value for o in p.tx.vout)
+def _value(inp) -> int:
+    u = inp.witness_utxo
+    if u is None and inp.non_witness_utxo is not None:
+        u = inp.non_witness_utxo.vout[inp.vout]
+    if u is None:
+        raise PayjoinError("an input without its amount")
+    return u.value
+
+
+def _proven_value(inp) -> int | None:
+    """The receiver input's amount from its full previous transaction, if
+    that transaction really is the one spent (its hash is the txid)."""
+    prev = inp.non_witness_utxo
+    if prev is None or prev.txid() != bytes(inp.txid) or inp.vout >= len(prev.vout):
+        return None
+    if inp.witness_utxo is not None and (inp.witness_utxo.value != prev.vout[inp.vout].value or
+                                         inp.witness_utxo.script_pubkey.data !=
+                                         prev.vout[inp.vout].script_pubkey.data):
+        return None
+    return prev.vout[inp.vout].value
 
 
 def restore_ours(proposal: PSBT, original: PSBT) -> PSBT:
-    """Put the sender's own input and output details (utxo data, key paths)
-    back into the proposal (BIP-78 receivers strip them), so the signer can
-    sign its inputs. Signatures aren't copied."""
+    """Put the sender's own inputs back exactly as in the signer's copy of
+    the original (BIP-78 receivers strip them, and anything a receiver put
+    there, a sighash type or scripts, is dropped), keeping only the
+    proposal's position for them. Signatures aren't copied."""
     mine = {_outpoint(i): i for i in original.inputs}
-    for inp in proposal.inputs:
+    for j, inp in enumerate(proposal.inputs):
         src = mine.get(_outpoint(inp))
         if src is None:
             continue
-        inp.witness_utxo = src.witness_utxo
-        inp.non_witness_utxo = src.non_witness_utxo
-        inp.bip32_derivations = dict(src.bip32_derivations)
-        inp.taproot_bip32_derivations = dict(src.taproot_bip32_derivations)
-        inp.taproot_internal_key = src.taproot_internal_key
-        inp.final_scriptwitness = None
+        fresh = copy.deepcopy(src)
+        fresh.partial_sigs.clear()
+        fresh.taproot_sigs.clear()
+        fresh.final_scriptwitness = None
+        fresh.final_scriptsig = None
+        proposal.inputs[j] = fresh
     return proposal
 
 

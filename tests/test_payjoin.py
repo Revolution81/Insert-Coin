@@ -31,7 +31,8 @@ def _setup(signer, sats=30_000, rate=3):  # noqa: F811
     return w, s, signed
 
 
-def receiver_proposal(original_b64, add_value=50_000, take_from_change=0, mutate=None):
+def receiver_proposal(original_b64, add_value=50_000, take_from_change=0, mutate=None,
+                      prove=True):
     """What a BIP-78 receiver does: add its own coin, pay itself back in the
     payment output, clear the sender's signatures, sign and finalize its input."""
     p = PSBT.from_string(original_b64)
@@ -40,7 +41,7 @@ def receiver_proposal(original_b64, add_value=50_000, take_from_change=0, mutate
     vin = TransactionInput(coin.txid(), 0, sequence=p.inputs[0].sequence)
     new = InputScope(unknown={}, vin=vin)
     new.witness_utxo = coin.vout[0]
-    new.non_witness_utxo = coin
+    new.non_witness_utxo = coin if prove else None
     new.bip32_derivations[key.key.get_public_key()] = DerivationPath(
         RECV.my_fingerprint, [84 + 2**31, 1 + 2**31, 2**31, 0, 0])
     p.inputs.append(new)
@@ -175,3 +176,50 @@ def test_the_sign_prompt_keeps_the_original(app):  # noqa: F811
     enter(app)
     settle(app)
     assert got and app.signer._local.signer.payjoin_params()["max"] > 0
+
+
+def test_damaged_pj_links_dont_break_scanning():
+    """Found by the fuzzer: urlparse raises ValueError on some junk."""
+    for junk in ("https://[::1/pj", "https://x:99999/pj", "https://ex]ample.com/pj"):
+        with pytest.raises(pj.PayjoinError):
+            pj.check_url(junk)
+        r = parse_bip21(f"bitcoin:{DEST}?pj={junk}")
+        assert r.payjoin == "" and r.address == DEST
+
+
+def test_spec_receiver_without_our_amounts_works(signer):  # noqa: F811
+    """Found in review: BIP-78 receivers strip the sender's utxo data; the
+    fee must come from the signer's own copy, not be refused."""
+    def post(url, body):
+        p = PSBT.from_string(receiver_proposal(body, take_from_change=200))
+        for inp in p.inputs[:-1]:                    # as BIP-78 says: only the receiver's
+            inp.witness_utxo = None
+            inp.non_witness_utxo = None
+        return 200, p.to_string()
+    w, s, signed = _setup(signer)
+    out, note = pj.run(w, None, signer, "https://shop.example/pj", signed, s["fee_rate"],
+                       poster=post)
+    assert note == "PAYJOIN", note
+
+
+def test_overstated_amount_cant_steal_the_contribution(signer):  # noqa: F811
+    """Found in review: a receiver inflating your input's amount used to pass
+    the fee checks while moving your contribution into its own output."""
+    def cheat(p, pay, ch):
+        p.inputs[0].witness_utxo.value += 900_000
+        p.outputs[pay].value += 300                   # the 300 taken from change goes to them
+    w, s, signed = _setup(signer)
+    out, note = pj.run(w, None, signer, "https://shop.example/pj", signed, s["fee_rate"],
+                       poster=_poster(take_from_change=300, mutate=cheat))
+    assert out == signed and "fee" in note, note
+
+
+def test_unproven_receiver_coin_means_no_contribution(signer):  # noqa: F811
+    w, s, signed = _setup(signer)
+    out, note = pj.run(w, None, signer, "https://shop.example/pj", signed, s["fee_rate"],
+                       poster=_poster(take_from_change=200, prove=False))
+    assert out == signed and "didn't" in note, note
+    w2, s2, signed2 = _setup(signer)
+    out, note = pj.run(w2, None, signer, "https://shop.example/pj", signed2, s2["fee_rate"],
+                       poster=_poster(take_from_change=0, prove=False))
+    assert note == "PAYJOIN", note

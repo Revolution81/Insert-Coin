@@ -120,6 +120,9 @@ class ConfirmSendScreen(Screen):
         cs = s.get("cosign")
         if note:
             t.text(d, (14, 98), note[:52], TINY, "red")
+        elif s.get("payjoin_max"):       # PayJoin: the receiver may add a coin
+            t.text(d, (14, 98), f"PAYJOIN: UP TO {s['payjoin_max']:,} SATS MORE FEE"[:52], TINY,
+                   "cyan")
         elif cs:                         # CO-SIGN: will key C add its signature?
             t.text(d, (14, 98), ("CO-SIGN: KEY C SIGNS TOO" if cs["will"] else
                                  "CO-SIGN: NO. " + cs["why"])[:52], TINY,
@@ -921,6 +924,10 @@ def sign(c, psbt, payjoin=False):
 
     def described(c, s):
         sends = [o for o in s["outputs"] if o["kind"] == "send"]
+        if payjoin and len(sends) == 1 and isinstance(s.get("wallet_id"), (str, type(None))) \
+                and s.get("sigs_needed", 1) == 1 and not s.get("silent"):
+            from core.payjoin import EXTRA_VB
+            s["payjoin_max"] = int(s["fee_rate"] * EXTRA_VB)
         if s.get("replaces_signed"):
             title = "REPLACE TX"
         elif not sends:
@@ -1434,7 +1441,7 @@ def register(c, descriptor, name=""):
             rules = Descriptor.from_string(info["descriptor"]).full_policy
         except Exception:  # noqa: BLE001 - shown as is
             rules = "?"
-        lines += ["", "Who can spend:", rules[:400], ""]
+        lines += ["", "Who can spend:", rules, ""]
     else:
         lines = [f"{info['k']} of {info['n']} signatures" +
                  (", Taproot (no key path)." if info.get("taproot") else ", SegWit.")]

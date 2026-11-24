@@ -150,6 +150,11 @@ def test_setup_on_the_screens(app):  # noqa: F811
     enter(app)
     b_words = _write_and_check(app)
     settle(app)
+    assert app.visible.title == "KEY B READY"         # B's fingerprint on the signer's screen
+    b_fp = cosigner_key(seedlib.root_key(" ".join(b_words), "", "signet"), "signet")[1:9]
+    assert b_fp.upper() in " ".join(app.visible.lines)
+    enter(app)
+    settle(app)
     r = got[0]
     s = app.signer._local.signer
     assert r["c"] == cosigner_key(seedlib.root_key(" ".join(c_words), "", "signet"), "signet")
