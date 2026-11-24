@@ -439,6 +439,34 @@ class WalletService:
             self._save()
             return i, self._addr(self._script(0, i))
 
+    def addresses(self, branch: int, start: int = 0, count: int | None = None) -> list[dict]:
+        """ADDRESS EXPLORER: addresses of one branch (0 receive, 1 change)
+        with what's known about each. By default, up to the last used one
+        plus the gap limit, which is as far as a restore would look."""
+        if branch not in (0, 1):
+            raise WalletError("branch is 0 (receive) or 1 (change)")
+        with self._lock:
+            used = self._used()
+            held: dict[str, int] = {}
+            for u in self._utxos():
+                k = u["script"].data.hex()
+                held[k] = held.get(k, 0) + u["value"]
+            if count is None:
+                last = max([i for (b, i) in self._scripts.values()
+                            if b == branch and self._script(b, i).data.hex() in used] or [-1])
+                if branch == 0:
+                    last = max(last, self.state.get("current", 0))
+                count = max(0, last + 1 + self.settings.stop_gap - start)
+            count = min(count, 1000)
+            out = []
+            for i in range(start, start + count):
+                sc = self._script(branch, i)
+                h = sc.data.hex()
+                addr = self._addr(sc)
+                out.append({"index": i, "address": addr, "used": h in used,
+                            "sats": held.get(h, 0), "label": self.label("addr", addr)})
+            return out
+
     def _first_unused(self, branch: int, used: set[str]) -> int:
         i = 0
         while self._script(branch, i).data.hex() in used:

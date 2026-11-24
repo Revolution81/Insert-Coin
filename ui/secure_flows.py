@@ -1210,13 +1210,15 @@ def sign_message(c, index, message, fmt="electrum", account=None):
     c.push(SignMessageScreen(addr, message, fmt, yes))
 
 
-def show_address(c, wallet_id=None, index=0):
+def show_address(c, wallet_id=None, index=0, change=False):
     if wallet_id is not None and not isinstance(wallet_id, str):
         raise BadRequest("bad wallet id")
-    if not isinstance(index, int) or not 0 <= index < 2 ** 31:
+    if not isinstance(index, int) or isinstance(index, bool) or not 0 <= index < 2 ** 31:
         raise BadRequest("bad index")
-    addr = c.signer.address(wallet_id=wallet_id, index=index)
-    _final(c, AddressScreen(addr, f"ADDR #{index}"), addr)
+    if not isinstance(change, bool):
+        raise BadRequest("bad change flag")
+    addr = c.signer.address(wallet_id=wallet_id, index=index, change=change)
+    _final(c, AddressScreen(addr, f"{'CHANGE' if change else 'ADDR'} #{index}"), addr)
 
 
 __all__ = ["BadRequest", "ConfirmSendScreen", "SecurePinScreen", "AddressScreen"]

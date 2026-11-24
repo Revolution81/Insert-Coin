@@ -152,8 +152,8 @@ class TrustedSigner:
     def register_prompt(self, descriptor: str, name: str = ""):
         return self._ask("register", descriptor=descriptor, name=name)
 
-    def address_prompt(self, wallet_id: str | None = None, index: int = 0):
-        return self._ask("show_address", wallet_id=wallet_id, index=index)
+    def address_prompt(self, wallet_id: str | None = None, index: int = 0, change: bool = False):
+        return self._ask("show_address", wallet_id=wallet_id, index=index, change=change)
 
     def account_rule_prompt(self, account: str, rule: str, name: str = ""):
         return self._ask("account_rule", account=account, rule=rule, name=name)

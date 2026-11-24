@@ -382,7 +382,7 @@ class ReceiveScreen(Screen):
         return img
 
 
-def verify_address(app, index, shown):
+def verify_address(app, index, shown, change=False):
     """The signer derives the address itself and shows it on its screen;
     this app only learns whether they matched."""
     def done(app, addr):
@@ -391,7 +391,7 @@ def verify_address(app, index, shown):
                 "The signer derived a different", "address than this screen shows.",
                 "Don't use it. Something on this", "device may be tampered with."],
                 border="red"))
-    app.prompt("address_prompt", done, wallet_id=app.wallet_id, index=index)
+    app.prompt("address_prompt", done, wallet_id=app.wallet_id, index=index, change=change)
 
 
 def _formats(app):
@@ -1205,7 +1205,7 @@ SETUP_GROUPS = [
     ("BACKUP", ["SHOW SEED WORDS", "SEEDQR BACKUP", "SPLIT BACKUP", "CARD BACKUP"]),
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
-    ("TOOLS", ["PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
+    ("TOOLS", ["ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
     ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
@@ -1361,6 +1361,8 @@ def settings_screen(app, at: str | None = None):
              "cyan" if st.get("screen_sleep", 120) else "grey"),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
             ("PAPER WALLETS", paper_wallets),
+            ("ADDRESS EXPLORER", lambda app: __import__("ui.explorer_flow", fromlist=["x"])
+             .explorer_menu(app)),
             ("SHARE FILES", share_files, "WI-FI", "grey"),
             ("EXPLORER", explorer, s.explorer.split("//")[-1].strip("/")[:14], "grey"),
             ("EXPORT HISTORY", export_history, "CSV", "grey"),
