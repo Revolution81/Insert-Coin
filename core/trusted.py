@@ -37,7 +37,7 @@ PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "cap_prompt", "change_pin_prompt", "wipe_prompt", "duress_prompt",
            "bind_chip_prompt", "unbind_chip_prompt", "quick_unlock_prompt",
            "register_prompt", "address_prompt", "message_prompt",
-           "child_seed_prompt", "account_rule_prompt", "restore_backup_prompt", "xprv_prompt",
+           "child_seed_prompt", "account_rule_prompt", "restore_backup_prompt", "xprv_prompt", "notes_prompt",
            "verify_backup_prompt",
            "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "countdown_prompt",
            "policy_prompt", "bypass_prompt", "totp_prompt"}
@@ -161,6 +161,9 @@ class TrustedSigner:
 
     def account_rule_prompt(self, account: str, rule: str, name: str = ""):
         return self._ask("account_rule", account=account, rule=rule, name=name)
+
+    def notes_prompt(self):
+        return self._ask("notes")
 
     def verify_backup_prompt(self, files: list):
         return self._ask("verify_backup", files=files)

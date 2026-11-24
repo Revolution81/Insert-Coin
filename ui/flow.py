@@ -1244,7 +1244,8 @@ SETUP_GROUPS = [
     ("BACKUP", ["SHOW SEED WORDS", "SEEDQR BACKUP", "SPLIT BACKUP", "CARD BACKUP"]),
     ("NETWORK", ["WI-FI", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "EXPORT HISTORY", "EXPORT LABELS", "EXPORT WATCH-ONLY"]),
-    ("TOOLS", ["ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS", "WALLETS"]),
+    ("TOOLS", ["NOTES & PASSWORDS", "ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS",
+               "WALLETS"]),
     ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
 SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
@@ -1400,6 +1401,7 @@ def settings_screen(app, at: str | None = None):
              "cyan" if st.get("screen_sleep", 120) else "grey"),
             ("SOUND", None, sound_label(s), "green" if s.sound else "grey", sound_toggle),
             ("PAPER WALLETS", paper_wallets),
+            ("NOTES & PASSWORDS", ask("notes_prompt")),
             ("ADDRESS EXPLORER", lambda app: __import__("ui.explorer_flow", fromlist=["x"])
              .explorer_menu(app)),
             ("SHARE FILES", share_files, "WI-FI", "grey"),

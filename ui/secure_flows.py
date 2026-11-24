@@ -956,6 +956,12 @@ def restore_backup(c, blob):
                          ["Adds to what's here;", "removes nothing."], yes, yes="RESTORE"))
 
 
+def notes(c):
+    """NOTES & PASSWORDS (ui/notes_flow.py): all on this screen."""
+    from .notes_flow import notes as run
+    run(c)
+
+
 def verify_backup(c, files):
     """VERIFY BACKUP: open each copy of this seed's card backups with the
     seed's key and say which are whole, changing nothing. AES-GCM fails on

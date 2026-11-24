@@ -385,6 +385,70 @@ class Signer:
         name = hashlib.sha256(key).hexdigest()[:16]
         return os.path.join(self.dir, f"rules-{name}.bin"), key
 
+    # ------------------------------------------------ notes & passwords
+    def _notes_file(self) -> tuple[str, bytes]:
+        key = hmac.new(self._root.secret, b"czwallet-notes-v1", hashlib.sha256).digest()
+        name = hashlib.sha256(key).hexdigest()[:16]
+        return os.path.join(self.dir, f"notes-{name}.bin"), key
+
+    def _load_notes(self) -> list[dict]:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        path, key = self._notes_file()
+        if not os.path.exists(path):
+            return []
+        with open(path, "rb") as f:
+            blob = f.read()
+        return json.loads(AESGCM(key).decrypt(blob[:12], blob[12:], None))
+
+    def _save_notes(self, entries: list[dict]) -> None:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        path, key = self._notes_file()
+        nonce = os.urandom(12)
+        data = json.dumps(entries).encode()
+        _atomic_write(path, nonce + AESGCM(key).encrypt(nonce, data, None))
+
+    def notes(self) -> list[dict]:
+        """Every note and password (signer screens only: not for the app)."""
+        self._need_root()
+        return self._load_notes()
+
+    def note_save(self, entry: dict, index: int | None = None) -> list[dict]:
+        from . import notes as nl
+        self._need_root()
+        try:
+            e = nl.clean(entry)
+        except nl.NoteError as ex:
+            raise SignerError(str(ex))
+        entries = self._load_notes()
+        if index is None:
+            if len(entries) >= nl.MAX_ENTRIES:
+                raise SignerError(f"no room: {nl.MAX_ENTRIES} entries at most")
+            entries.append(e)
+        else:
+            if not isinstance(index, int) or not 0 <= index < len(entries):
+                raise SignerError("no such entry")
+            e["made"] = entries[index].get("made", e["made"])
+            entries[index] = e
+        self._save_notes(entries)
+        return entries
+
+    def note_delete(self, index: int) -> list[dict]:
+        self._need_root()
+        entries = self._load_notes()
+        if not isinstance(index, int) or not 0 <= index < len(entries):
+            raise SignerError("no such entry")
+        del entries[index]
+        self._save_notes(entries)
+        return entries
+
+    def bip85_password(self, length: int, index: int, kind: str = "base64") -> str:
+        from . import notes as nl
+        root = self._need_root()
+        try:
+            return nl.bip85_password(root, length, index, kind)
+        except nl.NoteError as e:
+            raise SignerError(str(e))
+
     def _load_rules(self):
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         path, key = self._rules_file()
@@ -438,7 +502,8 @@ class Signer:
         payload = {"v": 1, "made": dt.date.today().isoformat(), "network": self._network,
                    "app": app_data,
                    "signer": {"multisig": [p.to_dict() for p in self._registry],
-                              "rules": dict(self._rules)}}
+                              "rules": dict(self._rules),
+                              "notes": self._load_notes()}}
         key, tag = backup.keys(root.secret)
         try:
             blob = backup.seal(key, payload)
@@ -460,8 +525,8 @@ class Signer:
 
     def apply_backup(self, payload: dict) -> dict:
         """Merge the signer's part: multisig wallets (each re-checked, must
-        include this device's key) and vault-only rules. Only ever adds; a
-        restore can't loosen a rule."""
+        include this device's key), vault-only rules and notes & passwords.
+        Only ever adds; a restore can't loosen a rule or change a note."""
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         sig = payload.get("signer", {})
         added, skipped = 0, 0
@@ -482,7 +547,15 @@ class Signer:
         nonce = os.urandom(12)
         _atomic_write(path, nonce + AESGCM(key).encrypt(nonce, json.dumps(self._rules).encode(),
                                                         None))
-        return {"multisig": added, "skipped": skipped, "rules": dict(self._rules)}
+        from . import notes as nl
+        theirs = sig.get("notes", [])
+        notes_added = 0
+        if isinstance(theirs, list) and theirs:
+            merged, notes_added = nl.merge(self._load_notes(), theirs)
+            if notes_added:
+                self._save_notes(merged)
+        return {"multisig": added, "skipped": skipped, "rules": dict(self._rules),
+                "notes": notes_added}
 
     def _check_same_wallet(self, pin: str):
         u = self.vault.check_pin(pin)

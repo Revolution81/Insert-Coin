@@ -101,6 +101,9 @@ def summary(payload: dict) -> list[str]:
         lines.append(f"{len(ms) - inherit} multisig, {inherit} inheritance")
     if rules:
         lines.append(f"{len(rules)} vault-only rule{'s' if len(rules) != 1 else ''}")
+    n_notes = len(sig.get("notes", []))
+    if n_notes:
+        lines.append(f"{n_notes} note{'s' if n_notes != 1 else ''} & passwords")
     lines.append(f"{labels} labels, settings")
     return lines
 
