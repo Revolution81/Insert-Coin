@@ -42,7 +42,7 @@ Cardputer's own screen and keys.
 ## Features
 
 **Two modes.** Vault mode (the boot default) has Wi-Fi, Bluetooth and
-Ethernet switched off: sign PSBTs by animated QR or microSD with Sparrow or
+Ethernet (LAN) switched off: sign PSBTs by animated QR or microSD with Sparrow or
 any watch-only wallet. Online mode talks to your own Electrum server, through
 Tor by default, and sends straight from the device, limited by a daily
 online cap.
@@ -52,7 +52,8 @@ online cap.
   if fitted, and any dice rolls, coin flips, card shuffles or key mashing you add
 - Native SegWit (BIP84) and Taproot (BIP86), several accounts per seed, optional passphrase
 - Coin control, labels, fee bumps and cancels (RBF), CSV history export
-- Multisig cosigner (BIP48, descriptors) and inheritance wallets with a time-locked heir key
+- Multisig cosigner (BIP48, SegWit or Taproot), inheritance wallets with a time-locked heir key,
+  and any miniscript wallet (Liana, Coldcard, Bitcoin Core) with this device's key
 - Child seeds and passwords (BIP85), message signing (BIP137, BIP322)
 - Temporary seeds and a Seed Vault of extra seeds; an address explorer
 - Key Teleport (COLDCARD-compatible): seeds, notes and PSBTs to another device by QR
@@ -77,7 +78,8 @@ backup of accounts, multisig wallets, labels, notes, the seed vault and settings
 
 **Extras**: paper wallets kept off the microSD card, printed at home over
 encrypted IPP (any AirPrint or IPP Everywhere printer) with a pinned printer certificate, or downloaded with SHARE
-FILES (password-protected, local network only, switches itself off). Optional
+FILES (password-protected, local network only, switches itself off), and a
+read-only USB DISK for your history and PSBTs. Optional
 secure chip and fingerprint sensor. One sound switch for the menu boop and
 the title fanfare.
 

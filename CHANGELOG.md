@@ -27,6 +27,19 @@ Not in an image or update yet; the next release carries all of it.
 - **CO-SIGN** (SETUP › SECURITY, COLDCARD's CCC idea): key C on the device
   signs a 2-of-3 only inside its own rules; the rules change only with key
   C's words.
+- **Taproot multisig** (NEW MULTISIG › TAPROOT): tr(NUMS, sortedmulti_a),
+  built, signed and finalized on the device.
+- **Miniscript wallets** (IMPORT DESCRIPTOR): any wsh(...) or Taproot tree
+  with this device's key (Liana, Coldcard, Bitcoin Core); the device checks
+  and signs, the wallet that made it finalizes.
+- **LAN**: the Ethernet port works in Online mode, with a plug icon (green
+  on your own server, blue on the default); off with the radios in Vault.
+- **USB DISK** (SETUP › FILES): the device shows up on a PC as a read-only
+  stick with your history CSVs, PSBTs and signed transactions.
+- **Unit NFC (U216)** as a second NFC reader (its own I2C bus, never the
+  keyboard's); HARDWARE › NFC says CAP or UNIT NFC.
+- Text always fits its window: wrapped by real width, reflowed, and split
+  into pages (LEFT/RIGHT) when long.
 
 ## 0.8.27: first update with the new names
 
