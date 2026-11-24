@@ -79,10 +79,11 @@ class FakePrinter:
                  tls: bool = True, out_dir: str | None = None, chunked: bool = False,
                  pwg_res=(300, 600), pwg_types=("black_1", "sgray_8", "srgb_8"),
                  urf=("V1.4", "W8", "SRGB24", "RS300-600", "CP1", "DM1"),
-                 model: str = "Fake LaserJet 1000", strict: bool = True):
+                 model: str = "Fake LaserJet 1000", strict: bool = True,
+                 only_all: bool = False):
         self.formats, self.tls, self.out_dir, self.chunked = list(formats), tls, out_dir, chunked
         self.pwg_res, self.pwg_types, self.urf = list(pwg_res), list(pwg_types), list(urf)
-        self.model, self.strict = model, strict
+        self.model, self.strict, self.only_all = model, strict, only_all
         self.jobs: list[dict] = []
         self.requests = 0
         self._dir = tempfile.mkdtemp()
@@ -167,6 +168,8 @@ class FakePrinter:
             every = bool(wanted & {"all", "printer-description"})
 
             def give(tag, name, values):
+                if self.only_all and not every and name != "printer-make-and-model":
+                    return b""                  # answers a list with its name only
                 if not (every or name in wanted):
                     return b""
                 return b"".join(ipp._attr(tag, name if i == 0 else "", v)

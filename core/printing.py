@@ -226,8 +226,12 @@ class InProcess:
 
 
 def controller():
-    if os.environ.get("CZ_SIM") or not os.path.exists(SOCKET):
-        from . import config, share
+    from . import share
+    # on the device always the service: the app can't read the paper folder
+    # itself, so falling back to reading it would wrongly say "none made"
+    on_device = os.path.exists(share.HELPER) and not os.environ.get("CZ_SIM")
+    if not on_device and (os.environ.get("CZ_SIM") or not os.path.exists(SOCKET)):
+        from . import config
         state = os.path.join(config.APP_DIR, "printing")
         return InProcess(PrintService(share.folders()["paper"], state,
                                       allow_loopback=bool(os.environ.get("CZ_SIM"))))

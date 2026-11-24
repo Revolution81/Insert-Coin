@@ -149,7 +149,10 @@ class SharingScreen(AnimatedQRScreen):
             started = getattr(self, "_started", None) or now
             self._started = started
             if now - started > 30:                          # never came up
-                self.ctl.stop()
+                try:
+                    self.ctl.stop()
+                except Exception:  # noqa: BLE001  (it never started anyway)
+                    pass
                 self.ctl = None
                 self.error = "the sharing service didn't start"
                 return self.render(app, frame)

@@ -1,7 +1,6 @@
 """SETUP > UPDATE: install a signed release from microSD or USB."""
 from __future__ import annotations
 
-import os
 
 from core import update
 

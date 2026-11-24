@@ -140,3 +140,34 @@ def test_the_old_way_of_asking_fails_on_a_strict_printer():
     req = ipp.encode_request(ipp.GET_PRINTER_ATTRIBUTES, 1, "ipps://10.0.0.5:631/ipp/print",
                              [(ipp.KEYWORD, "requested-attributes", n) for n in ipp.WANTED])
     assert requested(req) == ["printer-make-and-model"]
+
+
+def test_a_printer_that_only_answers_all_still_lists_its_formats():
+    from core import ipp
+    p = FakePrinter(formats=("image/urf",), only_all=True)
+    try:
+        info = ipp.get_attributes("127.0.0.1", p.port)
+        assert info["format"] == "image/urf" and info["raster"] == {"dpi": 300, "color": False}
+    finally:
+        p.close()
+
+
+def test_decode_survives_collections():
+    """An "all" reply has collections (media-col and friends) between the
+    attributes we read; they mustn't break or pollute them."""
+    from core import ipp
+    body = bytes([1, 1, 0, 0, 0, 0, 0, 1, ipp.PRINTER])
+    body += ipp._attr(ipp.MIME, "document-format-supported", "image/urf")
+    body += ipp._attr(0x34, "media-col-default", b"")             # begCollection
+    body += ipp._attr(0x4A, "", "media-size")                      # memberAttrName
+    body += ipp._attr(0x34, "", b"")
+    body += ipp._attr(0x4A, "", "x-dimension")
+    body += ipp._attr(ipp.INTEGER if hasattr(ipp, "INTEGER") else 0x21, "", 21590)
+    body += ipp._attr(0x37, "", b"")                                # endCollection
+    body += ipp._attr(0x37, "", b"")
+    body += ipp._attr(ipp.KEYWORD, "urf-supported", "W8")
+    body += ipp._attr(ipp.KEYWORD, "", "RS300")
+    body += bytes([ipp.END])
+    status, attrs = ipp.decode_response(body)
+    assert attrs["document-format-supported"] == ["image/urf"]
+    assert attrs["urf-supported"] == ["W8", "RS300"]

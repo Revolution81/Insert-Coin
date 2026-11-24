@@ -44,7 +44,6 @@ def main(argv):
         path, digest = update.build(ROOT, DIST, VERSION)
         print(f"{path}\nsha256 {digest}")
     elif cmd == "sign":
-        import re
         path = argv[2] if len(argv) > 2 else os.path.join(DIST, update.file_name(VERSION))
         version = update.name_version(path)
         if not version or not os.path.isfile(path):
