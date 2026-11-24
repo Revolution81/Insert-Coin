@@ -107,7 +107,7 @@ def test_save_and_restore_through_the_screens(app, tmp_path):  # noqa: F811
     menu = app.visible
     menu.sel = [it[0] for it in menu.items].index("CARD BACKUP")
     enter(app)
-    press(app, "KEY_X")                                # RESTORE BACKUP
+    press(app, "KEY_X", "KEY_X")                       # RESTORE BACKUP (after VERIFY)
     enter(app)
     assert isinstance(app.visible, MenuScreen) and app.visible.title == "RESTORE FROM"
     enter(app)
