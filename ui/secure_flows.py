@@ -549,6 +549,7 @@ def create(c, network, camera=""):
 
     menu = MenuScreen("NEW WALLET", [
         ("12 WORDS", start(12)),
+        ("18 WORDS", start(18)),
         ("24 WORDS", start(24)),
         ("ADD DICE ROLLS", dice),
         ("ADD KEY MASHING", keys),
@@ -646,6 +647,7 @@ def _dice_only(c, network):
         "never pick numbers yourself."],
         then=lambda c: c.push(MenuScreen("DICE ONLY", [
             ("12 WORDS", pick(12), "50+ ROLLS", "grey"),
+            ("18 WORDS", pick(18), "75+ ROLLS", "grey"),
             ("24 WORDS", pick(24), "99+ ROLLS", "grey")]))))
 
 
@@ -670,8 +672,8 @@ def _quiz(c, words, network):
 def restore(c, network, words=12):
     """Type the seed words here."""
     network = _network(network)
-    if words not in (12, 24):
-        raise BadRequest("12 or 24 words")
+    if words not in (12, 18, 24):
+        raise BadRequest("12, 18 or 24 words")
 
     def done(c, entered):
         m = " ".join(entered)
@@ -739,7 +741,7 @@ def shares(c, network):
         return go
 
     c.push(MenuScreen("SPLIT SHARES", [
-        ("20-WORD SHARES", ask(20)), ("33-WORD SHARES", ask(33))],
+        ("20-WORD SHARES", ask(20)), ("27-WORD SHARES", ask(27)), ("33-WORD SHARES", ask(33))],
         info=["Type 4 letters of each", "word, then SPACE."]))
 
 
@@ -837,7 +839,13 @@ def show_words(c):
 
 def seedqr(c):
     def show(c, m):
-        _final(c, SeedQRScreen(seedlib.seedqr_encode(m), len(m.split())))
+        n = len(m.split())
+        if n not in (12, 24):                  # SeedQR is defined for 12 and 24 only
+            _final(c, MessageScreen("NO SEEDQR", [
+                f"SeedQR is made for 12 or 24", f"words; this seed has {n}.",
+                "Keep your words (or a split", "backup) instead."]))
+            return
+        _final(c, SeedQRScreen(seedlib.seedqr_encode(m), n))
     _pin_job(c, "SEEDQR", "CHECKING PIN...", lambda pin: c.signer.reveal_words(pin=pin), show,
              note="To show your seed as a QR")
 
@@ -935,7 +943,8 @@ def child_seed(c):
                                    allowed="0123456789", max_len=6, initial="0"))
         return go
 
-    c.push(MenuScreen("CHILD SEEDS", [("12 WORDS", pick(12)), ("24 WORDS", pick(24))],
+    c.push(MenuScreen("CHILD SEEDS", [("12 WORDS", pick(12)), ("18 WORDS", pick(18)),
+                                      ("24 WORDS", pick(24))],
                       info=["A separate seed for another", "wallet. Your main backup can",
                             "always re-create it (BIP85)."]))
 

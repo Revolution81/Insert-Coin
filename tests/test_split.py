@@ -31,7 +31,7 @@ def test_official_slip39_vectors(vector):
             sm.combine_mnemonics(mnemonics, b"TREZOR")
 
 
-@pytest.mark.parametrize("words,k,n", [(12, 2, 3), (12, 3, 5), (24, 2, 3), (24, 2, 2)])
+@pytest.mark.parametrize("words,k,n", [(12, 2, 3), (12, 3, 5), (18, 2, 3), (18, 3, 5), (24, 2, 3), (24, 2, 2)])
 def test_every_k_subset_rebuilds(words, k, n):
     m = seedlib.new_mnemonic(words)
     shares = splitlib.split(m, k, n)

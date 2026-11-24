@@ -249,7 +249,7 @@ def test_restore_by_scanning_seedqr(app):  # noqa: F811
     use_camera(app, [seedlib.seedqr_encode(ABANDON)])
     press(app, "KEY_X")                                  # RESTORE
     enter(app)
-    app.visible.sel = 2                                      # SCAN SEEDQR
+    app.visible.sel = 3                                      # SCAN SEEDQR
     enter(app)
     pump_until(app, lambda: getattr(app.visible, "title", "") == "SEEDQR READ")
     enter(app)                                               # (on the signer's screen)

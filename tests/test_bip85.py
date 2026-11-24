@@ -19,7 +19,10 @@ def test_bip85_vectors():
         "puppy ocean match cereal symbol another shed magic wrap hammer bulb intact "
         "gadget divorce twin tonight reason outdoor destroy simple truth cigar social volcano")
     assert bip85.child_mnemonic(ROOT, 12, 1) != bip85.child_mnemonic(ROOT, 12, 0)
-    for bad in ((18, 0), (12, -1), (12, 2 ** 31)):
+    assert bip85.child_mnemonic(ROOT, 18, 0) == (
+        "near account window bike charge season chef number sketch tomorrow excuse "
+        "sniff circle vital hockey outdoor supply token")
+    for bad in ((15, 0), (12, -1), (12, 2 ** 31)):
         with pytest.raises(ValueError):
             bip85.child_mnemonic(ROOT, *bad)
 

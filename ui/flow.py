@@ -207,7 +207,8 @@ def restore_flow(app):
         app.push(ScanScreen("SCAN SEEDQR", got, accept=("seedqr",), hint="POINT AT A SEEDQR"))
 
     app.push(MenuScreen("RESTORE", [
-        ("12 WORDS", words(12)), ("24 WORDS", words(24)), ("SCAN SEEDQR", scan),
+        ("12 WORDS", words(12)), ("18 WORDS", words(18)), ("24 WORDS", words(24)),
+        ("SCAN SEEDQR", scan),
         ("SPLIT SHARES", lambda app: app.prompt("shares_prompt", _ready,
                                                 network=app.settings.network))],
         info=["Type 4 letters of each", "word, then SPACE."]))

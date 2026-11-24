@@ -3,7 +3,7 @@ Split backups: your seed as K-of-N SLIP39 shares (Trezor's Shamir backup
 format, using their reference implementation). Any K shares rebuild it;
 fewer reveal nothing about it.
 
-What gets split is the BIP39 *entropy* behind your 12 or 24 words, so the
+What gets split is the BIP39 *entropy* behind your 12, 18 or 24 words, so the
 shares rebuild exactly those words on this wallet. Note for other tools: a
 SLIP39 wallet such as a Trezor would treat the same shares as a different
 wallet (SLIP39 derives keys differently from BIP39). To use the shares
@@ -29,7 +29,7 @@ class SplitError(Exception):
 
 
 def words_per_share(mnemonic_words: int) -> int:
-    return 20 if mnemonic_words == 12 else 33
+    return {12: 20, 18: 27, 24: 33}[mnemonic_words]
 
 
 def split(mnemonic: str, threshold: int, count: int) -> list[list[str]]:
@@ -65,7 +65,7 @@ def combine(shares: list[list[str]]) -> str:
         entropy = sm.combine_mnemonics([" ".join(w) for w in shares], b"")
     except sm.MnemonicError as e:
         raise SplitError(_plain(str(e)))
-    if len(entropy) not in (16, 32):
+    if len(entropy) not in (16, 24, 32):
         raise SplitError("these shares aren't from this wallet's split backup")
     return bip39.mnemonic_from_bytes(entropy)
 

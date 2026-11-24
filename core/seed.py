@@ -20,6 +20,10 @@ from embit.wordlists.bip39 import WORDLIST
 from .config import NETWORKS
 
 
+WORD_COUNTS = (12, 18, 24)
+ENTROPY_BYTES = {12: 16, 18: 24, 24: 32}     # 128, 192, 256 bits
+
+
 def new_mnemonic(words: int = 12, extra_entropy: bytes = b"", camera: bytes = b"",
                  chip: bytes = b"", user: dict[str, bytes] | None = None) -> str:
     """A new seed from every source we have, hashed together:
@@ -35,9 +39,9 @@ def new_mnemonic(words: int = 12, extra_entropy: bytes = b"", camera: bytes = b"
     Each source goes in under its own label. Hashing means the seed is at
     least as strong as the best source: a bad or even hostile source can't
     take strength away from the others."""
-    if words not in (12, 24):
-        raise ValueError("12 or 24 words")
-    nbytes = 16 if words == 12 else 32
+    if words not in WORD_COUNTS:
+        raise ValueError("12, 18 or 24 words")
+    nbytes = ENTROPY_BYTES[words]
     h = hashlib.sha256(b"czwallet-seed-v2")
     h.update(os.urandom(32))
     for label, value in ((b"dice", extra_entropy), (b"camera", camera), (b"chip", chip)):
@@ -48,23 +52,23 @@ def new_mnemonic(words: int = 12, extra_entropy: bytes = b"", camera: bytes = b"
 
 
 # ------------------------------------------------- randomness you add yourself
-DICE_ONLY_MIN = {12: 50, 24: 99}       # rolls for 128 / 256 bits
+DICE_ONLY_MIN = {12: 50, 18: 75, 24: 99}     # rolls for 128 / 192 / 256 bits
 
 
 def dice_only_mnemonic(rolls: str, words: int) -> str:
     """A seed from dice alone, so you can check it elsewhere: the entropy is
     SHA-256 of the rolls exactly as typed (ASCII 1-6), first 16 bytes for
-    12 words or all 32 for 24. Check with:
+    12 words, 24 for 18, or all 32 for 24. Check with:
         printf '%s' 3615...  | sha256sum
-    and give the hex (32 or 64 characters) to any BIP39 tool that takes
+    and give the hex (32, 48 or 64 characters) to any BIP39 tool that takes
     entropy. Refuses too few rolls."""
     dice_entropy(rolls)
     if words not in DICE_ONLY_MIN:
-        raise ValueError("12 or 24 words")
+        raise ValueError("12, 18 or 24 words")
     if len(rolls) < DICE_ONLY_MIN[words]:
         raise ValueError(f"need at least {DICE_ONLY_MIN[words]} rolls")
     ent = hashlib.sha256(rolls.encode()).digest()
-    return bip39.mnemonic_from_bytes(ent[:16 if words == 12 else 32])
+    return bip39.mnemonic_from_bytes(ent[:ENTROPY_BYTES[words]])
 
 
 def coin_entropy(flips: str) -> bytes:
