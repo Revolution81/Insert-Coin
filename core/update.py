@@ -9,8 +9,8 @@ Ed25519 over:
     czwallet-release-v1\\n<version>\\n<sha256 hex>\\n
 
 Updating (Vault mode is fine; nothing is downloaded):
-  1. put czwallet-X.Y.Z.tar.gz and its .sig on the microSD boot partition
-     (folder czwallet-update) or a USB stick
+  1. put Insert-Coin-Update-X.Y.Z.tar.gz and its .sig on the microSD boot
+     partition (folder Insert-Coin-Update) or a USB stick
   2. SETUP > UPDATE checks the signature against the keys pinned in
      /etc/czwallet/release_keys.txt and shows version, key and hash
   3. the root helper copies the file somewhere only root can write,
@@ -39,7 +39,26 @@ FORMAT = "czwallet-release-v1"
 KEYS_FILE = os.environ.get("CZ_RELEASE_KEYS", "/etc/czwallet/release_keys.txt")
 RELEASES = "/opt/czwallet-releases"
 LINK = "/opt/czwallet"
-SEARCH = os.environ.get("CZ_UPDATE_DIRS", "/boot/firmware/czwallet-update:/media")
+SEARCH = os.environ.get("CZ_UPDATE_DIRS", "/boot/firmware/Insert-Coin-Update:"
+                        "/boot/firmware/czwallet-update:/media")
+# Update files are named Insert-Coin-Update-X.Y.Z.tar.gz (+ .sig) since
+# 0.8.26; the old czwallet-X.Y.Z.tar.gz name is still accepted, as is the
+# old czwallet-update folder. (Inside, the files stay under czwallet-X.Y.Z/
+# and the signed message keeps its format name: changing either would make
+# releases unreadable to devices that are already out there.)
+PREFIXES = ("Insert-Coin-Update-", "czwallet-")
+FOLDERS = ("Insert-Coin-Update", "czwallet-update")
+NAME_RE = re.compile(r"^(?:Insert-Coin-Update-|czwallet-)(\d+\.\d+\.\d+)\.tar\.gz$")
+
+
+def file_name(version: str) -> str:
+    return f"Insert-Coin-Update-{version}.tar.gz"
+
+
+def name_version(path: str) -> str | None:
+    """The version in an update file's name, or None if it isn't one."""
+    m = NAME_RE.match(os.path.basename(path))
+    return m.group(1) if m else None
 EPOCH = 1704067200                      # fixed timestamp in every release (2024-01-01)
 MAX_FILES, MAX_BYTES = 2000, 50 * 1024 * 1024
 
@@ -114,7 +133,7 @@ def build(src: str, out_dir: str, version: str = VERSION) -> tuple[str, str]:
     """Deterministic tarball. Returns (path, sha256)."""
     vtuple(version)
     os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"czwallet-{version}.tar.gz")
+    path = os.path.join(out_dir, file_name(version))
     raw = io.BytesIO()
     with tarfile.open(fileobj=raw, mode="w", format=tarfile.USTAR_FORMAT) as tar:
         for rel in collect(src):
@@ -200,7 +219,7 @@ def verify(tar_path: str, sig_path: str, keys: list[bytes], current: str = VERSI
         raise UpdateError("not signed by a trusted release key")
     if vtuple(version) <= vtuple(current):
         raise UpdateError(f"{version} isn't newer than {current}")
-    if os.path.basename(tar_path) != f"czwallet-{version}.tar.gz":
+    if name_version(tar_path) != version:
         raise UpdateError("file name doesn't match the signed version")
     return {"version": version, "sha256": digest, "key": key_id(pub)}
 
@@ -289,12 +308,12 @@ def find(dirs: str = SEARCH) -> list[tuple[str, str]]:
     for d in dirs.split(":"):
         for base in [d] + ([os.path.join(d, x) for x in sorted(os.listdir(d))]
                            if os.path.isdir(d) else []):
-            for sub in (base, os.path.join(base, "czwallet-update")):
+            for sub in [base] + [os.path.join(base, x) for x in FOLDERS]:
                 if not os.path.isdir(sub):
                     continue
                 for f in sorted(os.listdir(sub)):
                     p = os.path.join(sub, f)
-                    if re.match(r"^czwallet-\d+\.\d+\.\d+\.tar\.gz$", f) and os.path.isfile(p + ".sig"):
+                    if name_version(f) and os.path.isfile(p + ".sig"):
                         if (p, p + ".sig") not in found:
                             found.append((p, p + ".sig"))
     return found

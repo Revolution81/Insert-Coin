@@ -15,7 +15,7 @@ from core import update  # noqa: E402
 
 def main():
     if os.geteuid() != 0 or len(sys.argv) != 2:
-        sys.exit("usage (as root): apply_update.py /path/czwallet-X.Y.Z.tar.gz")
+        sys.exit("usage (as root): apply_update.py /path/Insert-Coin-Update-X.Y.Z.tar.gz")
     tar = sys.argv[1]
     if not update.allowed_path(tar) or not os.path.isfile(tar):
         sys.exit("update must be on the microSD boot partition or a USB stick")

@@ -28,12 +28,12 @@ def update_screen(app):
             return
         if not found:
             app.push(MessageScreen("NO UPDATE FOUND", [
-                "Put czwallet-X.Y.Z.tar.gz and", "its .sig file in a folder",
-                "named czwallet-update on the", "microSD boot partition, or", "on a USB stick."]))
+                "Put Insert-Coin-Update-X.Y.Z", ".tar.gz and its .sig file in",
+                "a folder named Insert-Coin-", "Update on the microSD boot", "partition, or on a USB stick."]))
             return
         items = []
         for tar, info, err in found:
-            name = os.path.basename(tar)[len("czwallet-"):-len(".tar.gz")]
+            name = update.name_version(tar) or "?"
             if info:
                 items.append((f"VERSION {name}", _confirm(tar, info), "SIGNED", "green"))
             else:

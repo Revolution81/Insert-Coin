@@ -218,7 +218,7 @@ def test_update_screen(app, tmp_path, key, monkeypatch):  # noqa: F811
     app.render(0)
     press(app, "KEY_Z")
     enter(app)
-    assert app.visible.title == "UPDATED" and calls == [str(sd / "czwallet-0.9.0.tar.gz")]
+    assert app.visible.title == "UPDATED" and calls == [str(sd / "Insert-Coin-Update-0.9.0.tar.gz")]
 
 
 def test_update_without_keys(app, monkeypatch):  # noqa: F811
@@ -317,3 +317,25 @@ def test_backslash_names_become_slashes(monkeypatch, tmp_path):
     monkeypatch.setattr(update, "INCLUDE", ["core"])
     monkeypatch.setattr(update.os.path, "relpath", lambda p, s: "core\\a.py")
     assert update.collect(str(tmp_path)) == ["core/a.py"]
+
+
+def test_update_names_new_and_old(tmp_path):
+    """Insert-Coin-Update-X.Y.Z.tar.gz since 0.8.26; czwallet-X.Y.Z.tar.gz and
+    the czwallet-update folder still work."""
+    from core import update
+    assert update.file_name("1.2.3") == "Insert-Coin-Update-1.2.3.tar.gz"
+    assert update.name_version("/x/Insert-Coin-Update-1.2.3.tar.gz") == "1.2.3"
+    assert update.name_version("czwallet-1.2.3.tar.gz") == "1.2.3"
+    for bad in ("Insert-Coin-Update-1.2.tar.gz", "evil-1.2.3.tar.gz",
+                "Insert-Coin-Update-1.2.3.tar.gz.sig", "../czwallet-1.2.3.tar.gz/x"):
+        assert update.name_version(bad) is None
+    new = tmp_path / "Insert-Coin-Update"
+    old = tmp_path / "czwallet-update"
+    new.mkdir()
+    old.mkdir()
+    for d, n in ((new, "Insert-Coin-Update-0.9.1.tar.gz"), (old, "czwallet-0.9.0.tar.gz")):
+        (d / n).write_bytes(b"x")
+        (d / (n + ".sig")).write_text("{}")
+    found = [p for p, _ in update.find(str(tmp_path))]
+    assert sorted(os.path.basename(p) for p in found) == ["Insert-Coin-Update-0.9.1.tar.gz",
+                                                         "czwallet-0.9.0.tar.gz"]

@@ -2,8 +2,8 @@
 Build, sign and check Insert Coin releases.
 
   python3 tools/release.py keygen                 # once: make your signing key
-  python3 tools/release.py build                  # dist/czwallet-X.Y.Z.tar.gz + its SHA-256
-  python3 tools/release.py sign [FILE]            # FILE.sig (default: dist/czwallet-X.Y.Z.tar.gz)
+  python3 tools/release.py build                  # dist/Insert-Coin-Update-X.Y.Z.tar.gz + SHA-256
+  python3 tools/release.py sign [FILE]            # FILE.sig (default: the one just built)
   python3 tools/release.py verify FILE [KEYHEX]   # anyone: check a release
 
 Reproducible: run `build` on the same source and you get the same SHA-256,
@@ -45,11 +45,10 @@ def main(argv):
         print(f"{path}\nsha256 {digest}")
     elif cmd == "sign":
         import re
-        path = argv[2] if len(argv) > 2 else os.path.join(DIST, f"czwallet-{VERSION}.tar.gz")
-        m = re.fullmatch(r"czwallet-(\d+\.\d+\.\d+)\.tar\.gz", os.path.basename(path))
-        if not m or not os.path.isfile(path):
-            sys.exit(f"not a release file: {path} (expected czwallet-X.Y.Z.tar.gz)")
-        version = m.group(1)
+        path = argv[2] if len(argv) > 2 else os.path.join(DIST, update.file_name(VERSION))
+        version = update.name_version(path)
+        if not version or not os.path.isfile(path):
+            sys.exit(f"not a release file: {path} (expected Insert-Coin-Update-X.Y.Z.tar.gz)")
         print(f"Signing Insert Coin {version}\nsha256 {update.sha256_file(path)}")
         pw = getpass.getpass("Key passphrase: ").encode()
         with open(KEY, "rb") as f:

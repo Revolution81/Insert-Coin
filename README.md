@@ -141,9 +141,9 @@ password is locked, so the screen and keyboard are the only way in. Browsers,
 media players and remote-desktop servers are removed from it.
 
 **Updating.** Releases that only change the wallet come as two files,
-`czwallet-<version>.tar.gz` and its `.sig`. Put the card in a PC, copy both
-into a folder named `czwallet-update` on its boot partition (or onto a USB
-stick), put the card back and open SETUP › UPDATE. The wallet checks the
+`Insert-Coin-Update-<version>.tar.gz` and its `.sig`. Put the card in a PC,
+copy both into a folder named `Insert-Coin-Update` on its boot partition (or
+onto a USB stick), put the card back and open SETUP › UPDATE. The wallet checks the
 signature against the release key built into the image, shows the version
 and SHA-256, and installs; the previous version is kept. Releases that need a
 newer M5Stack OS come as a new image instead: have your seed words, copy the

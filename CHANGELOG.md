@@ -2,6 +2,16 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.26: updates named Insert Coin
+
+- Update files are now **Insert-Coin-Update-X.Y.Z.tar.gz** (and `.sig`),
+  matching the wallet image's name, and go in a folder named
+  **Insert-Coin-Update** on the card's boot partition. The old
+  `czwallet-…` names and `czwallet-update` folder still work. Devices on
+  0.8.25 or older only know the old names: for them, rename the two files
+  to `czwallet-X.Y.Z.tar.gz` and `czwallet-X.Y.Z.tar.gz.sig` (the signature
+  doesn't cover the file name, only the version and contents).
+
 ## 0.8.25: the first signed update
 
 The first release delivered through SETUP › UPDATE instead of a new card
