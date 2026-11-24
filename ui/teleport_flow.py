@@ -313,7 +313,7 @@ def send_psbt(c, psbt_b64: str):
         _end(c, MessageScreen("CAN'T SEND IT", [str(e)[:40]], border="red"))
         return
     wid = d.get("wallet_id")
-    if not wid or d.get("sigs_needed", 1) < 2:
+    if not wid:
         _end(c, MessageScreen("NOT MULTISIG", ["Only a multisig PSBT goes", "to a co-signer."],
                               border="red"))
         return

@@ -206,6 +206,9 @@ def show_descriptor(app, e):
     if e.get("kind") == "inherit":
         lines = [f"{e['name']}.", "Give a copy to the", "heir, with how to", "use it (e.g. Liana).",
                  "", "BACK IT UP: both", "people need it."]
+    elif e.get("kind") == "miniscript":
+        lines = [f"{e['name']}: {e['n']} keys.", "Keep a copy with every", "key holder.", "",
+                 "BACK IT UP: without it", "nobody can spend."]
     else:
         lines = [f"{e['name']}: {e['k']} of {e['n']}.", "Load it into Sparrow",
                  "and every cosigner.", "", "BACK IT UP: without", "it, a recovery needs",

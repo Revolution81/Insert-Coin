@@ -93,7 +93,8 @@ class WalletService:
         self.ms_taproot = False
         self.role = role
         self.delay = 0
-        if change_descriptor is None and descriptor.startswith("wsh(or_d("):
+        from .inherit import _RE as _INHERIT
+        if change_descriptor is None and _INHERIT.match(descriptor):
             from .inherit import _RE, input_vbytes as inherit_vb
             self._branches = [desc.branch(0), desc.branch(1)]
             self.multisig = True                 # script-based: same plumbing
@@ -103,17 +104,26 @@ class WalletService:
             self._in_vb = inherit_vb(len(self._branches[0].derive(0).witness_script().data))
             if role not in ("owner", "heir"):
                 raise WalletError("inheritance wallet needs a role")
-        elif change_descriptor is None and descriptor.startswith("tr("):   # Taproot multisig
+        elif change_descriptor is None and re.match(r"^tr\([0-9a-fA-F]{64},sortedmulti_a\(",
+                                                     descriptor):          # Taproot multisig
             from .multisig import tr_input_vbytes
             self._branches = [desc.branch(0), desc.branch(1)]
             self.multisig = True
             self.ms_taproot = True
             self.kind = "multisig"
             m = re.match(r"^tr\([0-9a-fA-F]{64},sortedmulti_a\((\d+),", descriptor)
-            if not m:
-                raise WalletError("Taproot multisig: tr(NUMS,sortedmulti_a(...)) only")
             self.k, self.n = int(m.group(1)), len(desc.taptree.keys)
             self._in_vb = tr_input_vbytes(self.k, self.n)
+        elif change_descriptor is None and not re.match(r"^wsh\(sortedmulti\(", descriptor):
+            # any other miniscript: this device signs; the wallet that made
+            # it (Liana, Sparrow...) puts the final transaction together
+            from .multisig import miniscript_vbytes
+            self._branches = [desc.branch(0), desc.branch(1)]
+            self.multisig = True
+            self.kind = "miniscript"
+            self.mini_taproot = desc.taproot
+            self.k, self.n = 0, len(desc.keys)
+            self._in_vb = miniscript_vbytes(desc)
         elif change_descriptor is None:          # multisig
             from .multisig import input_vbytes, witness_k_n
             self._branches = [desc.branch(0), desc.branch(1)]
@@ -171,6 +181,10 @@ class WalletService:
             pub, path = self._child(branch, i)
             return [(pub, self._key.origin.fingerprint, path)], None
         d = self._branches[branch].derive(i)
+        if self.kind == "miniscript":
+            keys = [k for k in d.keys if k.is_extended and k.origin is not None]
+            return ([(k.get_public_key(), k.origin.fingerprint, list(k.origin.derivation))
+                     for k in keys], None if d.taproot else d.witness_script())
         if self.ms_taproot:                      # the leaf's keys (the NUMS key has no origin)
             return ([(k.get_public_key(), k.origin.fingerprint, list(k.origin.derivation))
                      for k in d.taptree.keys], None)
@@ -681,6 +695,9 @@ class WalletService:
         fields (x-only key, no script leaves, internal key) for Taproot.
         Taproot multisig: each key with its leaf's hash, the NUMS internal
         key, and (to spend) the leaf script with its control block."""
+        if self.kind == "miniscript" and getattr(self, "mini_taproot", False):
+            self._add_tap_tree(scope, keys, at, spend)
+            return
         if self.ms_taproot:
             from embit.ec import PublicKey
             from embit.hashes import tagged_hash
@@ -846,7 +863,10 @@ class WalletService:
     def signatures(self, psbt_b64: str) -> tuple[int, int]:
         """(fewest signatures on any input, signatures needed)."""
         psbt = PSBT.from_string(psbt_b64)
-        return min(len(i.partial_sigs) + len(i.taproot_sigs) for i in psbt.inputs), self.k
+        have = min(len(i.partial_sigs) + len(i.taproot_sigs) for i in psbt.inputs)
+        if self.kind == "miniscript":                # finished by the wallet that made it
+            return have, have + 1
+        return have, self.k
 
     @staticmethod
     def combine(a_b64: str, b_b64: str) -> str:
@@ -875,6 +895,8 @@ class WalletService:
                 else:
                     raise WalletError("signatures missing; couldn't finalize")
                 continue
+            if self.kind == "miniscript":
+                raise WalletError("finish it in the wallet that made this miniscript")
             if self.ms_taproot:
                 tx.vin[i].witness = self._tap_multisig_witness(inp)
                 continue
@@ -898,6 +920,28 @@ class WalletService:
                 raise WalletError(f"needs {self.k - len(sigs)} more signature(s)")
             tx.vin[i].witness = Witness([b""] + sigs + [data])
         return SignedTx(tx.txid().hex(), tx.serialize())
+
+    def _add_tap_tree(self, scope, keys, at, spend):
+        """A Taproot miniscript's PSBT fields: each key with the leaves it's
+        in (none for the internal key), the internal key, and (to spend)
+        every leaf with its control block and the tree's merkle root."""
+        from embit.hashes import tagged_hash
+        from .multisig import tap_leaves
+        d = self._branches[at[0]].derive(at[1])
+        leaves = tap_leaves(d) if d.taptree else []
+        hashes = [(sc, tagged_hash("TapLeaf", bytes([v]) + Script(sc).serialize()), v, cb)
+                  for sc, v, cb in leaves]
+        internal = d.key.get_public_key()
+        for pub, fp, path in keys:
+            mine = [h for sc, h, _v, _cb in hashes if pub.xonly() in sc]
+            if mine or pub.xonly() == internal.xonly():
+                scope.taproot_bip32_derivations[pub] = (mine, DerivationPath(fp, path))
+        scope.taproot_internal_key = internal
+        if spend:
+            for sc, _h, v, cb in hashes:
+                scope.taproot_scripts[cb] = sc + bytes([v])
+            if d.taptree:
+                scope.taproot_merkle_root = d.taptree.tweak()
 
     def _tap_multisig_witness(self, inp) -> Witness:
         """sortedmulti_a's script path: one signature (or an empty push) per

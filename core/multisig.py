@@ -95,7 +95,7 @@ class Policy:
     n: int
     cosigners: list[str]       # fingerprints, in descriptor order (inherit: owner, heir)
     name: str = ""
-    kind: str = "multisig"     # "multisig" | "inherit"
+    kind: str = "multisig"     # "multisig" | "inherit" | "miniscript"
     delay: int = 0             # inherit: blocks before the heir can spend
     ws_len: int = 0            # inherit: witness script length
     taproot: bool = False      # tr(NUMS, sortedmulti_a(...))
@@ -110,12 +110,16 @@ class Policy:
             return self.name
         if self.kind == "inherit":
             return "Inheritance"
+        if self.kind == "miniscript":
+            return "Miniscript"
         return f"{self.k}-of-{self.n}" + (" Taproot" if self.taproot else "")
 
     def input_vbytes(self) -> float:
         if self.kind == "inherit":
             from .inherit import input_vbytes as iv
             return iv(self.ws_len)
+        if self.kind == "miniscript":
+            return miniscript_vbytes(self.desc())
         if self.taproot:
             return tr_input_vbytes(self.k, self.n)
         return input_vbytes(self.k, self.n)
@@ -229,10 +233,86 @@ def input_vbytes(k: int, n: int) -> float:
     return 41 + witness / 4
 
 
-def parse_any(text: str, network: str, my_key=None, name: str = "") -> Policy:
-    """A multisig or an inheritance descriptor, whichever it is."""
+def parse_any(text: str, network: str, my_key=None, name: str = "", root=None) -> Policy:
+    """A multisig, an inheritance or any other miniscript descriptor,
+    whichever it is (the most specific reading wins)."""
     t = normalize_descriptor(text)
     if t.startswith("wsh(or_d("):
-        from .inherit import parse
-        return parse(t, network, my_key, name)
-    return parse_policy(t, network, my_key, name)
+        from .inherit import _RE, parse
+        if _RE.match(t):
+            return parse(t, network, my_key, name)
+    if re.match(r"^wsh\((sorted)?multi\(", t) or re.match(r"^tr\([0-9a-fA-F]{64},sortedmulti_a\(", t):
+        return parse_policy(t, network, my_key, name)
+    return parse_miniscript(t, network, root, name)
+
+
+MAX_MINISCRIPT_KEYS = 20
+
+
+def parse_miniscript(text: str, network: str, root=None, name: str = "") -> Policy:
+    """Any miniscript wallet: wsh(<miniscript>) or tr(<key>,<tree of
+    miniscript leaves>) (Liana, Coldcard, Bitcoin Core). Every key an xpub
+    with its origin and /<0;1>/*, each key once, right network, no private
+    keys; and (if root is given) this device's key in it, checked by
+    deriving it. The device signs for it; another wallet (the one that
+    made it) puts the final transaction together."""
+    t = normalize_descriptor(text)
+    if not (t.startswith("wsh(") or t.startswith("tr(")):
+        raise PolicyError("only wsh(...) and tr(...) wallets")
+    try:
+        d = Descriptor.from_string(t)
+        d.branch(0).derive(0).script_pubkey()
+        d.branch(1).derive(0).script_pubkey()
+    except Exception as e:
+        raise PolicyError(f"not a miniscript this wallet understands: {str(e)[:60]}")
+    keys = list(d.keys)
+    internal_nums = d.taproot and not d.key.is_extended
+    if internal_nums:
+        if d.key.to_string().lower() != NUMS:
+            raise PolicyError("a Taproot internal key must be an xpub or the NUMS point")
+        keys = list(d.taptree.keys)
+    if not keys or len(keys) > MAX_MINISCRIPT_KEYS:
+        raise PolicyError(f"1 to {MAX_MINISCRIPT_KEYS} keys")
+    seen, fps = set(), []
+    for k in keys:
+        s = str(k)
+        if k.is_private:
+            raise PolicyError("it holds a PRIVATE key: never share those")
+        if not k.is_extended or k.origin is None or not s.endswith("/<0;1>/*"):
+            raise PolicyError("each key: [fingerprint/path]xpub/<0;1>/*")
+        parse_key(s[:-len("/<0;1>/*")], network)
+        if s in seen:
+            raise PolicyError("the same key appears twice")
+        seen.add(s)
+        fps.append(k.origin.fingerprint.hex())
+    if root is not None and not my_origins(t, root):
+        raise PolicyError("this device's key isn't in that wallet")
+    return Policy(t, 0, len(keys), fps, name, kind="miniscript", taproot=d.taproot)
+
+
+def my_origins(descriptor: str, root) -> list[list[int]]:
+    """The origin paths at which this device's key appears in a wallet
+    (checked by deriving, not just by fingerprint)."""
+    out = []
+    d = Descriptor.from_string(descriptor)
+    for k in d.keys:
+        if not k.is_extended or k.origin is None or k.origin.fingerprint != root.my_fingerprint:
+            continue
+        path = list(k.origin.derivation)
+        if root.derive(path).to_public().key.sec() == k.key.key.sec():
+            out.append(path)
+    return out
+
+
+def miniscript_vbytes(desc: Descriptor) -> float:
+    """A generous input size for a miniscript wallet (fees never fall short):
+    the whole script (or the biggest leaf, its control block and the tree's
+    depth) plus a signature for every key."""
+    n = max(1, len(desc.keys))
+    if desc.taproot and desc.taptree:
+        leaves = tap_leaves(desc.branch(0).derive(0))
+        biggest = max(len(sc) + len(cb) for sc, _v, cb in leaves)
+        return 41 + (biggest + 66 * n + 8) / 4
+    if desc.taproot:
+        return 57.5
+    return 41 + (len(desc.branch(0).derive(0).witness_script().data) + 74 * n + 8) / 4

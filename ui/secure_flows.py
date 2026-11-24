@@ -1419,6 +1419,17 @@ def register(c, descriptor, name=""):
                  f"HEIR  {h}" + ("  THIS DEVICE" if h == mine else ""),
                  f"Heir waits {describe_delay(info['delay'])}",
                  f"({info['delay']:,} blocks) per coin."]
+    elif info.get("kind") == "miniscript":
+        from embit.descriptor import Descriptor
+        letters = "ABCDEFGHIJKLMNOPQRST"
+        lines = [("Taproot" if info.get("taproot") else "SegWit") + f" miniscript, {info['n']} keys:"]
+        for i, fp in enumerate(info["cosigners"]):
+            lines.append(f"  {letters[i]} = {fp}" + ("  THIS DEVICE" if fp == mine else ""))
+        try:
+            rules = Descriptor.from_string(info["descriptor"]).full_policy
+        except Exception:  # noqa: BLE001 - shown as is
+            rules = "?"
+        lines += ["", "Who can spend:", rules[:400], ""]
     else:
         lines = [f"{info['k']} of {info['n']} signatures" +
                  (", Taproot (no key path)." if info.get("taproot") else ", SegWit.")]

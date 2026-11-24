@@ -692,6 +692,12 @@ def sign_and_send(app, built):
         app.refresh_balance()
         if kind == "partial":
             have, need = app.wallet.signatures(txid)
+            if app.wallet.kind == "miniscript":
+                app.push(AnimatedQRScreen("SIGNED HERE", psbt_frames(app, base64.b64decode(txid)),
+                                          ["This device signed.", "Scan it into the wallet",
+                                           "that made this miniscript", "(Liana, Sparrow...) to",
+                                           "finish and send it."]))
+                return
             app.push(AnimatedQRScreen("NEEDS SIGNATURES", psbt_frames(app, base64.b64decode(txid)),
                                       [f"Signed {have} of {need}.", "Scan this with a",
                                        "cosigner, then press", "Q here to scan its", "signature back."]))

@@ -612,13 +612,13 @@ class Signer:
     def check_multisig(self, descriptor: str) -> dict:
         """Validate without saving (for the confirm screen)."""
         root = self._need_root()
-        p = ms.parse_any(descriptor, self._network, ms.my_keys(root, self._network))
+        p = ms.parse_any(descriptor, self._network, ms.my_keys(root, self._network), root=root)
         return self._policy_info(p)
 
     def register_multisig(self, descriptor: str, name: str = "") -> dict:
         root = self._need_root()
         p = ms.parse_any(descriptor, self._network, ms.my_keys(root, self._network),
-                         name=name.strip()[:24])
+                         name=name.strip()[:24], root=root)
         self._registry = [q for q in self._registry if q.id != p.id] + [p]
         self._save_registry()
         self._touch()
@@ -1226,14 +1226,22 @@ class Signer:
                     return accts.make_id("tr", path[2] - H), path[3]
             return None, None
 
-        ms_accts = ([48 + H, coin + H, 0 + H, 2 + H], [48 + H, coin + H, 0 + H, 3 + H])
+        my_paths: dict[str, list] = {}
+
+        def mine_in(pol):
+            """Where this device's key sits in a registered wallet (its origin
+            path or paths), re-derived from the seed once per describe."""
+            if pol.id not in my_paths:
+                my_paths[pol.id] = ms.my_origins(pol.descriptor, root)
+            return my_paths[pol.id]
 
         def multisig_branch(scope, script):
-            """(policy, branch) if script belongs to a registered multisig
-            wallet: our key's path picks the index, the whole policy is
-            re-derived and must give exactly this script. Taproot multisig
-            names keys in its Taproot fields; any script leaf the PSBT carries
-            must be one of the re-derived wallet's own leaves."""
+            """(policy, branch) if script belongs to a registered wallet:
+            our key's path (its registered origin + branch + index) picks the
+            address, the whole wallet is re-derived and must give exactly
+            this script. Taproot wallets name keys in their Taproot fields;
+            any script leaf the PSBT carries must be one of the re-derived
+            wallet's own leaves, and a SegWit script must be the wallet's."""
             derivs = [(pub, der, False) for pub, der in scope.bip32_derivations.items()]
             derivs += [(pub, der, True) for pub, (_leaves, der) in
                        scope.taproot_bip32_derivations.items()]
@@ -1241,23 +1249,30 @@ class Signer:
                 if der.fingerprint != root.my_fingerprint:
                     continue
                 path = list(der.derivation)
-                if path[:4] not in ms_accts or len(path) != 6 or path[4] not in (0, 1):
+                if len(path) < 3 or path[-2] not in (0, 1) or path[-1] >= H:
                     continue
                 mine = root.derive(path).get_public_key()
                 if (mine.xonly() != pub.xonly()) if tap else (mine.sec() != pub.sec()):
                     continue
                 for pol in self._registry:
-                    if pol.taproot != tap or (path[3] == 3 + H) != pol.taproot:
+                    if pol.taproot != tap or path[:-2] not in mine_in(pol):
                         continue
-                    d = pol.derive(path[4], path[5])
+                    d = pol.derive(path[-2], path[-1])
                     if d.script_pubkey().data != script.data:
                         continue
                     if tap:
-                        leaves = {(sc, cb) for sc, _v, cb in ms.tap_leaves(d)}
+                        leaves = {(sc, cb) for sc, _v, cb in ms.tap_leaves(d)} if d.taptree else set()
                         for cb, sc in getattr(scope, "taproot_scripts", {}).items():
                             if (bytes(sc[:-1]), bytes(cb)) not in leaves:
                                 raise SignerError("a script in the PSBT isn't this wallet's")
-                    return pol, path[4]
+                        mr = getattr(scope, "taproot_merkle_root", None)
+                        if mr and d.taptree and bytes(mr) != d.taptree.tweak():
+                            raise SignerError("the PSBT's Taproot tree isn't this wallet's")
+                    else:
+                        ws = getattr(scope, "witness_script", None)
+                        if ws is not None and ws.data != d.witness_script().data:
+                            raise SignerError("the PSBT's script isn't this wallet's")
+                    return pol, path[-2]
             return None, None
 
         total_in, wallet, vbytes, sigs_present = 0, None, 10.5, 0
