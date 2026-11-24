@@ -18,7 +18,7 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
   - On the device, PRINT and VIEW ALL always ask the printing service, so a
     stopped service shows as such instead of "no paper wallets".
   - SHARE FILES' 30-second give-up can't itself fail.
-- Booklet: a hint at the title screen's secret, on the last page.
+- Booklet: a quiet hint, somewhere near the end.
 
 ## 0.8.25: the first signed update
 
