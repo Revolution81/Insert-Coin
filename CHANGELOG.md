@@ -2,6 +2,16 @@
 
 Newest first. Version numbers follow `core/version.py`; every release is signed (see `tools/release.py`).
 
+## 0.8.27: first update with the new names
+
+An update for the 0.8.26 wallet image, delivered as
+`Insert-Coin-Update-0.8.27.tar.gz` in the `Insert-Coin-Update` folder.
+
+- Spending edition: each session now also runs the power helper, so the
+  battery reads the real fuel gauge and SCREEN SLEEP really switches the
+  light off (both were only wired up for the wallet image); leaving the
+  wallet switches the light back on for the launcher.
+
 ## 0.8.26: updates named Insert Coin
 
 - Update files are now **Insert-Coin-Update-X.Y.Z.tar.gz** (and `.sig`),
@@ -19,10 +29,6 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
     stopped service shows as such instead of "no paper wallets".
   - SHARE FILES' 30-second give-up can't itself fail.
 - Booklet: a quiet hint, somewhere near the end.
-- Spending edition: each session now also runs the power helper, so the
-  battery reads the real fuel gauge and SCREEN SLEEP really switches the
-  light off (both were only wired up for the wallet image); leaving the
-  wallet switches the light back on for the launcher.
 
 ## 0.8.25: the first signed update
 
