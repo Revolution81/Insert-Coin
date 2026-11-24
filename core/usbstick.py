@@ -1,13 +1,15 @@
 """
-SETUP › FILES › USB DISK: the device as a read-only USB stick on a PC.
+SETUP › FILES › SAVE TO USB STICK: the wallet's files onto a USB stick in
+the USB-A port (HOST mode, the normal one: nothing to switch or install).
 
-The app stages files in its own folder (APP_DIR/usbdisk): history CSVs,
+The app stages files in its own folder (APP_DIR/usbstick): history CSVs,
 the open wallet's PSBT waiting for co-signers, the last PSBT signed here,
 signed transactions in the outbox, BIP329 labels and the watch-only
 descriptor. Public data only: no seed, no keys, no paper wallets. The root
-helper cz-usbdisk (tools/usb_disk.py) then puts them in a FAT image and
-attaches it read-only through Linux's USB gadget, so the PC can read but
-never write. In the simulator the files just stay in simdata/app/usbdisk.
+helper (cz-backup usbstick, tools/copy_backup.py) mounts the stick
+(FAT or exFAT, no exec), writes them into InsertCoin/, flushes and
+unmounts. Nothing on the stick is read or run. In the simulator the files
+stay in simdata/app/usbstick.
 """
 from __future__ import annotations
 
@@ -20,7 +22,7 @@ import subprocess
 
 from core import config
 
-HELPER = "/usr/local/sbin/cz-usbdisk"
+HELPER = "/usr/local/sbin/cz-backup"
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 README = """Insert Coin: files from your wallet (read only)
 
@@ -36,12 +38,12 @@ balances: treat it like a bank statement.
 """
 
 
-class USBDiskError(Exception):
+class USBStickError(Exception):
     pass
 
 
 def stage_dir() -> str:
-    return os.path.join(config.APP_DIR, "usbdisk")
+    return os.path.join(config.APP_DIR, "usbstick")
 
 
 def _tag(text: str) -> str:
@@ -103,26 +105,22 @@ def on_device() -> bool:
     return not os.environ.get("CZ_SIM") and os.path.exists(HELPER)
 
 
-def _helper(cmd: str) -> str:
-    r = subprocess.run(["sudo", "-n", HELPER, cmd], capture_output=True, timeout=60)
-    lines = r.stdout.decode(errors="replace").strip().splitlines()
-    return lines[-1] if lines else f"exit {r.returncode}"
-
-
-def start() -> None:
+def save() -> str:
+    """Write the staged files to the stick; returns the stick's name.
+    Raises USBStickError("no-stick" | "no-fs" | other) when it can't."""
     if not on_device():
-        return
-    got = _helper("start")
-    if got == "on":
-        return
-    if got == "no-udc":
-        raise USBDiskError("no-udc")
-    if got == "no-mkfs":
-        raise USBDiskError("dosfstools missing: run the installer again")
-    raise USBDiskError(got[:60])
+        return "simdata/app/usbstick"
+    try:
+        r = subprocess.run(["sudo", "-n", HELPER, "usbstick"], capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise USBStickError(str(e)[:60])
+    lines = r.stdout.decode(errors="replace").strip().splitlines()
+    last = lines[-1] if lines else f"exit {r.returncode}"
+    if r.returncode == 0 and last.startswith("saved "):
+        return last.split(" ", 2)[2] if last.count(" ") >= 2 else "the stick"
+    raise USBStickError(last.split()[0] if last else "failed")
 
 
-def stop() -> None:
+def clear() -> None:
     if on_device():
-        _helper("stop")
-    shutil.rmtree(stage_dir(), ignore_errors=True)
+        shutil.rmtree(stage_dir(), ignore_errors=True)

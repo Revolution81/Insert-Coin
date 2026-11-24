@@ -6,6 +6,9 @@ where a PC can read it. `cz-backup paper` moves paper wallets the signer
 wrote into the device's paper folder, which only root and the SHARE FILES
 service can read (never the card: its FAT side is readable by every
 process, the app included), and deletes the signer's copies.
+`cz-backup usbstick` copies what SAVE TO USB STICK staged (history,
+PSBTs, signed transactions, labels: never keys) onto a FAT or exFAT USB
+stick, mounted without exec, and never reads anything from it.
 
 Takes only a file name, checks it, opens it without following symlinks
 (the app owns the folder it comes from), checks it really is a sealed
@@ -155,7 +158,99 @@ def wipe() -> int:
     return 0
 
 
+# SETUP › FILES › SAVE TO USB STICK (core/usbstick.py): what the app staged
+STICK_SRC = "/var/lib/czwallet/app/usbstick"
+STICK_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+STICK_DIR = "InsertCoin"
+STICK_MNT = "/run/czwallet-usbstick"
+STICK_FS = ("vfat", "exfat")
+STICK_FILE_MAX, STICK_TOTAL_MAX, STICK_FILES_MAX = 8 * 1024 * 1024, 48 * 1024 * 1024, 200
+
+
+def _usb_partitions() -> list[str]:
+    """/dev/sdXN of USB drives (never the microSD card, mmcblk)."""
+    out = []
+    for dev in sorted(os.listdir("/sys/block")):
+        if not dev.startswith("sd"):
+            continue
+        if "/usb" not in os.path.realpath(os.path.join("/sys/block", dev)):
+            continue
+        parts = sorted(p for p in os.listdir(os.path.join("/sys/block", dev))
+                       if p.startswith(dev))
+        out += [f"/dev/{p}" for p in parts] or [f"/dev/{dev}"]       # unpartitioned stick
+    return out
+
+
+def _mounted_at(dev: str) -> str | None:
+    with open("/proc/mounts") as f:
+        for line in f:
+            parts = line.split()
+            if parts[0] == dev:
+                return parts[1].replace("\\040", " ")
+    return None
+
+
+def usbstick() -> int:
+    """Copy the staged files into InsertCoin/ on a USB stick (FAT or exFAT
+    only; mounted without exec, suid or device files; nothing on the stick
+    is ever read or run), flush, and unmount it if this mounted it."""
+    import subprocess
+    files, total = [], 0
+    try:
+        names = sorted(os.listdir(STICK_SRC))
+    except FileNotFoundError:
+        names = []
+    for name in names[:STICK_FILES_MAX]:
+        if not STICK_NAME.match(name):
+            continue
+        try:
+            data = _read(STICK_SRC, name, STICK_FILE_MAX)
+        except OSError:
+            continue
+        if data is None or total + len(data) > STICK_TOTAL_MAX:
+            continue
+        total += len(data)
+        files.append((name, data))
+    target = None
+    for part in _usb_partitions():
+        r = subprocess.run(["blkid", "-o", "value", "-s", "TYPE", part],
+                           capture_output=True, text=True)
+        if r.stdout.strip() in STICK_FS:
+            target = (part, r.stdout.strip())
+            break
+    if target is None:
+        print("no-stick" if not _usb_partitions() else "no-fs")
+        return 3
+    part, fs = target
+    where, ours = _mounted_at(part), False
+    if where is None:
+        os.makedirs(STICK_MNT, mode=0o700, exist_ok=True)
+        r = subprocess.run(["mount", "-t", fs, "-o", "nosuid,nodev,noexec,noatime", part,
+                            STICK_MNT], capture_output=True, text=True)
+        if r.returncode != 0:
+            print("mount-failed " + r.stderr.strip()[:80])
+            return 4
+        where, ours = STICK_MNT, True
+    try:
+        dst = os.path.join(where, STICK_DIR)
+        if os.path.islink(dst):
+            print("bad-stick")
+            return 4
+        for name, data in files:
+            _place(dst, name, data)
+        subprocess.run(["sync"], check=False)
+    finally:
+        if ours:
+            subprocess.run(["umount", STICK_MNT], check=False)
+    label = subprocess.run(["blkid", "-o", "value", "-s", "LABEL", part],
+                           capture_output=True, text=True).stdout.strip()
+    print(f"saved {len(files)} {label or part}")
+    return 0
+
+
 def main(argv) -> int:
+    if len(argv) == 2 and argv[1] == "usbstick":
+        return usbstick()
     if len(argv) == 2 and argv[1] == "paper":
         return paper()
     if len(argv) == 2 and argv[1] == "wipe":

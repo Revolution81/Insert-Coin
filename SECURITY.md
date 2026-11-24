@@ -295,13 +295,13 @@ public keys). Card backups carry the notes and the seed vault, inside the
 backup's own encryption. Gap: the seed vault and notes open with the main
 seed, so whoever has your seed words has them too, by design.
 
-**USB disk.** The app stages public files only (history, PSBTs, signed
-transactions, labels, descriptors) in its own folder; the root helper
-copies plain, well-named files from there (no links) into a FAT image and
-attaches it read-only through the USB gadget, for at most 10 minutes. The
-PC can't write to it. The kernel's mass-storage gadget parses the PC's
-SCSI commands while it's on: that's the attack surface, and why it's off
-unless its screen is up.
+**USB stick.** SAVE TO USB STICK stages public files only (history,
+PSBTs, signed transactions, labels, descriptors) in the app's folder; the
+existing root helper (cz-backup usbstick) mounts a USB drive's FAT or exFAT
+partition (never the microSD card) without exec, suid or device files,
+writes the files into InsertCoin/, flushes and unmounts. It never reads or
+runs anything from the stick. The kernel's FAT/exFAT driver parsing a
+hostile stick is the attack surface, only while saving.
 
 **LAN.** The Ethernet port (USB, on the hub) is switched with the radios:
 every wired interface goes down in Vault mode, whatever its name.

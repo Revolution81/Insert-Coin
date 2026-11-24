@@ -166,17 +166,16 @@ missing, we change the boot config and reboot.
 - [ ] Tap a SATSCARD (T on home): slot and address show; GENUINE check passes.
 - [ ] Tap a TAPSIGNER: its key can be added to a 2-of-2 multisig on signet.
 
-## 8b. LAN and USB disk
+## 8b. LAN and USB stick
 
 - [ ] **LAN:** Online, plug a network cable in. The status bar shows a plug
       instead of the Wi-Fi fan (green on your own server, blue on the
       default) and SETUP › NETWORK › LAN says CONNECTED; it syncs. Vault
       mode: `ip link` shows the cable's interface DOWN.
-- [ ] **USB disk:** `sudo sh deploy/install.sh --usb-disk`, reboot. On HOST,
-      check LAN and the USB-A port still work. Flip the switch to SLAVE,
-      right USB-C to a PC, SETUP › FILES › USB DISK: the PC shows a
-      read-only INSERTCOIN stick with the CSVs and PSBTs; writing to it
-      fails; OK removes it.
+- [ ] **USB stick:** a FAT32 or exFAT stick in the USB-A port (switch on
+      HOST), SETUP › FILES › SAVE TO USB STICK: SAVED names the stick; on a
+      PC, InsertCoin/ holds the CSVs, PSBTs and README. An NTFS stick says
+      to format it; no stick says to plug one in.
 
 ## 9. Share files over Wi-Fi
 

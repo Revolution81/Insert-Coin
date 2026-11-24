@@ -78,8 +78,8 @@ backup of accounts, multisig wallets, labels, notes, the seed vault and settings
 
 **Extras**: paper wallets kept off the microSD card, printed at home over
 encrypted IPP (any AirPrint or IPP Everywhere printer) with a pinned printer certificate, or downloaded with SHARE
-FILES (password-protected, local network only, switches itself off), and a
-read-only USB DISK for your history and PSBTs. Optional
+FILES (password-protected, local network only, switches itself off), or
+SAVE TO USB STICK for your history and PSBTs. Optional
 secure chip and fingerprint sensor. One sound switch for the menu boop and
 the title fanfare.
 

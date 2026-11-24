@@ -34,8 +34,9 @@ Not in an image or update yet; the next release carries all of it.
   and signs, the wallet that made it finalizes.
 - **LAN**: the Ethernet port works in Online mode, with a plug icon (green
   on your own server, blue on the default); off with the radios in Vault.
-- **USB DISK** (SETUP › FILES): the device shows up on a PC as a read-only
-  stick with your history CSVs, PSBTs and signed transactions.
+- **SAVE TO USB STICK** (SETUP › FILES): your history CSVs, PSBTs, signed
+  transactions, labels and watch-only descriptor onto a stick in the USB-A
+  port. Nothing to switch or install.
 - **Unit NFC (U216)** as a second NFC reader (its own I2C bus, never the
   keyboard's); HARDWARE › NFC says CAP or UNIT NFC.
 - Text always fits its window: wrapped by real width, reflowed, and split

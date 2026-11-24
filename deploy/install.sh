@@ -11,11 +11,6 @@
 #                                          skip steps that need a running system
 #   ... --full                             redo every step, even ones an earlier
 #                                          run already finished
-#   ... --usb-disk                         SETUP › FILES › USB DISK: switch the
-#                                          CM0's USB driver to OTG (dwc2), so in
-#                                          SLAVE mode the device can show up on a
-#                                          PC as a read-only USB stick (reboot).
-#                                          Check LAN and USB-A afterwards.
 #   ... --nfc-unit                         a Unit NFC (U216) wired to EXT pins 1
 #                                          (SCL) and 3 (SDA): give it its own I2C
 #                                          bus, /dev/i2c-3 (needs a reboot). Not
@@ -37,7 +32,6 @@ MODE=""
 IMAGE=0
 FULL=0
 NFC_UNIT=0
-USB_DISK=0
 for a in "$@"; do
   case "$a" in
     --app) MODE=app ;;
@@ -45,8 +39,7 @@ for a in "$@"; do
     --image) IMAGE=1 ;;
     --full) FULL=1 ;;
     --nfc-unit) NFC_UNIT=1 ;;
-    --usb-disk) USB_DISK=1 ;;
-    *) echo "usage: install.sh [--app|--dedicated] [--image] [--full] [--nfc-unit] [--usb-disk]" >&2; exit 2 ;;
+    *) echo "usage: install.sh [--app|--dedicated] [--image] [--full] [--nfc-unit]" >&2; exit 2 ;;
   esac
 done
 if [ -z "$MODE" ]; then
@@ -69,7 +62,7 @@ DONE=/etc/czwallet/install-done     # marks steps an earlier run finished
 mkdir -p "$DONE"
 [ "$FULL" = 1 ] && rm -f "$DONE"/*
 
-NEED="python3-venv python3-pip python3-setuptools python3-wheel python3-evdev tor rfkill network-manager sudo alsa-utils i2c-tools dosfstools"
+NEED="python3-venv python3-pip python3-setuptools python3-wheel python3-evdev tor rfkill network-manager sudo alsa-utils i2c-tools"
 have_all() { for p in $NEED; do dpkg -s "$p" >/dev/null 2>&1 || return 1; done; }
 if [ -f "$DONE/packages" ] && have_all; then
 echo "== packages: already installed (--full to check again)"
@@ -182,13 +175,11 @@ install -o root -g root -m 755 "$SRC/deploy/cz-light" /usr/local/sbin/cz-light
 install -o root -g root -m 755 "$SRC/deploy/cz-update" /usr/local/sbin/cz-update
 install -o root -g root -m 755 "$SRC/deploy/cz-backup" /usr/local/sbin/cz-backup
 install -o root -g root -m 755 "$SRC/deploy/cz-share" /usr/local/sbin/cz-share
-install -o root -g root -m 755 "$SRC/deploy/cz-usbdisk" /usr/local/sbin/cz-usbdisk
 {
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-radio vault, /usr/local/sbin/cz-radio online"
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-update *"
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-backup *"
   echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-share start, /usr/local/sbin/cz-share stop"
-  echo "czapp ALL=(root) NOPASSWD: /usr/local/sbin/cz-usbdisk start, /usr/local/sbin/cz-usbdisk stop, /usr/local/sbin/cz-usbdisk status"
 } > /etc/sudoers.d/czwallet
 visudo -cf /etc/sudoers.d/czwallet
 chmod 440 /etc/sudoers.d/czwallet
@@ -224,17 +215,6 @@ else
   echo "== interfaces for add-ons: left as they are (no live changes)"
 fi
 getent group i2c >/dev/null && usermod -aG i2c czsigner
-
-# USB DISK: the dwc2 driver in OTG mode, so with the USB switch on SLAVE the
-# CM0 can be a USB device (a read-only stick). Opt-in: on HOST the hub
-# (LAN, USB-A) should keep working, but check after the reboot.
-if [ "$USB_DISK" = 1 ]; then
-  CFG=/boot/firmware/config.txt
-  if ! grep -q "^dtoverlay=dwc2" "$CFG"; then
-    printf '\n# Insert Coin: USB DISK (device mode when the USB switch is on SLAVE)\ndtoverlay=dwc2,dr_mode=otg\n' >> "$CFG"
-    echo "== USB disk: dwc2 OTG set; reboot to use it"
-  fi
-fi
 
 # Unit NFC: a bus of its own (software I2C on GPIO23 = SDA, GPIO26 = SCL,
 # with the Pi's pull-ups, slowed for them). Never I2C1, which the keyboard

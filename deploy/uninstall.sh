@@ -19,7 +19,6 @@ nmcli networking on 2>/dev/null || true
 echo "== screen and keyboard back to everyone"
 rm -f /etc/udev/rules.d/60-czwallet-screen.rules /etc/udev/rules.d/61-czwallet-backlight.rules /etc/udev/rules.d/63-czwallet-nfc-unit.rules
 udevadm control --reload-rules 2>/dev/null && udevadm trigger --subsystem-match=graphics 2>/dev/null || true
-/usr/local/sbin/cz-usbdisk stop 2>/dev/null || true
 echo "== app-mode pieces"
 rm -f /usr/share/APPLaunch/applications/insert-coin.desktop \
       /usr/share/APPLaunch/share/images/insert_coin_80.png \
