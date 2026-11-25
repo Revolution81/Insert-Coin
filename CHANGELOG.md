@@ -6,6 +6,11 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fixed: DELETE ALL on a sleeping fingerprint sensor.** The boot log
+  showed it: asleep, the sensor answers every command with code 0xFE (a
+  proper reply, so the "no answer" wake-up never ran). 0xFE now wakes it
+  and asks again. Also two flaky tests fixed (a random x that wasn't a
+  point; an xpub ending in "h").
 - **Fingerprint commands in the boot log**: each command, the sensor's
   reply bytes and how long it took (finger polling only when it fails), to
   find why DELETE ALL still doesn't clear on the device. No templates or

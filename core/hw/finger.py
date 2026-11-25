@@ -17,6 +17,7 @@ import time
 
 PORTS = ("/dev/serial0", "/dev/ttyAMA0", "/dev/ttyS0")
 MAX_ID = 99
+ASLEEP = 0xFE                      # reply code while the sensor sleeps
 
 
 class FingerError(Exception):
@@ -98,10 +99,12 @@ class Fingerprint:
         t0 = time.monotonic()
         rx = self.port.exchange(frame(payload), timeout)
         self._log(payload, rx, t0)
-        if not self._valid(rx) and payload[:1] != b"\xd4":
+        asleep = not self._valid(rx) or rx[9] == ASLEEP
+        if asleep and payload[:1] != b"\xd4":
             # Unit Fingerprint2 goes to sleep after 10 s without a command
-            # (its default auto-sleep mode) and then ignores everything but
-            # "activate": wake it and ask once more
+            # (its default auto-sleep mode) and then answers everything but
+            # "activate" with code 0xFE (seen on the device: DELETE ALL and
+            # every count got FE): wake it and ask once more
             t0 = time.monotonic()
             w = self.port.exchange(frame(b"\xd4"), 1.0)
             self._log(b"\xd4", w, t0)
@@ -202,7 +205,7 @@ class SimulatedSensor:
         op = payload[0]
         if getattr(self, "asleep", False):              # like the real one: only "activate" wakes it
             if op != 0xD4:
-                return b""
+                return self._ack(ASLEEP)
             self.asleep = False
         if op in (0x35, 0xD4, 0x3C):
             return self._ack(0)

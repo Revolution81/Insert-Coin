@@ -73,3 +73,13 @@ def test_finger_wakes_a_sleeping_sensor():
     assert f.delete_all() and sim.stored == {}        # woken, then erased
     sim.asleep = True
     assert f.count() == 0
+
+
+def test_finger_fe_means_asleep():
+    """Seen on the device: asleep, the sensor answers every command with
+    code 0xFE (a valid frame), not silence."""
+    from core.hw.finger import Fingerprint, SimulatedSensor
+    sim = SimulatedSensor()
+    sim.stored = {0: "a"}
+    sim.asleep = True
+    assert Fingerprint(sim).count() == 1

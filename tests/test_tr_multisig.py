@@ -91,9 +91,15 @@ def test_parse_rules():
     roots = [new_root() for _ in range(3)]
     keys = [ms.cosigner_key(r, "signet", taproot=True) for r in roots]
     good = ms.build_descriptor(2, keys, taproot=True)
-    p = ms.parse_policy(good.replace("h/", "'/"), "signet", ms.my_keys(roots[0], "signet"))
+    import re
+    # apostrophes for "h" only inside the [origin] brackets: an xpub can end
+    # in "h" too, and a blind replace broke one about 1 time in 20
+    quoted = re.sub(r"\[[^\]]*\]", lambda m: m.group(0).replace("h", "'"), good)
+    p = ms.parse_policy(quoted, "signet", ms.my_keys(roots[0], "signet"))
     assert p.taproot and p.k == 2 and p.n == 3 and p.label == "2-of-3 Taproot"
-    other = good.replace(ms.NUMS, "02" * 32)
+    # a real point (the generator's x), so the only problem is "not NUMS";
+    # "02" * 32 is a valid x only about half the time and made this flaky
+    other = good.replace(ms.NUMS, "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
     with pytest.raises(ms.PolicyError, match="unspendable"):
         ms.parse_policy(other, "signet")
     with pytest.raises(ms.PolicyError, match="isn't in that wallet"):
