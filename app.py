@@ -142,8 +142,33 @@ class App:
         except Exception:  # noqa: BLE001 - never stop the app over this
             pass
 
+    _addons_on = False
+
+    def addon_power(self):
+        """Switch on the 5 V of the Grove port and the EXT header (root
+        helper; M5's launcher used to do it). Once per run, then a short
+        wait so the fingerprint sensor and the Cap are awake for the probe."""
+        import pwd
+        import subprocess
+        import time
+        helper = "/usr/local/sbin/cz-backup"
+        if self._addons_on:
+            return
+        try:
+            if pwd.getpwuid(os.getuid()).pw_name != "czapp" or not os.path.exists(helper):
+                return
+            r = subprocess.run(["sudo", "-n", helper, "addons"], stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=20)
+            print((r.stdout or r.stderr).strip()[:120], file=sys.stderr, flush=True)
+            if r.returncode == 0:
+                App._addons_on = True
+                time.sleep(0.6)
+        except Exception as e:  # noqa: BLE001 - never stop the app over this
+            print(f"add-on power: {e}", file=sys.stderr, flush=True)
+
     def refresh_hardware(self):
         from core.hw.finger import open_sensor
+        self.addon_power()
         try:
             self.hw["chip"] = self.signer.chip_status()
         except Exception as e:  # noqa: BLE001

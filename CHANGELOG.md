@@ -6,6 +6,11 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fixed: add-ons got no power.** The Grove port's and the EXT header's
+  5 V are switched by the M5IOE1 chip (lines 3 and 12), which M5Stack's
+  launcher used to switch on; the wallet image turns that launcher off, so
+  the fingerprint sensor and the NFC Cap stayed unpowered. The app now has
+  the root helper switch both on at start (cz-backup addons).
 - **Fixed: NFC Cap not detected.** The Cap's pins are now matched to the
   Zero's EXT header: its power switch (GPIO26) is switched on, the NFC chip
   is selected on GPIO22 instead of the screen's CE0, and the CC1101's GDO0,

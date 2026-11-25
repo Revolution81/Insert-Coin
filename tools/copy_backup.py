@@ -263,7 +263,22 @@ def migrate() -> int:
     return 0
 
 
+def addons() -> int:
+    """5 V on for the Grove port and the EXT header (tools/addon_power.py)."""
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import addon_power
+    try:
+        r = addon_power.request()
+    except OSError as e:
+        print(f"add-on power: {e}", file=sys.stderr)
+        return 1
+    print(f"add-on power on ({r['chip']} lines {r['lines']})")
+    return 0
+
+
 def main(argv) -> int:
+    if len(argv) == 2 and argv[1] == "addons":
+        return addons()
     if len(argv) == 2 and argv[1] == "migrate":
         return migrate()
     if len(argv) == 2 and argv[1] == "usbstick":
