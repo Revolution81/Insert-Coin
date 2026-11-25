@@ -1317,7 +1317,18 @@ SETUP_GROUPS = [
                "TEMPORARY SEED", "KEY TELEPORT", "WALLETS"]),
     ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
 ]
-SETUP_DIRECT = ["UPDATE", "ABOUT", "WIPE DEVICE"]     # WIPE last, away from everything else
+SETUP_DIRECT = ["ADVANCED", "UPDATE", "ABOUT", "WIPE DEVICE"]   # WIPE last, away from everything else
+
+# Power-user tools, shown only with SETUP › ADVANCED on (off by default) so
+# the everyday menus stay short. One that's in use (a temporary seed loaded,
+# Co-Sign set up) shows anyway, so it can always be reached and turned off.
+ADVANCED_ITEMS = {"CO-SIGN", "EXPORT LABELS", "EXPORT WATCH-ONLY", "ADDRESS EXPLORER",
+                  "PAPER WALLETS", "CHILD SEEDS", "TEMPORARY SEED", "KEY TELEPORT",
+                  "QR FORMAT"}
+
+
+def advanced(app) -> bool:
+    return bool(getattr(app.settings, "advanced", False))
 
 
 def _sec():
@@ -1406,6 +1417,12 @@ def settings_screen(app, at: str | None = None):
         app.settings.qr_format = "bbqr" if app.settings.qr_format == "ur" else "ur"
         app.settings.save()
 
+    def advanced_toggle(app, step):
+        """Show or hide the power-user tools (see ADVANCED_ITEMS). Hiding
+        never turns anything off: a tool in use stays in its menu."""
+        app.settings.advanced = not advanced(app)
+        app.settings.save()
+
     def sound_toggle(app, step):
         """One switch for all sound: the title fanfare and the menu boop.
         Saved, so it stays that way after a restart."""
@@ -1489,17 +1506,40 @@ def settings_screen(app, at: str | None = None):
             ("EXPORT LABELS", export_labels),
             ("WIPE DEVICE", ask("wipe_prompt", lambda app, _: app.factory_reset()), "", "red"),
             ("ABOUT", about),
+            ("ADVANCED", None, "ON" if advanced(app) else "OFF",
+             "gold" if advanced(app) else "grey", advanced_toggle),
             ("EXIT TO MENU", exit_to_menu, "", "grey"),
         ]
         return {r[0]: r for r in rows}
 
+    def in_use() -> set:
+        """Advanced items that show even with ADVANCED off: they're on."""
+        on = set()
+        try:
+            if app.signer.status().get("temporary"):
+                on.add("TEMPORARY SEED")
+            if app.signer.cosign_status().get("on"):
+                on.add("CO-SIGN")
+        except Exception:  # noqa: BLE001 - a locked signer: show nothing extra
+            pass
+        if app.settings.qr_format != "ur":
+            on.add("QR FORMAT")
+        return on
+
+    def visible(labels):
+        if advanced(app):
+            return list(labels)
+        on = in_use()
+        return [lb for lb in labels if lb not in ADVANCED_ITEMS or lb in on]
+
     def open_group(name, labels, at_item=None):
         def items():
             every = all_items()
-            return [every[label] for label in labels]
+            return [every[label] for label in visible(labels)]
         sub = MenuScreen(name, items)
-        if at_item in labels:
-            sub.sel = labels.index(at_item)
+        shown = visible(labels)
+        if at_item in shown:
+            sub.sel = shown.index(at_item)
         app.push(sub)
 
     def items():

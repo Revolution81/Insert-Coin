@@ -69,6 +69,7 @@ def run(seed, steps, swallowed):
     app = App(signer=SignerClient(inproc=True, data_dir=os.path.join(tmp, "signer")),
               sync_jobs=True)
     app.settings.network = "signet"
+    app.settings.advanced = os.environ.get("CZ_ADVANCED", "1") == "1"
     app.outbox_dir = os.path.join(tmp, "outbox")
     app.start()
     from test_app import create_wallet

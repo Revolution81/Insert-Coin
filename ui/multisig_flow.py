@@ -279,6 +279,10 @@ def new_multisig(app):
             ("3 OF 5", start(3, 5, taproot))],
             info=["This device is one key.", "Scan the others next."]))
 
+    from .flow import advanced
+    if not advanced(app):                  # SegWit only: works with every wallet
+        sizes(False)(app)
+        return
     app.push(MenuScreen("NEW MULTISIG", [
         ("SEGWIT", sizes(False), "WSH", "grey"),
         ("TAPROOT", sizes(True), "TR", "grey")],

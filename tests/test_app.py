@@ -61,6 +61,7 @@ def app(tmp_path, monkeypatch):
     a = App(signer=SignerClient(inproc=True, data_dir=str(tmp_path / "signer")),
             sync_jobs=True)
     a.settings.network = "signet"
+    a.settings.advanced = True                    # every tool reachable; test_advanced checks off
     a.outbox_dir = str(tmp_path / "outbox")
     a.start()
     return a

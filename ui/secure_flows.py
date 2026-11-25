@@ -239,8 +239,11 @@ def unlock(c):
         c.finish(info)
 
     def run(c, pin, pp):
+        # checked on the PIN screen itself (c.top is the PIN screen, or the
+        # passphrase screen when one is asked): no window pops up for the
+        # second the check takes
         c.job("UNLOCKING...", lambda: c.signer.unlock(pin=pin, passphrase=pp),
-              opened, failed)
+              opened, failed, inline=scr if c.top is scr else None)
 
     def got(c, pin):
         if st.get("passphrase_stored", True):

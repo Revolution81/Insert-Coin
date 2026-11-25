@@ -223,8 +223,29 @@ class Display:
             with open(os.path.join(sysdir, "virtual_size")) as f:
                 w, _ = (int(v) for v in f.read().strip().split(","))
             self.rotate = w != W   # panel mounted portrait
+            # Black first, then the mode set: the set pushes whatever the
+            # framebuffer holds to the panel, and until the wallet's first
+            # frame that was leftover memory, a white flicker down one side
+            # between the M5 logo and the title. Black again after, in case
+            # the mode set itself handed back fresh memory.
+            self.clear()
             wake_panel(self.fb)
+            self.clear()
             backlight_on()
+
+    def clear(self) -> None:
+        """The whole framebuffer to black (its real size, not just 320x170)."""
+        try:
+            size = os.path.getsize(self.fb)
+            if not size:                                     # a char device: ask sysfs
+                sysdir = "/sys/class/graphics/" + os.path.basename(self.fb)
+                with open(os.path.join(sysdir, "virtual_size")) as f:
+                    vw, vh = (int(v) for v in f.read().strip().split(","))
+                size = vw * vh * self.bpp // 8
+            with open(self.fb, "wb") as f:
+                f.write(bytes(size))
+        except OSError:
+            pass
 
     def show(self, img: Image.Image) -> None:
         if not self.fb:

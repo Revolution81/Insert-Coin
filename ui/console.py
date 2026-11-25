@@ -197,9 +197,16 @@ class Console:
     def post(self, fn):
         self._posted.put(fn)
 
-    def job(self, label, fn, on_done, on_error=None):
-        busy = BusyScreen(label)
-        self.push(busy)
+    def job(self, label, fn, on_done, on_error=None, inline=None):
+        """Run fn off the UI thread. inline: a screen that shows the work
+        itself (its .working set to label, input ignored) instead of a busy
+        window popping up over it; the PIN screen uses it at unlock."""
+        if inline is not None:
+            inline.working = label
+            busy = inline
+        else:
+            busy = BusyScreen(label)
+            self.push(busy)
         self.jobs += 1
         if self.sync_jobs:
             self._finish_job(busy, *self._run(fn), on_done, on_error)
@@ -220,7 +227,9 @@ class Console:
         self.jobs -= 1
         if self._done is None:             # the prompt ended meanwhile
             return
-        if busy in self.stack:
+        if getattr(busy, "working", None):  # an inline job: the screen stays
+            busy.working = None
+        elif busy in self.stack:
             self.stack.remove(busy)
             if self.stack:
                 self._shown()
@@ -290,4 +299,5 @@ class Console:
     @property
     def animated(self) -> bool:
         return bool(self.stack) and (isinstance(self.top, BusyScreen)
-                                     or getattr(self.top, "animated", False))
+                                     or getattr(self.top, "animated", False)
+                                     or bool(getattr(self.top, "working", None)))

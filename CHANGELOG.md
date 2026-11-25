@@ -6,6 +6,18 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **SETUP › ADVANCED** (0.8.36), off by default: hides Co-Sign, temporary
+  seed, child seeds, Key Teleport, address explorer, paper wallets, the
+  watch-only and label exports, QR format, and the SegWit/Taproot choice in
+  NEW MULTISIG (SegWit when off). Anything in use (a temporary seed loaded,
+  Co-Sign on, BBQr chosen) stays in its menu either way.
+- **Unlock without the pop-up**: the PIN is checked on the PIN screen itself
+  (gems light in turn, UNLOCKING... underneath) instead of a busy window
+  flashing up for the second Argon2 takes.
+- **Start-up flicker**: the framebuffer is cleared to black before and after
+  the panel's mode set, so leftover memory no longer flashes white down one
+  side between the M5 logo and the title (to be confirmed on the device).
+
 - **Fixed: DELETE ALL on a sleeping fingerprint sensor.** The boot log
   showed it: asleep, the sensor answers every command with code 0xFE (a
   proper reply, so the "no answer" wake-up never ran). 0xFE now wakes it

@@ -47,6 +47,7 @@ class Settings:
     auto_lock_s: int = 120            # SETUP > AUTO LOCK (0 = off); the signer's copy rules
     qr_format: str = "ur"             # signed PSBTs out: "ur" (Sparrow's default) or "bbqr"
     finger_unlock: bool = False       # fingerprint reopens the screen during a session
+    advanced: bool = False            # SETUP › ADVANCED: show the power-user tools
     sound: bool = True                # SETUP › SOUND: title fanfare and menu boop, saved
     volume: int | None = None         # Fn+S / Fn+D, 0..10; None = the default (ui/sound.py)
     amount_style: str = "big"         # "big": 0.02150000 all big; "split": last 3 small

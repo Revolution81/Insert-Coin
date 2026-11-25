@@ -47,6 +47,12 @@ any watch-only wallet. Online mode talks to your own Electrum server, through
 Tor by default, and sends straight from the device, limited by a daily
 online cap.
 
+**Simple by default.** SETUP › ADVANCED (off out of the box) shows the
+power-user tools: Co-Sign, temporary seed, child seeds, Key Teleport,
+address explorer, paper wallets, watch-only and label exports, QR format,
+and the Taproot choice for new multisig. Off, the menus keep to the
+everyday things; a tool that's in use stays visible either way.
+
 **Wallet**
 - BIP39 seeds (12, 18 or 24 words) or a master xprv. New seeds mix the kernel RNG, the secure chip
   if fitted, and any dice rolls, coin flips, card shuffles or key mashing you add

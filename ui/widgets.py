@@ -445,6 +445,12 @@ class PinScreen(TextInputScreen):
         self.on_pin = on_pin
         self.tries = tries               # (left, max)
         self.min_len = min_len
+        self.working = None              # "UNLOCKING..." while the signer checks
+
+    def handle(self, ev, app):
+        if self.working:                 # checking the PIN: keys wait
+            return
+        super().handle(ev, app)
 
     def _submit(self, app, text):
         if len(text) < self.min_len:
@@ -460,6 +466,15 @@ class PinScreen(TextInputScreen):
         t.window(d, (40, 22, W - 41, 128), self.title)
         t.text(d, (W // 2, 36), self.prompt, BIG if len(self.prompt) <= 12 else BODY,
                "white", align="center")
+        if self.working:
+            # checking in place, no window popping up over the PIN: the gems
+            # fill in turn and the prompt says what's happening
+            slots = 6
+            gx = W // 2 - (slots * 20 - 4) // 2
+            lit = int(time.monotonic() * 8) % (slots + 1)
+            t.gems(img, (gx, 60), slots, lit)
+            t.text(d, (W // 2, 110), self.working, TINY, "gold", align="center")
+            return img
         n = len(self.buf.text)
         slots = max(6, min(8, n + (1 if n >= 6 else 0)))
         gx = W // 2 - (slots * 20 - 4) // 2
