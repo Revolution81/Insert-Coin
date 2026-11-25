@@ -194,16 +194,17 @@
 <path d="M725,585 C785,585 785,585 785,465" stroke="#d62828" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 <circle cx="725" cy="585" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
 <circle cx="785" cy="465" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
-<path d="M695,645 L705.0,675.0 L695,705" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse cx="705.0" cy="675.0" rx="12" ry="10" fill="#e8a62a" stroke="#7a5c2e" stroke-width="1.5"/>
+<path d="M695,645 L695,705" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="686" y="664.0" width="18" height="22" rx="9" fill="#e8a62a" stroke="#7a5c2e" stroke-width="1.5"/>
 <circle cx="695" cy="645" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
 <circle cx="695" cy="705" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
-<path d="M725,645 L750.0,675.0 L755,705" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<ellipse cx="750.0" cy="675.0" rx="12" ry="10" fill="#e8a62a" stroke="#7a5c2e" stroke-width="1.5"/>
+<path d="M591,689.0 L686,679.0" stroke="#7a5c2e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="589" y="693.0" font-size="12" font-weight="700" fill="#7a5c2e" text-anchor="end">C1 1µF</text>
+<path d="M725,645 L725,705" stroke="#888" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="716" y="664.0" width="18" height="22" rx="9" fill="#e8a62a" stroke="#7a5c2e" stroke-width="1.5"/>
 <circle cx="725" cy="645" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
-<circle cx="755" cy="705" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
-<text x="603" y="680.0" font-size="13" font-weight="700" fill="#7a5c2e" text-anchor="middle">C1</text>
-<text x="791" y="680.0" font-size="13" font-weight="700" fill="#7a5c2e" text-anchor="start">C2</text>
+<circle cx="725" cy="705" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
+<text x="741" y="680.0" font-size="12" font-weight="700" fill="#7a5c2e" text-anchor="start">C2 1µF</text>
 <path d="M875,465 L875,525" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
 <rect x="866" y="475.0" width="18" height="40" rx="7" fill="#d9c28e" stroke="#7a5c2e" stroke-width="1.5"/>
 <rect x="866" y="481.0" width="18" height="4" fill="#f2c200"/>

@@ -53,16 +53,20 @@ def jumper_d(d, col, a, b):
 jumper_d(f"M{cx(G)},{ROWS['e']} L{cx(G)},{Y_GND}", BLK, (cx(G), ROWS['e']), (cx(G), Y_GND))
 jumper_d(f"M{cx(O)},{ROWS['c']} C{cx(7)},{ROWS['c']} {cx(7)},{ROWS['c']} {cx(7)},{Y_PLUS}", RED,
          (cx(O), ROWS['c']), (cx(7), Y_PLUS))
-def cap(c, gx):
-    x = cx(c); y1, y2 = ROWS["e"], Y_GND
-    mx, my = (x + gx) / 2 + 10, (y1 + y2) / 2
-    path(f"M{x},{y1} L{mx},{my} L{gx},{y2}", BRN, 3)
-    add(f'<ellipse cx="{mx}" cy="{my}" rx="12" ry="10" fill="#e8a62a" stroke="{BRN}" stroke-width="1.5"/>')
-    pin(x, y1, "#e8a62a"); pin(gx, y2, "#e8a62a")
-cap(I, cx(I))
-cap(O, cx(O) + P)
-text(cx(1) - 2, (ROWS['e'] + Y_GND) / 2 + 5, "C1", 13, BRN, "middle", "700")
-text(cx(7) + 6, (ROWS['e'] + Y_GND) / 2 + 5, "C2", 13, BRN, "start", "700")
+def cap(c, name, side):
+    """A 1 µF capacitor: two legs, one in row e of column c, one straight
+    below in the GND rail, with its blue ceramic body in between."""
+    x = cx(c); y1, y2 = ROWS["e"], Y_GND; my = (y1 + y2) / 2
+    path(f"M{x},{y1} L{x},{y2}", "#888", 3)
+    add(f'<rect x="{x-9}" y="{my-11}" width="18" height="22" rx="9" fill="#e8a62a" stroke="{BRN}" stroke-width="1.5"/>')
+    pin(x, y1, "#e8a62a"); pin(x, y2, "#e8a62a")
+    if side == "l":                                  # left of the GND jumper, with a leader
+        path(f"M{x - 104},{my + 14} L{x - 9},{my + 4}", BRN, 1.5)
+        text(x - 106, my + 18, name, 12, BRN, "end", "700")
+    else:
+        text(x + 16, my + 5, name, 12, BRN, "start", "700")
+cap(I, "C1 1µF", "l")
+cap(O, "C2 1µF", "r")
 # pull-ups: SDA col 10, SCL col 14 ; resistor from row a to +3.3 rail
 SDA, SCL = 10, 14
 def res(c, name):
