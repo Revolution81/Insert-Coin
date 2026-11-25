@@ -1,0 +1,29 @@
+name: Read M5 overlay
+# Read-only: decompiles M5Stack's Cardputer Zero device-tree overlay from
+# the base image and shows how the Grove / EXT 5 V switches are set up, and
+# what in the image switches them.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  read:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - name: Look
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq device-tree-compiler xz-utils >/dev/null
+          BASE=https://cardputer-zero-repo.oss-cn-shenzhen.aliyuncs.com/cardputerzero-trixie-arm64-20261119-094529-3b0e6f6.img.xz
+          curl -fsSL "$BASE" -o img.xz && xz -dc img.xz > image.img
+          L=$(sudo losetup -fP --show image.img)
+          sudo mkdir -p /mnt/r /mnt/b && sudo mount -o ro ${L}p2 /mnt/r && sudo mount -o ro ${L}p1 /mnt/b
+          set +e
+          for f in /mnt/b/overlays/cardputerzero*.dtbo; do echo "=================== $f"; dtc -q -I dtb -O dts "$f"; done
+          echo "=================== who mentions the 5V switches"
+          sudo grep -rIl -E "grove_5v|ext_5v|GROVE_EN|HAT_EN|grove_5v_out|ext_5v_out" /mnt/r/usr /mnt/r/etc /mnt/r/opt /mnt/r/home 2>/dev/null | head -40
+          echo "=================== binaries"
+          sudo grep -rl -a -E "grove_5v_out|ext_5v_out" /mnt/r/usr/share/APPLaunch /mnt/r/usr/bin /mnt/r/usr/local /mnt/r/opt 2>/dev/null | head -20
+          for f in $(sudo grep -rIl -E "grove_5v|ext_5v|GROVE_EN|HAT_EN" /mnt/r/usr /mnt/r/etc /mnt/r/opt /mnt/r/home 2>/dev/null | head -15); do echo "------ $f"; sudo grep -n -E -B3 -A6 "grove_5v|ext_5v|GROVE_EN|HAT_EN" "$f" | head -60; done
+          echo "=================== m5ioe1 module params / sysfs hints"
+          sudo find /mnt/r/lib/modules -name "*m5ioe*" | head; for m in $(sudo find /mnt/r/lib/modules -name "*m5ioe*"); do sudo sh -c "xz -dc $m 2>/dev/null || cat $m" | strings | grep -i -E "5v|grove|hog|param|sysfs|attr|enable" | head -40; done
