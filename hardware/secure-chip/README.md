@@ -5,7 +5,8 @@ and gives Insert Coin a **blank ATECC608B** secure chip, for the mode where
 the chip itself counts wrong PINs.
 
 **Status: designed, not yet built.** Prove the same circuit on a breadboard
-first (Adafruit 4314 breakout + MCP1700 + two 1 µF capacitors), then order.
+first (Adafruit 4314 breakout + MCP1700 + two 1 µF capacitors + two 4.7 kΩ
+pull-ups to 3.3 V + male-to-male jumper wires), then order.
 
 ## Circuit
 
