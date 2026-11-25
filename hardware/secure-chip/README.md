@@ -8,6 +8,12 @@ the chip itself counts wrong PINs.
 first (Adafruit 4314 breakout + MCP1700 + two 1 µF capacitors + two 4.7 kΩ
 pull-ups to 3.3 V + male-to-male jumper wires), then order.
 
+## Breadboard test first
+
+![Breadboard wiring](breadboard-test.png)
+
+`breadboard-test.svg` / `.png`, made by `gen_breadboard.py`.
+
 ## Circuit
 
 - EXT pin 6 (**5V OUT**) -> MCP1700T-3302E/TT -> **3.3 V** for the chip.

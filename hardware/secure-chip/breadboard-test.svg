@@ -1,0 +1,307 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1000" viewBox="0 0 1500 1000" font-family="Helvetica,Arial,sans-serif">
+<rect width="1500" height="1000" fill="#fff"/>
+<text x="40" y="55" font-size="32" font-weight="700" fill="#111" text-anchor="start">Insert Coin: blank secure chip, breadboard test</text>
+<text x="40" y="90" font-size="18" font-weight="400" fill="#444" text-anchor="start">Cardputer OFF and NFC Cap removed while wiring. Before fitting the chip: pin 6 ≈ 5 V, red rail ≈ 3.3 V (meter).</text>
+<rect x="560" y="430" width="720" height="335" rx="12" fill="#f5f2e9" stroke="#cbc4ae" stroke-width="2"/>
+<path d="M580,445 H1260" stroke="#d62828" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M580,725 H1260" stroke="#1d4ed8" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="600" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="600" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="600" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="600" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="600" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="600" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="600" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="630" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="660" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="690" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="720" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="750" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="780" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="810" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="840" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="870" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="900" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="930" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="960" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="990" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1020" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1050" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1080" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1110" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1140" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1170" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1200" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="460" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="700" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="520" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="550" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="580" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="610" width="10" height="10" rx="2" fill="#5b6470"/>
+<rect x="1230" y="640" width="10" height="10" rx="2" fill="#5b6470"/>
+<text x="605" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">1</text>
+<text x="665" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">3</text>
+<text x="695" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">4</text>
+<text x="725" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">5</text>
+<text x="875" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">10</text>
+<text x="995" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">14</text>
+<text x="1175" y="751" font-size="12" font-weight="400" fill="#888" text-anchor="middle">20</text>
+<text x="578" y="530" font-size="12" font-weight="400" fill="#999" text-anchor="middle">a</text>
+<text x="578" y="560" font-size="12" font-weight="400" fill="#999" text-anchor="middle">b</text>
+<text x="578" y="590" font-size="12" font-weight="400" fill="#999" text-anchor="middle">c</text>
+<text x="578" y="620" font-size="12" font-weight="400" fill="#999" text-anchor="middle">d</text>
+<text x="578" y="650" font-size="12" font-weight="400" fill="#999" text-anchor="middle">e</text>
+<text x="1294" y="471" font-size="18" font-weight="700" fill="#d62828" text-anchor="start">+3.3 V rail (red)</text>
+<text x="1294" y="711" font-size="18" font-weight="700" fill="#1d4ed8" text-anchor="start">GND rail (blue)</text>
+<text x="1294" y="561" font-size="14" font-weight="400" fill="#777" text-anchor="start">Each numbered column</text>
+<text x="1294" y="581" font-size="14" font-weight="400" fill="#777" text-anchor="start">(holes a–e) is one</text>
+<text x="1294" y="601" font-size="14" font-weight="400" fill="#777" text-anchor="start">connected strip.</text>
+<path d="M647,517 L647,481 L743,481 L743,517 Z" fill="#222"/>
+<path d="M665,515 L665,525" stroke="#aaa" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="665" cy="525" r="8" fill="#c9c9c9" stroke="#000" stroke-width="1.5"/>
+<text x="665" y="503" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">GND</text>
+<path d="M695,515 L695,525" stroke="#aaa" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="695" cy="525" r="8" fill="#c9c9c9" stroke="#000" stroke-width="1.5"/>
+<text x="695" y="503" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">IN</text>
+<path d="M725,515 L725,525" stroke="#aaa" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="725" cy="525" r="8" fill="#c9c9c9" stroke="#000" stroke-width="1.5"/>
+<text x="725" y="503" font-size="10" font-weight="700" fill="#fff" text-anchor="middle">OUT</text>
+<text x="570" y="400" font-size="13" font-weight="700" fill="#222" text-anchor="start">Regulator MCP1700-3302E</text>
+<text x="570" y="418" font-size="12" font-weight="400" fill="#555" text-anchor="start">flat side facing you, columns 3-4-5</text>
+<path d="M665,645 L665,705" stroke="#111111" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="665" cy="645" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
+<circle cx="665" cy="705" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
+<path d="M725,585 C785,585 785,585 785,465" stroke="#d62828" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="725" cy="585" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
+<circle cx="785" cy="465" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
+<path d="M695,645 L705.0,675.0 L695,705" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="705.0" cy="675.0" rx="12" ry="10" fill="#e8a62a" stroke="#7a5c2e" stroke-width="1.5"/>
+<circle cx="695" cy="645" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
+<circle cx="695" cy="705" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
+<path d="M725,645 L750.0,675.0 L755,705" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<ellipse cx="750.0" cy="675.0" rx="12" ry="10" fill="#e8a62a" stroke="#7a5c2e" stroke-width="1.5"/>
+<circle cx="725" cy="645" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
+<circle cx="755" cy="705" r="8" fill="#e8a62a" stroke="#000" stroke-width="1.5"/>
+<text x="603" y="680.0" font-size="13" font-weight="700" fill="#7a5c2e" text-anchor="middle">C1</text>
+<text x="791" y="680.0" font-size="13" font-weight="700" fill="#7a5c2e" text-anchor="start">C2</text>
+<path d="M875,465 L875,525" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="866" y="475.0" width="18" height="40" rx="7" fill="#d9c28e" stroke="#7a5c2e" stroke-width="1.5"/>
+<rect x="866" y="481.0" width="18" height="4" fill="#f2c200"/>
+<rect x="866" y="489.0" width="18" height="4" fill="#7b3fa0"/>
+<rect x="866" y="497.0" width="18" height="4" fill="#d62828"/>
+<rect x="866" y="505.0" width="18" height="4" fill="#c8a000"/>
+<circle cx="875" cy="465" r="8" fill="#d9c28e" stroke="#000" stroke-width="1.5"/>
+<circle cx="875" cy="525" r="8" fill="#d9c28e" stroke="#000" stroke-width="1.5"/>
+<text x="891" y="500.0" font-size="13" font-weight="700" fill="#7a5c2e" text-anchor="start">R1 4.7 kΩ</text>
+<path d="M995,465 L995,525" stroke="#7a5c2e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="986" y="475.0" width="18" height="40" rx="7" fill="#d9c28e" stroke="#7a5c2e" stroke-width="1.5"/>
+<rect x="986" y="481.0" width="18" height="4" fill="#f2c200"/>
+<rect x="986" y="489.0" width="18" height="4" fill="#7b3fa0"/>
+<rect x="986" y="497.0" width="18" height="4" fill="#d62828"/>
+<rect x="986" y="505.0" width="18" height="4" fill="#c8a000"/>
+<circle cx="995" cy="465" r="8" fill="#d9c28e" stroke="#000" stroke-width="1.5"/>
+<circle cx="995" cy="525" r="8" fill="#d9c28e" stroke="#000" stroke-width="1.5"/>
+<text x="1011" y="500.0" font-size="13" font-weight="700" fill="#7a5c2e" text-anchor="start">R2 4.7 kΩ</text>
+<text x="875" y="685" font-size="14" font-weight="700" fill="#1d4ed8" text-anchor="middle">SDA strip</text>
+<text x="995" y="685" font-size="14" font-weight="700" fill="#b38600" text-anchor="middle">SCL strip</text>
+<rect x="60" y="300" width="300" height="400" rx="14" fill="#2b2f36"/>
+<text x="210" y="332" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">Cardputer top connector</text>
+<text x="210" y="352" font-size="12" font-weight="400" fill="#bbb" text-anchor="middle">odd row = nearest the keyboard</text>
+<rect x="120" y="380" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="395" font-size="12" font-weight="400" fill="#888" text-anchor="end">1</text>
+<text x="148" y="395" font-size="12" font-weight="400" fill="#888" text-anchor="start">G26</text>
+<rect x="280" y="380" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="395" font-size="12" font-weight="400" fill="#888" text-anchor="end">2 5V IN</text>
+<rect x="120" y="422" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="437" font-size="12" font-weight="400" fill="#888" text-anchor="end">3</text>
+<text x="148" y="437" font-size="12" font-weight="400" fill="#888" text-anchor="start">G23</text>
+<rect x="280" y="422" width="20" height="20" fill="#000" stroke="#111111" stroke-width="3"/>
+<text x="272" y="437" font-size="12" font-weight="700" fill="#fff" text-anchor="end">4 GND</text>
+<rect x="120" y="464" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="479" font-size="12" font-weight="400" fill="#888" text-anchor="end">5</text>
+<text x="148" y="479" font-size="12" font-weight="400" fill="#888" text-anchor="start">G22</text>
+<rect x="280" y="464" width="20" height="20" fill="#000" stroke="#d62828" stroke-width="3"/>
+<text x="272" y="479" font-size="12" font-weight="700" fill="#fff" text-anchor="end">6 5V OUT</text>
+<rect x="120" y="506" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="521" font-size="12" font-weight="400" fill="#888" text-anchor="end">7</text>
+<text x="148" y="521" font-size="12" font-weight="400" fill="#888" text-anchor="start">CLK</text>
+<rect x="280" y="506" width="20" height="20" fill="#000" stroke="#1d4ed8" stroke-width="3"/>
+<text x="272" y="521" font-size="12" font-weight="700" fill="#fff" text-anchor="end">8 SDA</text>
+<rect x="120" y="548" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="563" font-size="12" font-weight="400" fill="#888" text-anchor="end">9</text>
+<text x="148" y="563" font-size="12" font-weight="400" fill="#888" text-anchor="start">MOSI</text>
+<rect x="280" y="548" width="20" height="20" fill="#000" stroke="#e0a800" stroke-width="3"/>
+<text x="272" y="563" font-size="12" font-weight="700" fill="#fff" text-anchor="end">10 SCL</text>
+<rect x="120" y="590" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="605" font-size="12" font-weight="400" fill="#888" text-anchor="end">11</text>
+<text x="148" y="605" font-size="12" font-weight="400" fill="#888" text-anchor="start">MISO</text>
+<rect x="280" y="590" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="605" font-size="12" font-weight="400" fill="#888" text-anchor="end">12 RX</text>
+<rect x="120" y="632" width="20" height="20" fill="#000" stroke="#666"/>
+<text x="112" y="647" font-size="12" font-weight="400" fill="#888" text-anchor="end">13</text>
+<text x="148" y="647" font-size="12" font-weight="400" fill="#888" text-anchor="start">CS1</text>
+<rect x="280" y="632" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="647" font-size="12" font-weight="400" fill="#888" text-anchor="end">14 TX</text>
+<text x="210" y="726" font-size="14" font-weight="700" fill="#d62828" text-anchor="middle">Pin 2 (5V IN) stays empty</text>
+<path d="M290,516 H440 V370 H875 V615" stroke="#1d4ed8" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="290" cy="516" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
+<circle cx="875" cy="615" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
+<path d="M290,558 H460 V340 H995 V615" stroke="#e0a800" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="290" cy="558" r="8" fill="#e0a800" stroke="#000" stroke-width="1.5"/>
+<circle cx="995" cy="615" r="8" fill="#e0a800" stroke="#000" stroke-width="1.5"/>
+<path d="M290,474 H420 V615 H695" stroke="#d62828" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="290" cy="474" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
+<circle cx="695" cy="615" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
+<text x="552" y="605" font-size="13" font-weight="700" fill="#d62828" text-anchor="end">pin 6 (5 V)</text>
+<path d="M290,432 H400 V790 H605 V705" stroke="#111111" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="290" cy="432" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
+<circle cx="605" cy="705" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
+<text x="885" y="418" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="start">pin 8 (SDA)</text>
+<text x="1005" y="418" font-size="13" font-weight="700" fill="#b38600" text-anchor="start">pin 10 (SCL)</text>
+<text x="412" y="809" font-size="13" font-weight="700" fill="#111111" text-anchor="start">pin 4 (GND) → GND rail</text>
+<rect x="1180" y="140" width="230" height="130" rx="12" fill="#1f2a44"/>
+<text x="1295" y="180" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">Adafruit 4314</text>
+<text x="1295" y="204" font-size="13" font-weight="400" fill="#cfd6e6" text-anchor="middle">ATECC608 (blank chip)</text>
+<text x="1295" y="252" font-size="12" font-weight="400" fill="#cfd6e6" text-anchor="middle">4209 cable in its small port</text>
+<rect x="1260" y="268" width="70" height="16" rx="3" fill="#ddd"/>
+<path d="M1272,284 V315 H1145 V465" stroke="#d62828" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="1145" cy="465" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
+<text x="930" y="160" font-size="18" font-weight="400" fill="#d62828" text-anchor="start">■</text>
+<text x="952" y="160" font-size="14" font-weight="400" fill="#222" text-anchor="start">red → +3.3 V rail</text>
+<path d="M1287,284 V337 H1275 V705 H1205" stroke="#111111" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="1205" cy="705" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
+<text x="930" y="186" font-size="18" font-weight="400" fill="#111111" text-anchor="start">■</text>
+<text x="952" y="186" font-size="14" font-weight="400" fill="#222" text-anchor="start">black → GND rail</text>
+<path d="M1302,284 V359 H875 V585" stroke="#1d4ed8" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="875" cy="585" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
+<text x="930" y="212" font-size="18" font-weight="400" fill="#1d4ed8" text-anchor="start">■</text>
+<text x="952" y="212" font-size="14" font-weight="400" fill="#222" text-anchor="start">blue → SDA strip (column 10)</text>
+<path d="M1317,284 V381 H995 V585" stroke="#e0a800" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="995" cy="585" r="8" fill="#e0a800" stroke="#000" stroke-width="1.5"/>
+<text x="930" y="238" font-size="18" font-weight="400" fill="#e0a800" text-anchor="start">■</text>
+<text x="952" y="238" font-size="14" font-weight="400" fill="#222" text-anchor="start">yellow → SCL strip (column 14)</text>
+<text x="40" y="880" font-size="16" font-weight="400" fill="#333" text-anchor="start">1. Check the regulator's pin order on its datasheet first (usually GND, IN, OUT with the flat side facing you).</text>
+<text x="40" y="906" font-size="16" font-weight="400" fill="#333" text-anchor="start">2. R1 and R2 go to the +3.3 V rail, never to 5 V: 5 V on SDA/SCL can damage the Cardputer.</text>
+<text x="40" y="932" font-size="16" font-weight="400" fill="#333" text-anchor="start">3. If your breadboard's rails are split in the middle, bridge each with a short jumper.</text>
+<text x="40" y="958" font-size="16" font-weight="400" fill="#333" text-anchor="start">4. Then power on: SETUP › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked.</text>
+</svg>
