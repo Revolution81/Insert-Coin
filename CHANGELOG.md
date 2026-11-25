@@ -11,7 +11,8 @@ Not in an image or update yet; the next release carries all of it.
   RULES and POWER-UPS point to the new places; the site gains TRICK PINS,
   PRIVACY (silent payments, PayJoin), CO-SIGN and TOOLBOX cards, marked
   "new in 0.8.38" until an image carries them. The four SCREEN TOUR pages
-  are gone: the booklet is 16 pages now.
+  are gone, and a STATUS BAR page (p. 9) explains every icon in the strip
+  along the top: 17 pages.
 - **Menus regrouped** (0.8.38): SETUP is now SECURITY, WALLETS, BACKUP,
   NETWORK, FILES, TOOLS, DEVICE, UPDATE, ABOUT, WIPE DEVICE. SECURITY holds
   PINS, LIMITS (ONLINE CAP, SPENDING POLICY, CO-SIGN) and AUTO LOCK; LOCK NOW
