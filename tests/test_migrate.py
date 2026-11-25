@@ -62,3 +62,14 @@ def test_addon_power_through_sysfs(tmp_path):
     assert (tmp_path / "grove_5v_out" / "brightness").read_text() == "1"
     assert (tmp_path / "ext_5v_out" / "brightness").read_text() == "1"
     assert "grove_fun" not in addon_power.LEDS      # the UART/I2C switch is never touched
+
+
+def test_finger_wakes_a_sleeping_sensor():
+    from core.hw.finger import Fingerprint, SimulatedSensor
+    sim = SimulatedSensor()
+    sim.stored = {0: "a", 1: "b"}
+    f = Fingerprint(sim)
+    sim.asleep = True
+    assert f.delete_all() and sim.stored == {}        # woken, then erased
+    sim.asleep = True
+    assert f.count() == 0

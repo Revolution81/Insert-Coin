@@ -6,6 +6,10 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fingerprint sensor asleep.** Unit Fingerprint2 sleeps after 10 s
+  without a command (its default) and then ignores everything but
+  "activate", so DELETE ALL did nothing when chosen after a pause. Every
+  command that gets no answer now wakes the sensor and asks once more.
 - **Fingerprint count after adding or deleting.** Saving and erasing write
   the sensor's flash and can take over a second; the old 1-second timeout
   cut those replies off, and the late reply was then read as the answer to

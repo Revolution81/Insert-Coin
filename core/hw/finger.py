@@ -79,9 +79,20 @@ class Fingerprint:
     def __init__(self, port):
         self.port = port
 
+    @staticmethod
+    def _valid(rx: bytes) -> bool:
+        return len(rx) >= 12 and rx[:2] == b"\xef\x01" and rx[6] == 0x07
+
     def _cmd(self, payload: bytes, timeout: float = 1.0) -> bytes:
         rx = self.port.exchange(frame(payload), timeout)
-        if len(rx) < 12 or rx[:2] != b"\xef\x01" or rx[6] != 0x07:
+        if not self._valid(rx) and payload[:1] != b"\xd4":
+            # Unit Fingerprint2 goes to sleep after 10 s without a command
+            # (its default auto-sleep mode) and then ignores everything but
+            # "activate": wake it and ask once more
+            self.port.exchange(frame(b"\xd4"), 1.0)
+            time.sleep(0.2)
+            rx = self.port.exchange(frame(payload), timeout)
+        if not self._valid(rx):
             raise FingerError("fingerprint sensor didn't answer")
         return rx
 
@@ -172,6 +183,10 @@ class SimulatedSensor:
         if csum != (data[6] + data[7] + data[8] + sum(payload)) & 0xFFFF:
             return self._ack(0x01)
         op = payload[0]
+        if getattr(self, "asleep", False):              # like the real one: only "activate" wakes it
+            if op != 0xD4:
+                return b""
+            self.asleep = False
         if op in (0x35, 0xD4, 0x3C):
             return self._ack(0)
         if op == 0x1D:
