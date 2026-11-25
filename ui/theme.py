@@ -325,8 +325,25 @@ def coin(img, xy, scale=2):
 # --------------------------------------------------------------------------
 # Backgrounds
 # --------------------------------------------------------------------------
+_SKY_CACHE: dict = {}
+
+
 def sky(img, d, top=12, stars=True, hills=True, seed=7):
-    """Banded night sky with checkerboard dithering between bands."""
+    """Banded night sky with checkerboard dithering between bands. Drawn
+    pixel by pixel once per look, then pasted: it was most of a menu
+    frame's cost, which made moving through menus lag on the device."""
+    key = (top, stars, hills, seed, tuple(map(tuple, SKY)), img.size, img.mode)
+    cached = _SKY_CACHE.get(key)
+    if cached is None:
+        cached = Image.new(img.mode, img.size, 0)
+        _sky(cached, top, stars, hills, seed)
+        if len(_SKY_CACHE) > 8:
+            _SKY_CACHE.clear()
+        _SKY_CACHE[key] = cached
+    img.paste(cached.crop((0, top, img.width, img.height)), (0, top))
+
+
+def _sky(img, top, stars, hills, seed):
     px = img.load()
     span = H - top
     n = len(SKY)

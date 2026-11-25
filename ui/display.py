@@ -74,6 +74,17 @@ def backlight_on(path: str = BACKLIGHT) -> bool:
         return False
 
 
+def _bl_dim(path: str = BACKLIGHT) -> int | None:
+    """Brightness to its lowest lit step; returns the level to go back to
+    (full if it was off), or None if the light can't be set from here."""
+    cur, mx = _bl_read("brightness", path), _bl_read("max_brightness", path)
+    if mx is None or cur is None:
+        return None
+    if not _bl_write(1, path):
+        return None
+    return cur if cur > 1 else mx
+
+
 def _bl_read(name: str, path: str = BACKLIGHT) -> int | None:
     try:
         with open(os.path.join(path, name)) as f:
@@ -228,10 +239,17 @@ class Display:
             # frame that was leftover memory, a white flicker down one side
             # between the M5 logo and the title. Black again after, in case
             # the mode set itself handed back fresh memory.
+            # The light down to its lowest step while the panel is set up, and
+            # back up only once the first real frame is on it: whatever the
+            # mode set flashes then happens in the dark. (Not 0: on the
+            # Cardputer Zero that hands the pin back to the I/O expander and
+            # the light stays on.)
+            self._light_after = _bl_dim()
             self.clear()
             wake_panel(self.fb)
             self.clear()
-            backlight_on()
+            if self._light_after is None:
+                backlight_on()
 
     def clear(self) -> None:
         """The whole framebuffer to black (its real size, not just 320x170)."""
@@ -244,6 +262,7 @@ class Display:
                 size = vw * vh * self.bpp // 8
             with open(self.fb, "wb") as f:
                 f.write(bytes(size))
+            self._last = None
         except OSError:
             pass
 
@@ -257,5 +276,11 @@ class Display:
             data = rgb565(img, swap=os.environ.get("CZ_FB_BGR") == "1")
         else:
             data = img.convert("RGBA").tobytes("raw", "BGRA")
+        if data == getattr(self, "_last", None):
+            return                       # the panel already shows it
+        self._last = data
         with open(self.fb, "wb") as f:
             f.write(data)
+        if getattr(self, "_light_after", None) is not None:
+            level, self._light_after = self._light_after, None
+            _bl_write(level)                 # the first frame is up: light on

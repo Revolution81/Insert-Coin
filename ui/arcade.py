@@ -251,9 +251,19 @@ class ArcadeScreen(Screen):
         self.ship_x = min(W - 17, max(4, self.ship_x + v * 130 * dt))
 
     def _move_shot(self, dt):
+        """In small steps: at the device's frame rate one frame moved the shot
+        13 px, more than an invader is tall, so it could pass straight
+        through one. Now every 2 px of the way is checked."""
         if self.shot is None:
             return
-        self.shot[1] -= 260 * dt
+        dist = 260 * dt
+        while dist > 0 and self.shot is not None:
+            step = min(2.0, dist)
+            dist -= step
+            self.shot[1] -= step
+            self._shot_hits()
+
+    def _shot_hits(self):
         x, y = self.shot
         if y < TOP:
             self.shot = None
@@ -263,7 +273,7 @@ class ArcadeScreen(Screen):
                 self.shot = None
                 return
         for inv in self.invaders:
-            if inv[3] and inv[0] <= x <= inv[0] + 11 and inv[1] <= y <= inv[1] + 7:
+            if inv[3] and inv[0] - 1 <= x <= inv[0] + 12 and inv[1] <= y <= inv[1] + 8:
                 inv[3] = False
                 self.score += _INV[inv[2]][0]
                 self.booms.append([inv[0], inv[1], self.clock() + 0.25, False])
@@ -311,17 +321,25 @@ class ArcadeScreen(Screen):
     def _bombs(self, dt, now):
         keep = []
         for b in self.bombs:
-            b[1] += (80 + 8 * min(self.wave, 6)) * dt
-            x, y = b
-            if y > GROUND:
-                continue
-            if any(s.hit(x, y, down=True) for s in self.shields):
-                continue
-            if now >= self.dead_until and self.ship_x <= x <= self.ship_x + 12 and GROUND - 8 <= y <= GROUND:
-                self._ship_hit(now)
-                continue
-            keep.append(b)
-        self.bombs = keep
+            dist = (80 + 8 * min(self.wave, 6)) * dt
+            gone = False
+            while dist > 0 and not gone:              # same small steps as the shot
+                step = min(2.0, dist)
+                dist -= step
+                b[1] += step
+                x, y = b
+                if y > GROUND or any(s.hit(x, y, down=True) for s in self.shields):
+                    gone = True
+                elif (now >= self.dead_until and self.ship_x - 1 <= x <= self.ship_x + 13
+                      and GROUND - 8 <= y <= GROUND):
+                    self._ship_hit(now)
+                    gone = True
+                if self.state != "play" or not self.bombs:
+                    gone = True
+            if not gone:
+                keep.append(b)
+        if self.state == "play" and self.bombs:
+            self.bombs = keep
 
     def _ship_hit(self, now):
         self.lives -= 1
@@ -370,7 +388,9 @@ class ArcadeScreen(Screen):
             d.point((x, int(y)), fill=c)
         sp = sprites()
         # HUD
-        t.text(d, (4, 2), f"SCORE {self.score:06d}", t.TINY, "white", shadow=False)
+        # the signer always paints the top-left 14x12 (its gold-shield corner,
+        # black when the app has the screen), so the HUD starts after it
+        t.text(d, (18, 2), f"SCORE {self.score:06d}", t.TINY, "white", shadow=False)
         t.text(d, (W // 2, 2), f"HI {self.hi:06d}", t.TINY, "gold", shadow=False, align="center")
         for i in range(max(0, self.lives if self.state == "play" else 0)):
             img.paste(sp.ship, (W - 16 - i * 16, 3), sp.ship)

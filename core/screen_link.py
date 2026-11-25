@@ -43,6 +43,11 @@ class ScreenServer:
         self._frame: bytes | None = None
         self.fresh = False
         self.secure = False
+        # written to when a frame comes in, so the display loop wakes for it
+        # at once instead of on its next keyboard timeout
+        self.wake_r, self._wake_w = os.pipe()
+        os.set_blocking(self.wake_r, False)
+        os.set_blocking(self._wake_w, False)
 
     def start(self):
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
@@ -86,6 +91,10 @@ class ScreenServer:
                     break
                 self._frame = data
                 self.fresh = True
+                try:
+                    os.write(self._wake_w, b"!")
+                except OSError:                 # pipe full: a wake-up is already waiting
+                    pass
         except OSError:
             pass
         finally:
@@ -96,6 +105,11 @@ class ScreenServer:
         return Image.frombytes("RGB", (W, H), data) if data else None
 
     def take_fresh(self) -> bool:
+        try:
+            while os.read(self.wake_r, 512):
+                pass
+        except OSError:
+            pass
         fresh, self.fresh = self.fresh, False
         return fresh
 
@@ -127,8 +141,14 @@ class ScreenClient:
         self.sock = sock
         self._buf = b""
 
+    _last: bytes | None = None
+
     def show(self, img: Image.Image):
-        self.sock.sendall(b"F" + img.convert("RGB").tobytes())
+        data = img.convert("RGB").tobytes()
+        if data == self._last:
+            return                              # same picture: nothing to send or redraw
+        self._last = data
+        self.sock.sendall(b"F" + data)
 
     def poll(self, timeout: float) -> list[tuple]:
         """[("key", name, value) | ("secure", bool)]"""

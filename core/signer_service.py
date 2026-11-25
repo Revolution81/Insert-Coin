@@ -162,11 +162,16 @@ def run_screen(console, allowed_uid: int | None = None):
     frame, last_blink = 0, time.monotonic()
     disp.show(console.compose(None, frame))
     while True:
-        keys = [(n, v) for n, v in kb.poll(0.03) if sleeper.keep(n, v)]
+        keys = [(n, v) for n, v in kb.poll(0.03, wake=(link.wake_r,)) if sleeper.keep(n, v)]
+        mine = False
         for name, value in keys:
-            if not console.feed(name, value):
+            if console.feed(name, value):
+                mine = True
+            else:
                 link.send_key(name, value)
-        changed = console.pump() or bool(keys) or link.take_fresh()
+        # a key that went to the app redraws when the app's new frame comes
+        # in (drawing the old one first only cost time on the slow panel)
+        changed = console.pump() or mine or (bool(keys) and console.active) or link.take_fresh()
         was_dark = dark
         dark = sleeper.tick()
         if dark:

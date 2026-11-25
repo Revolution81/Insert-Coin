@@ -6,6 +6,22 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Snappier menus** (0.8.39). Each key press used to cost two app frames
+  (press and release) and four panel writes (the signer redrew the old
+  frame on every key before the app's new one arrived, then waited up to
+  30 ms to notice it). Now: one frame per press, the signer redraws only
+  when the app's frame comes in and wakes for it at once, unchanged frames
+  aren't sent or written to the panel, and the night sky behind every
+  menu (most of a frame's drawing) is drawn once and reused: a menu frame
+  takes about a quarter of the time it did.
+- **Start-up flicker** (0.8.39): the backlight is dimmed to its lowest step
+  while the panel is set up and turned back up with the first real frame,
+  so what's left of the flash happens in the dark (0.8.36 made it shorter).
+- **COIN INVADERS** (0.8.39): shots and bombs are checked every 2 px of the
+  way, so at the device's frame rate a shot can't pass through an invader
+  between frames; the score moved right of the signer's corner, which it
+  always paints (black when the app has the screen, gold when the signer
+  does).
 - **Site and booklet** brought up to 0.8.38: the booklet's SETUP MAP is the
   new layout (★ marks the ADVANCED tools), SHIELDS has the game PIN, HOUSE
   RULES and POWER-UPS point to the new places; the site gains TRICK PINS,

@@ -882,7 +882,10 @@ def run(png: bool = False):
                 elif m[0] == "secure":
                     secure = m[1]
                     app.tr.reset()
-            changed = bool(app.safely(app.pump)) or bool(msgs)
+            # a key release redraws nothing (one frame per press, not two),
+            # except for the modifier badges and a game, which use releases
+            moved = [m for m in msgs if m[0] != "key" or m[2] != 0 or _release_matters(app, m[1])]
+            changed = bool(app.safely(app.pump)) or bool(moved)
             sleeper = getattr(screen, "sleeper", None)
             if sleeper is not None:
                 if getattr(screen, "_dark", False) and not sleeper.asleep:
@@ -901,6 +904,11 @@ def run(png: bool = False):
                 screen.show(img if img is not None else app.render(frame))
     finally:
         screen.close()
+
+
+def _release_matters(app, name: str) -> bool:
+    return (any(k in name for k in ("SHIFT", "CTRL", "ALT", "FN", "META"))
+            or bool(app.stack and hasattr(app.top, "raw_key")))
 
 
 if __name__ == "__main__":

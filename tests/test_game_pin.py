@@ -279,3 +279,30 @@ def test_it_draws_every_state():
         if state == "over":
             g._game_over(clk.t)
         assert g.render(app, 0).size == (320, 170)
+
+
+def test_a_fast_shot_cannot_pass_through_an_invader():
+    """At the device's ~12 frames a second a shot moves over 20 px a frame,
+    more than an invader's height: it must still hit."""
+    g, clk, _ = _game()
+    g.new_game()
+    for i in g.invaders:
+        i[3] = False
+    target = g.invaders[-1]
+    target[3] = True
+    target[0], target[1] = 100, 60
+    g.shields = []
+    g.shot = [106, 75]
+    g.last = clk.t
+    clk.t += 0.1                                  # one slow frame: 26 px
+    g.update(clk.t)
+    assert not target[3] and g.score > 0
+
+
+def test_hud_clears_the_signer_corner():
+    """The signer paints the top-left 14x12 over every frame."""
+    g, clk, _ = _game()
+    app = type("A", (), {"settings": type("S", (), {"sound": False})()})()
+    img = g.render(app, 0)
+    corner = img.crop((0, 0, 14, 12)).getcolors(1000)
+    assert len(corner) <= 2                       # just background (and stars): no HUD text

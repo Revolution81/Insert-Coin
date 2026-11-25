@@ -405,12 +405,13 @@ class KeyboardDevice:
         return pick_name(name)
 
 
-    def poll(self, timeout: float) -> list[tuple[str, int]]:
+    def poll(self, timeout: float, wake: tuple = ()) -> list[tuple[str, int]]:
         """Wait up to `timeout` seconds; return [(key_name, value), ...].
-        The timeout lets the UI keep blinking cursors while idle."""
+        The timeout lets the UI keep blinking cursors while idle. wake: other
+        file descriptors that end the wait early (a new frame to show)."""
         import select
-        ready, _, _ = select.select([self.dev.fd], [], [], timeout)
-        if not ready:
+        ready, _, _ = select.select([self.dev.fd, *wake], [], [], timeout)
+        if self.dev.fd not in ready:
             return []
         out = []
         try:
