@@ -83,15 +83,32 @@ class Fingerprint:
     def _valid(rx: bytes) -> bool:
         return len(rx) >= 12 and rx[:2] == b"\xef\x01" and rx[6] == 0x07
 
+    @staticmethod
+    def _log(payload: bytes, rx: bytes, t0: float) -> None:
+        """Command and reply bytes for the boot log (no secrets: the sensor
+        never sends templates or images here). Polling for a finger, which
+        runs many times a second, is only logged when it goes wrong."""
+        if payload[:1] in (b"\x01", b"\x29") and Fingerprint._valid(rx):
+            return
+        import sys
+        print(f"finger: {payload.hex()} -> {rx.hex() or 'nothing'} "
+              f"({(time.monotonic() - t0) * 1000:.0f} ms)", file=sys.stderr, flush=True)
+
     def _cmd(self, payload: bytes, timeout: float = 1.0) -> bytes:
+        t0 = time.monotonic()
         rx = self.port.exchange(frame(payload), timeout)
+        self._log(payload, rx, t0)
         if not self._valid(rx) and payload[:1] != b"\xd4":
             # Unit Fingerprint2 goes to sleep after 10 s without a command
             # (its default auto-sleep mode) and then ignores everything but
             # "activate": wake it and ask once more
-            self.port.exchange(frame(b"\xd4"), 1.0)
+            t0 = time.monotonic()
+            w = self.port.exchange(frame(b"\xd4"), 1.0)
+            self._log(b"\xd4", w, t0)
             time.sleep(0.2)
+            t0 = time.monotonic()
             rx = self.port.exchange(frame(payload), timeout)
+            self._log(payload, rx, t0)
         if not self._valid(rx):
             raise FingerError("fingerprint sensor didn't answer")
         return rx

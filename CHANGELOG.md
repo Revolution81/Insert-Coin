@@ -6,7 +6,12 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
-- **NFC Cap found on the device** (boot log: ST25R3916 rev 2, CC1101
+- **Fingerprint commands in the boot log**: each command, the sensor's
+  reply bytes and how long it took (finger polling only when it fails), to
+  find why DELETE ALL still doesn't clear on the device. No templates or
+  images are ever read, so nothing secret is logged.
+- **NFC Cap found on the device** (and still found after RESCAN in 0.8.33,
+  confirmed in its boot log) (boot log: ST25R3916 rev 2, CC1101
   version 0x14 put to sleep), which confirms the pin map. Fixed: the next
   scan (opening HARDWARE, RESCAN) lost it again ("GPIO22 in use"), because
   closing the reader didn't release the SPI bus and chip-select pin.
