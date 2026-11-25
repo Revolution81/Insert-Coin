@@ -18,8 +18,13 @@ first (Adafruit 4314 breakout + MCP1700 + two 1 µF capacitors), then order.
   battery gauge (0x55), audio codec (0x10), IO expander (0x4F) and RTC.
 
 From M5Stack's schematic (V0.6.1): 5V OUT goes through a load switch
-enabled by the IO expander's **HAT_EN** line, so it may be off until
-software turns it on. Check with a meter on the breadboard first.
+enabled by the IO expander's **HAT_EN** line. M5Stack's system keeps it off
+(the "LED" `ext_5v_out`, default off); Insert Coin 0.8.31 and later switch
+it on at start and on RESCAN (confirmed on the device with the NFC Cap).
+Check with a meter on the breadboard first anyway.
+
+The NFC Cap uses the same EXT header, so it's one or the other: take the
+Cap off (device powered off) for this board.
 
 ## Building it
 
