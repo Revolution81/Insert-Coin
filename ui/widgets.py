@@ -472,12 +472,13 @@ class PinScreen(TextInputScreen):
         t.text(d, (W // 2, 36), self.prompt, BIG if len(self.prompt) <= 12 else BODY,
                "white", align="center")
         if self.working:
-            # checking in place, no window popping up over the PIN: the gems
-            # fill in turn and the prompt says what's happening
+            # checking in place, no window popping up over the PIN
             slots = 6
             gx = W // 2 - (slots * 20 - 4) // 2
-            lit = int(time.monotonic() * 8) % (slots + 1)
-            t.gems(img, (gx, 60), slots, lit)
+            # one gem sliding back and forth: plainly "busy", never a count
+            # (filling them in turn read like a number on the device)
+            pos = int(time.monotonic() * 10) % (2 * slots - 2)
+            t.gems(img, (gx, 60), slots, 0, only=pos if pos < slots else 2 * slots - 2 - pos)
             t.text(d, (W // 2, 110), self.working, TINY, "gold", align="center")
             return img
         n = len(self.buf.text)

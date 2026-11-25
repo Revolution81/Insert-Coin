@@ -642,12 +642,14 @@ def hearts(img, xy, total, left):
         sprite(img, HEART, (x + i * 9, y), colors)
 
 
-def gems(img, xy, total, filled, scale=2, gap=4):
+def gems(img, xy, total, filled, scale=2, gap=4, only=None):
+    """filled: the first n lit. only: just that one lit (a busy sweep)."""
     x, y = xy
     empty = {"w": PAL["grey"], "c": PAL["dim"], "d": PAL["bar_bg"]}
     step = 8 * scale + gap
     for i in range(total):
-        sprite(img, GEM, (x + i * step, y), None if i < filled else empty, scale=scale)
+        lit = (i == only) if only is not None else i < filled
+        sprite(img, GEM, (x + i * step, y), None if lit else empty, scale=scale)
 
 
 def qr(img, data, xy, module=3, border=2):

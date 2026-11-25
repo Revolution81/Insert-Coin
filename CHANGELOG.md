@@ -6,6 +6,10 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Unlocking** (0.8.40): while the PIN is checked, one gem slides back and
+  forth instead of the row filling up, which on the device read like a
+  count (2 lit one time, 3 the next) though it only showed how far the
+  animation had got.
 - **Snappier menus** (0.8.39). Each key press used to cost two app frames
   (press and release) and four panel writes (the signer redrew the old
   frame on every key before the app's new one arrived, then waited up to
