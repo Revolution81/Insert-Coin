@@ -6,6 +6,10 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **NFC Cap found on the device** (boot log: ST25R3916 rev 2, CC1101
+  version 0x14 put to sleep), which confirms the pin map. Fixed: the next
+  scan (opening HARDWARE, RESCAN) lost it again ("GPIO22 in use"), because
+  closing the reader didn't release the SPI bus and chip-select pin.
 - **Fingerprint sensor asleep.** Unit Fingerprint2 sleeps after 10 s
   without a command (its default) and then ignores everything but
   "activate", so DELETE ALL did nothing when chosen after a pause. Every
@@ -37,7 +41,7 @@ Not in an image or update yet; the next release carries all of it.
   launcher used to switch on; the wallet image turns that launcher off, so
   the fingerprint sensor and the NFC Cap stayed unpowered. The app now has
   the root helper switch both on at start (cz-backup addons).
-- **NFC Cap pins (not yet confirmed on the device).** The Cap's pins are now matched to the
+- **NFC Cap pins** (confirmed on the device in 0.8.31's boot log). The Cap's pins are now matched to the
   Zero's EXT header: its power switch (GPIO26) is switched on, the NFC chip
   is selected on GPIO22 instead of the screen's CE0, and the CC1101's GDO0,
   wired to the Grove port's UART TX, is tri-stated so it can't jam the

@@ -454,6 +454,13 @@ class ST25R3916:
             self.field_off()
         except Exception:  # noqa: BLE001
             pass
+        # hand back the bus and the chip-select pin: a RESCAN opens them
+        # again (left open, the next probe got "GPIO22 in use" and the
+        # CC1101 read 0xFF because spidev0.1 was still in no_cs mode)
+        try:
+            self.spi.close()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 # ---------------------------------------------------------------- ISO-DEP

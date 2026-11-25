@@ -80,3 +80,13 @@ def test_cc1101_gdo0_tristated():
     spi = types.SimpleNamespace(xfer=lambda d: sent.append(list(d)) or [0x0F, 0x14])
     nfc.CC1101(spi).sleep()
     assert [0x02, 0x2E] in sent and sent.index([0x02, 0x2E]) < sent.index([0x39])
+
+
+def test_rescan_gets_the_pins_back(fakes):
+    closed = []
+    spi = nfc._cap_nfc_spi()
+    spi.cs.close = lambda: closed.append("cs")
+    chip = nfc.ST25R3916(spi)
+    chip.field_off = lambda: None
+    chip.close()
+    assert closed == ["cs"] and spi.s.no_cs is False
