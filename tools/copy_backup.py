@@ -267,13 +267,16 @@ def addons() -> int:
     """5 V on for the Grove port and the EXT header (tools/addon_power.py)."""
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
     import addon_power
+    import hwdiag
+    results = addon_power.request_each()
+    for line in results:
+        print(f"add-on power: {line}")
     try:
-        r = addon_power.request()
-    except OSError as e:
-        print(f"add-on power: {e}", file=sys.stderr)
-        return 1
-    print(f"add-on power on ({r['chip']} lines {r['lines']})")
-    return 0
+        for line in hwdiag.report():                   # read-only, for the boot log
+            print(line)
+    except Exception as e:  # noqa: BLE001
+        print(f"hwdiag: {e}")
+    return 0 if all(r.endswith(": on") for r in results) else 1
 
 
 def main(argv) -> int:

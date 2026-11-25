@@ -159,7 +159,8 @@ class App:
                 return
             r = subprocess.run(["sudo", "-n", helper, "addons"], stdin=subprocess.DEVNULL,
                                capture_output=True, text=True, timeout=20)
-            print((r.stdout or r.stderr).strip()[:120], file=sys.stderr, flush=True)
+            for line in (r.stdout + r.stderr).strip().splitlines()[:80]:
+                print(line[:400], file=sys.stderr, flush=True)
             if r.returncode == 0:
                 App._addons_on = True
                 time.sleep(0.6)
@@ -181,6 +182,8 @@ class App:
             except Exception:  # noqa: BLE001
                 pass
         self.nfc, self.hw["nfc"] = open_reader()     # also puts the CC1101 to sleep
+        for k in ("chip", "finger", "nfc"):             # for the boot log
+            print(f"hardware: {k}: {self.hw.get(k)}"[:400], file=sys.stderr, flush=True)
         return self.hw
 
     def start(self, title: bool = False):

@@ -6,12 +6,18 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
-- **Fixed: add-ons got no power.** The Grove port's and the EXT header's
+- **Add-on diagnostics in the boot log.** The 5 V outputs are switched one
+  at a time (0.8.29 asked for both at once and the kernel refused with
+  EBUSY, so neither came on), and a read-only report (tools/hwdiag.py)
+  records who holds each GPIO line, the pin functions, the M5IOE1's GPIO
+  registers, the boot config and the serial/SPI devices. The fingerprint
+  screen tells "nothing received" from "received, garbled".
+- **Add-ons got no power (not yet confirmed fixed).** The Grove port's and the EXT header's
   5 V are switched by the M5IOE1 chip (lines 3 and 12), which M5Stack's
   launcher used to switch on; the wallet image turns that launcher off, so
   the fingerprint sensor and the NFC Cap stayed unpowered. The app now has
   the root helper switch both on at start (cz-backup addons).
-- **Fixed: NFC Cap not detected.** The Cap's pins are now matched to the
+- **NFC Cap pins (not yet confirmed on the device).** The Cap's pins are now matched to the
   Zero's EXT header: its power switch (GPIO26) is switched on, the NFC chip
   is selected on GPIO22 instead of the screen's CE0, and the CC1101's GDO0,
   wired to the Grove port's UART TX, is tri-stated so it can't jam the

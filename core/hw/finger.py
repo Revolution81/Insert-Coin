@@ -43,6 +43,7 @@ class SerialPort:
         attrs[2] |= termios.CLOCAL | termios.CREAD
         termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
         self._termios = termios
+        self.heard = 0                                  # bytes received, for the HARDWARE screen
 
     def exchange(self, data: bytes, timeout: float = 1.0) -> bytes:
         self._termios.tcflush(self.fd, self._termios.TCIFLUSH)
@@ -56,8 +57,10 @@ class SerialPort:
             if len(buf) >= 9:
                 need = 9 + int.from_bytes(buf[7:9], "big")
                 if len(buf) >= need:
+                    self.heard += len(buf)
                     return buf[:need]
             time.sleep(0.005)
+        self.heard += len(buf)
         return buf
 
     def close(self):
@@ -221,7 +224,8 @@ def open_sensor() -> tuple[Fingerprint | None, dict]:
             f.wake()
             if f.connected():
                 return f, {"state": "ready", "saved": f.count(), "port": path}
-            errors.append(f"{name}: no answer")
+            heard = getattr(f.port, "heard", 0)
+            errors.append(f"{name}: no answer" if not heard else f"{name}: {heard} bytes, garbled")
         except (OSError, FingerError) as e:
             errors.append(f"{name}: {e}"[:40])
         f.port.close()

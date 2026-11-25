@@ -83,6 +83,20 @@ def find_chip() -> str | None:
     return None
 
 
+def request_each() -> list[str]:
+    """Each line on its own, so one the kernel holds (EBUSY) doesn't stop
+    the other. Returns a result line per output."""
+    names = {GROVE_5V: "Grove 5V", EXT_5V: "EXT 5V"}
+    out = []
+    for n in LINES:
+        try:
+            request((n,))
+            out.append(f"{names[n]} (m5ioe1 line {n}): on")
+        except OSError as e:
+            out.append(f"{names[n]} (m5ioe1 line {n}): {e}")
+    return out
+
+
 def request(lines=LINES) -> dict:
     """Both 5 V outputs on. Returns {"chip", "lines"} for a log line."""
     assert all(n in LINES for n in lines)              # never anything else
