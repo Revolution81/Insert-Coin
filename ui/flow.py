@@ -1307,17 +1307,19 @@ def sound_label(settings) -> str:
 
 
 SETUP_GROUPS = [
-    ("SECURITY", ["PINS", "AUTO LOCK", "SPENDING POLICY", "CO-SIGN", "ONLINE CAP",
-                  "HARDWARE", "LOCK NOW"]),
+    ("SECURITY", ["PINS", "LIMITS", "AUTO LOCK", "LOCK NOW"]),
     ("BACKUP", ["SHOW SEED WORDS", "SEEDQR BACKUP", "SPLIT BACKUP", "CARD BACKUP"]),
     ("NETWORK", ["WI-FI", "LAN", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "SAVE TO USB STICK", "EXPORT HISTORY", "EXPORT LABELS",
                "EXPORT WATCH-ONLY"]),
     ("TOOLS", ["NOTES & PASSWORDS", "ADDRESS EXPLORER", "PAPER WALLETS", "CHILD SEEDS",
-               "TEMPORARY SEED", "KEY TELEPORT", "WALLETS"]),
-    ("DISPLAY & SOUND", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT"]),
+               "TEMPORARY SEED", "KEY TELEPORT"]),
+    ("DEVICE", ["APPEARANCE", "SCREEN SLEEP", "SOUND", "QR FORMAT", "HARDWARE", "ADVANCED"]),
 ]
-SETUP_DIRECT = ["ADVANCED", "UPDATE", "ABOUT", "WIPE DEVICE"]   # WIPE last, away from everything else
+SETUP_DIRECT = ["WALLETS", "UPDATE", "ABOUT", "WIPE DEVICE"]   # WIPE last, away from everything else
+# The order on the SETUP screen: groups and single items together
+SETUP_TOP = ["SECURITY", "WALLETS", "BACKUP", "NETWORK", "FILES", "TOOLS", "DEVICE",
+             "UPDATE", "ABOUT", "WIPE DEVICE"]
 
 # Power-user tools, shown only with SETUP › ADVANCED on (off by default) so
 # the everyday menus stay short. One that's in use (a temporary seed loaded,
@@ -1338,7 +1340,11 @@ def _sec():
 
 # Menus inside a group: SECURITY › PINS keeps every PIN together (the brick
 # PIN for the blank secure chip goes here too).
-SETUP_SUBGROUPS = {"PINS": ["CHANGE PIN", "DURESS PIN", "WIPE PIN", "LOGIN COUNTDOWN"]}
+SETUP_SUBGROUPS = {
+    "PINS": ["CHANGE PIN", "DURESS PIN", "WIPE PIN", "GAME PIN", "LOGIN COUNTDOWN"],
+    # everything that limits what can leave, and when
+    "LIMITS": ["ONLINE CAP", "SPENDING POLICY", "CO-SIGN"],
+}
 
 
 def setup_subgroup_of(label: str) -> str | None:
@@ -1492,6 +1498,10 @@ def settings_screen(app, at: str | None = None):
             ("DURESS PIN", ask("duress_prompt", back_to("DURESS PIN")),
              "ON" if st.get("duress") else "OFF", "gold" if st.get("duress") else "grey"),
             ("CHANGE PIN", ask("change_pin_prompt")),
+            ("GAME PIN", lambda app: _sec().game_pin_menu(app),
+             {"game": "GAME", "game+wipe": "GAME+WIPE"}.get(st.get("game_pin"), "OFF"),
+             "red" if st.get("game_pin") == "game+wipe" else "gold" if st.get("game_pin") else "grey"),
+            ("LIMITS", lambda app: open_group("LIMITS", SETUP_SUBGROUPS["LIMITS"])),
             ("PINS", lambda app: open_group("PINS", SETUP_SUBGROUPS["PINS"])),
             ("HARDWARE", hardware_menu),
             ("UPDATE", update_screen, VERSION, "grey"),
@@ -1538,6 +1548,9 @@ def settings_screen(app, at: str | None = None):
         return on
 
     def visible(labels):
+        # LOCK NOW differs from the L key only with fingerprint quick unlock
+        # on (L then locks just the screen; LOCK NOW makes the signer forget)
+        labels = [lb for lb in labels if lb != "LOCK NOW" or app.settings.finger_unlock]
         if advanced(app):
             return list(labels)
         on = in_use()
@@ -1555,12 +1568,12 @@ def settings_screen(app, at: str | None = None):
 
     def items():
         every = all_items()
-        top = [(name, (lambda n, ls: lambda app: open_group(n, ls))(name, labels), "", "light")
-               for name, labels in SETUP_GROUPS]
-        direct = list(SETUP_DIRECT)
+        groups = dict(SETUP_GROUPS)
+        order = list(SETUP_TOP)
         if APP_MODE:
-            direct.insert(direct.index("WIPE DEVICE"), "EXIT TO MENU")
-        return top + [every[label] for label in direct]
+            order.insert(order.index("WIPE DEVICE"), "EXIT TO MENU")
+        return [(name, (lambda n, ls: lambda app: open_group(n, ls))(name, groups[name]), "", "light")
+                if name in groups else every[name] for name in order]
 
     menu = MenuScreen("SETUP", items)
     group = setup_group_of(at) if at else None

@@ -41,7 +41,7 @@ PROMPTS = {"unlock_prompt", "create_prompt", "restore_prompt", "import_prompt",
            "seed_xor_prompt", "temp_seed_prompt", "kt_receive_prompt", "kt_send_prompt",
     "kt_incoming_prompt", "kt_psbt_prompt", "cosign_prompt",
            "verify_backup_prompt",
-           "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "countdown_prompt",
+           "paper_prompt", "auto_lock_prompt", "wipe_pin_prompt", "game_pin_prompt", "countdown_prompt",
            "policy_prompt", "bypass_prompt", "totp_prompt"}
 
 
@@ -207,6 +207,9 @@ class TrustedSigner:
 
     def wipe_pin_prompt(self, action: str):
         return self._ask("wipe_pin", action=action)
+
+    def game_pin_prompt(self, action: str, mode: str = "game"):
+        return self._ask("game_pin", action=action, mode=mode)
 
     def countdown_prompt(self, seconds: int):
         return self._ask("countdown", seconds=seconds)

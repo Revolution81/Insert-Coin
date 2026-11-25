@@ -6,6 +6,19 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Menus regrouped** (0.8.38): SETUP is now SECURITY, WALLETS, BACKUP,
+  NETWORK, FILES, TOOLS, DEVICE, UPDATE, ABOUT, WIPE DEVICE. SECURITY holds
+  PINS, LIMITS (ONLINE CAP, SPENDING POLICY, CO-SIGN) and AUTO LOCK; LOCK NOW
+  shows only with fingerprint quick unlock on (otherwise L does the same).
+  WALLETS left TOOLS for the top level. DISPLAY & SOUND became DEVICE, with
+  HARDWARE and ADVANCED. A switch that shows or hides rows keeps the cursor
+  on itself.
+- **GAME PIN** (0.8.38, SECURITY › PINS): at unlock it opens COIN INVADERS
+  instead of the wallet. GAME ONLY leaves the wallet locked underneath; GAME
+  + WIPE erases everything first, so afterwards the device starts like new.
+  One stage that repeats a little faster each wave: five rows of invaders,
+  shields, a bonus saucer, three lives, score and a saved high score. Z / C
+  move, OK fires, hold HOME 1.5 s to leave. See SECURITY.md for how it hides.
 - **SECURITY › PINS** (0.8.37): CHANGE PIN, DURESS PIN, WIPE PIN and LOGIN
   COUNTDOWN in their own menu (the blank chip's brick PIN will join them);
   SECURITY keeps AUTO LOCK, SPENDING POLICY, CO-SIGN, ONLINE CAP, HARDWARE

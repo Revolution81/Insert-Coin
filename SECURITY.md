@@ -374,6 +374,21 @@ stay). Wrong, right, duress and wipe PINs all cost exactly one Argon2 run, and
 the file's shape doesn't change, so neither timing nor the file reveals one.
 The wipe, duress, bypass and main PINs must all differ.
 
+**Game PIN (0.8.38).** A second header tag, "g", built the same way:
+HMAC(Argon2 key of the game PIN, "game" or "game+wipe"), random bytes when
+none is set, so neither the file nor the timing (one Argon2 run; both tags
+always computed) shows whether one exists or which mode it has. It only acts
+on the unlock screen (`Vault.unlock(login=True)`); at any other PIN prompt
+it's a wrong PIN. On the unlock screen it counts as neither right nor wrong
+(the try counter goes back to where it was), so it can't be used to reset
+the counter between guesses, and playing the game often can't wipe the
+wallet. GAME ONLY: the signer stays locked; the game runs in the app, which
+never holds keys. GAME + WIPE: the signer erases its folder (as the wipe PIN
+does) and the app clears its data before the game's first frame. The game
+PIN must differ from every other PIN. Honest limit: Insert Coin is open
+source, so the disguise works on someone who doesn't know the project, not
+on someone who does; the duress PIN is the answer for them.
+
 **Login countdown.** After a correct PIN the signer keeps the opened vault in
 a pending login and opens the wallet only when its boot clock has run the
 full time (a reboot starts over; the wall clock plays no part). finish_login

@@ -33,7 +33,7 @@ from . import seed as seedlib
 from . import multisig as ms
 from .config import NETWORKS
 from . import policy as spolicy
-from .vault import Vault, VaultError, Wiped, WipePinUsed, _atomic_write
+from .vault import GamePinUsed, Vault, VaultError, Wiped, WipePinUsed, _atomic_write
 
 H = 0x80000000
 WARN_FEE_RATE = 200
@@ -128,6 +128,7 @@ class Signer:
         self._duress = False
         self._registry: list[ms.Policy] = []
         self._wipe_set = False
+        self._game: str | None = None           # the game PIN's mode, if one is set
         self._login: dict | None = None         # a login waiting out its countdown
         self._main: bip32.HDKey | None = None   # the main seed's key while a temporary one is in use
         self._temp: dict | None = None          # {"secret", "passphrase", "label"} of that one
@@ -144,6 +145,7 @@ class Signer:
         if st["unlocked"]:
             st["duress"] = self._duress
             st["wipe_pin"] = self._wipe_set
+            st["game_pin"] = self._game
             if self._temp is not None:
                 st["temporary"] = {"label": self._temp["label"],
                                    "fingerprint": seedlib.fingerprint(self._root)}
@@ -179,9 +181,13 @@ class Signer:
         yet: {"countdown": seconds} comes back, and only finish_login (called
         on the signer's own screen once the time is up) opens it."""
         try:
-            u = self.vault.unlock(pin)
+            u = self.vault.unlock(pin, login=True)
         except WipePinUsed:
             self.wipe_all()
+            raise
+        except GamePinUsed as g:
+            if g.wiped:
+                self.wipe_all()              # game+wipe: everything goes, then the game
             raise
         except Wiped:
             self.wipe_all()                  # too many wrong PINs: everything goes
@@ -224,6 +230,7 @@ class Signer:
         self._network = network
         self._duress = u.duress_set
         self._wipe_set = u.wipe_set
+        self._game = u.game
         self._load_registry()
         self._load_rules()
         self._touch()
@@ -236,6 +243,7 @@ class Signer:
         self._temp = None
         self._duress = False
         self._wipe_set = False
+        self._game = None
         self._registry = []
         self._rules = {}
         self._pending.clear()
@@ -327,6 +335,20 @@ class Signer:
     def clear_wipe_pin(self, pin: str) -> None:
         self.vault.clear_wipe_pin(pin)
         self._wipe_set = False
+
+    # ------------------------------------------------------------ game PIN
+    def set_game_pin(self, pin: str, game_pin: str, mode: str) -> None:
+        """At unlock, game_pin opens the arcade game instead of the wallet
+        (mode "game"), or erases everything first ("game+wipe")."""
+        if self._is_bypass(game_pin):
+            raise SignerError("that PIN is in use")
+        self.vault.set_game_pin(pin, game_pin, mode)
+        if self._root is not None:
+            self._game = mode
+
+    def clear_game_pin(self, pin: str) -> None:
+        self.vault.clear_game_pin(pin)
+        self._game = None
 
     # ----------------------------------------------------- login countdown
     def countdown_s(self) -> int:

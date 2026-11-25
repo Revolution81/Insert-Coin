@@ -159,7 +159,37 @@ _ui_ok = _ui_move                   # the same single boop for everything
 _ui_back = _ui_move
 
 
+def _sweep(f0: float, f1: float, length: float, noise: float = 0.0) -> list[float]:
+    """A short square-ish sweep from f0 to f1 Hz, with some noise mixed in
+    (explosions). For COIN INVADERS (ui/arcade.py); all above ~500 Hz so the
+    little speaker plays them."""
+    rnd = random.Random(int(f0 + f1))
+    out, ph = [], 0.0
+    n = int(length * RATE)
+    for i in range(n):
+        tt = i / n
+        f = f0 + (f1 - f0) * tt
+        ph += TWO_PI * f / RATE
+        tone = 1.0 if math.sin(ph) >= 0 else -1.0
+        env = min(1.0, i / (0.002 * RATE)) * (1 - tt) ** 1.5
+        out.append(env * ((1 - noise) * tone * 0.6 + noise * (rnd.random() * 2 - 1)))
+    return _fade(out, 0.004)
+
+
+def _game_shot() -> list[float]:
+    return _sweep(1800.0, 900.0, 0.06)
+
+
+def _game_boom() -> list[float]:
+    return _sweep(900.0, 500.0, 0.12, noise=0.7)
+
+
+def _game_hit() -> list[float]:
+    return _sweep(1200.0, 520.0, 0.45, noise=0.5)
+
+
 UI_SOUNDS = {"ui_move": _ui_move, "ui_ok": _ui_ok, "ui_back": _ui_back}
+GAME_SOUNDS = {"game_shot": _game_shot, "game_boom": _game_boom, "game_hit": _game_hit}
 UI_LEVEL = 0.55                 # the boop sits under the fanfare
 _last_ui = 0.0
 
@@ -205,18 +235,18 @@ def _gain(direct: bool) -> float:
 def wav(name: str, direct: bool = False) -> bytes:
     """The sound as a WAV. direct: for playing straight to the codec (longer
     lead-in, quieter); otherwise a sound server sets the volume."""
-    if name not in SOUNDS and name not in UI_SOUNDS:
+    if name not in SOUNDS and name not in UI_SOUNDS and name not in GAME_SOUNDS:
         name = DEFAULT
     gain = _gain(direct)
     key = f"{name}:{'direct' if direct else 'server'}:{gain:.2f}"
     if key not in _cache:
-        samples = (UI_SOUNDS.get(name) or SOUNDS[name])()
+        samples = (UI_SOUNDS.get(name) or GAME_SOUNDS.get(name) or SOUNDS[name])()
         lead = 0.0 if direct else LEAD_IN       # direct: the stream warms up instead
         if name in SOUNDS and lead > 0:
             samples = _blank(lead) + samples
         peak = max(1e-9, max(abs(s) for s in samples))
         k = 0.89 / peak
-        if name in UI_SOUNDS:
+        if name in UI_SOUNDS or name in GAME_SOUNDS:
             k = UI_LEVEL / peak
         k *= gain
         buf = io.BytesIO()
@@ -393,7 +423,7 @@ def _pcm(data: bytes) -> bytes:
 def play(name: str, enabled: bool = True) -> None:
     if not enabled or os.environ.get("CZ_SOUND") == "0":
         return
-    if name not in SOUNDS and name not in UI_SOUNDS:
+    if name not in SOUNDS and name not in UI_SOUNDS and name not in GAME_SOUNDS:
         name = DEFAULT
     try:
         direct = _direct()

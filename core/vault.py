@@ -12,6 +12,12 @@ PIN exists. Unlocking runs Argon2 once and tries the key on both slots.
 
 A duress unlock can also silently overwrite the real slot ("erase real").
 
+Game PIN: the same idea with a second tag, "g": HMAC(Argon2 key of the game
+PIN, "game" or "game+wipe"), random bytes when none is set. A match opens
+the arcade game instead of the wallet (and, in game+wipe mode, erases the
+vault first). It counts as neither a right nor a wrong PIN: the try counter
+goes back to where it was.
+
 Wipe PIN: the header always carries a 32-byte tag "w". With a wipe PIN set
 it's HMAC(Argon2 key of the wipe PIN); without one it's random bytes, so the
 file never reveals whether a wipe PIN exists. Unlocking computes Argon2 once
@@ -63,6 +69,18 @@ class WipePinUsed(Wiped):
     """The wipe PIN was entered: the vault is gone, start fresh."""
 
 
+class GamePinUsed(VaultError):
+    """The game PIN was entered: show the arcade game. wiped: the vault was
+    erased first (game+wipe mode)."""
+
+    def __init__(self, wiped: bool):
+        super().__init__("game")
+        self.wiped = wiped
+
+
+GAME_MODES = ("game", "game+wipe")
+
+
 def _b64(b: bytes) -> str:
     return base64.b64encode(b).decode()
 
@@ -107,6 +125,7 @@ class Unlocked:
         self.decoy = payload.get("kind") == "decoy"
         self.duress_set = bool(payload.get("duress"))
         self.wipe_set = bool(payload.get("wipe"))
+        self.game = payload.get("game") if payload.get("game") in GAME_MODES else None
         self.slot = slot
 
     def __iter__(self):                              # (mnemonic, passphrase), as before
@@ -203,6 +222,24 @@ class Vault:
         import hmac
         return hmac.new(key, b"insert-coin-wipe-pin-v1", hashlib.sha256).digest()
 
+    @staticmethod
+    def _game_tag(key: bytes, mode: str) -> bytes:
+        import hashlib
+        import hmac
+        return hmac.new(key, b"insert-coin-game-pin-v1:" + mode.encode(), hashlib.sha256).digest()
+
+    def _game_mode(self, key: bytes, body: dict) -> str | None:
+        """'game', 'game+wipe' or None. Both tags are always computed, so the
+        time doesn't tell which (or whether one is set)."""
+        import hmac
+        g = body.get("g")
+        found = None
+        tag = _unb64(g) if g else secrets.token_bytes(32)
+        for mode in GAME_MODES:
+            if hmac.compare_digest(self._game_tag(key, mode), tag) and found is None:
+                found = mode
+        return found if g else None
+
     def _is_wipe(self, key: bytes, body: dict) -> bool:
         import hmac
         w = body.get("w")
@@ -227,7 +264,8 @@ class Vault:
                 "kdf": {"alg": "argon2id", "t": ARGON_T, "m": ARGON_M, "p": ARGON_P,
                         "salt": _b64(secrets.token_bytes(16))},
                 "slots": [_random_slot(), _random_slot()],
-                "w": _b64(secrets.token_bytes(32))}  # wipe PIN tag: noise until one is set
+                "w": _b64(secrets.token_bytes(32)),  # wipe PIN tag: noise until one is set
+                "g": _b64(secrets.token_bytes(32))}  # game PIN tag: the same
         slot = secrets.randbelow(2)                   # real seed's slot is random
         key = self._key(pin, body)
         body["slots"][slot] = self._seal(key, body, slot,
@@ -236,7 +274,9 @@ class Vault:
         self._set_tries(0)
 
     # ----------------------------------------------------------- unlock
-    def unlock(self, pin: str) -> Unlocked:
+    def unlock(self, pin: str, login: bool = False) -> Unlocked:
+        """login: the unlock screen itself. Only there does the game PIN open
+        the game; at any other PIN prompt it's just a wrong PIN."""
         if not self.exists():
             raise Wiped("no seed on this device")
         body = self._read()
@@ -252,6 +292,13 @@ class Vault:
         if hit is None and self._is_wipe(key, body):
             self.wipe()
             raise WipePinUsed("wiped")
+        game = self._game_mode(key, body) if hit is None else None
+        if game and login:
+            if game == "game+wipe":
+                self.wipe()
+            else:
+                self._set_tries(failed)        # neither right nor wrong: as it was
+            raise GamePinUsed(wiped=game == "game+wipe")
         if hit is None:
             left = body["max_tries"] - (failed + 1)
             if left <= 0:
@@ -285,7 +332,7 @@ class Vault:
             return
         other = 1 - u.slot
         dkey = self._key(duress_pin, body)
-        if self._is_wipe(dkey, body):
+        if self._is_wipe(dkey, body) or self._game_mode(dkey, body):
             raise VaultError("that PIN is in use")
         body["slots"][other] = self._seal(dkey, body, other, {
             "m": decoy_mnemonic, "pp": "", "kind": "decoy", "erase_real": erase_real})
@@ -293,15 +340,22 @@ class Vault:
         real = {"m": u.mnemonic, "pp": u.passphrase, "kind": "real", "duress": True}
         if u.wipe_set:
             real["wipe"] = True
+        if u.game:
+            real["game"] = u.game
         body["slots"][u.slot] = self._seal(key, body, u.slot, real)
         _atomic_write(self.path, json.dumps(body).encode())
 
-    def _reseal(self, pin, body, u, duress, wipe=None):
+    def _reseal(self, pin, body, u, duress, wipe=None, game=False):
+        """game: False keeps what was there, None clears it, or a mode."""
         payload = {"m": u.mnemonic, "pp": u.passphrase, "kind": "decoy" if u.decoy else "real"}
         if duress:
             payload["duress"] = True
         if u.wipe_set if wipe is None else wipe:
             payload["wipe"] = True
+        mode = u.game if game is False else game
+        if mode:
+            payload["game"] = mode
+        body.setdefault("g", _b64(secrets.token_bytes(32)))   # older files: same shape as new
         body["slots"][u.slot] = self._seal(self._key(pin, body), body, u.slot, payload)
         _atomic_write(self.path, json.dumps(body).encode())
 
@@ -322,7 +376,7 @@ class Vault:
         u = self.unlock(pin)
         body = self._read()
         wkey = self._key(wipe_pin, body)
-        if self._try_key(wkey, body) is not None:
+        if self._try_key(wkey, body) is not None or self._game_mode(wkey, body):
             raise VaultError("that PIN is in use")
         body["w"] = _b64(self._wipe_tag(wkey))
         self._reseal(pin, body, u, duress=u.duress_set, wipe=True)
@@ -334,11 +388,34 @@ class Vault:
         self._reseal(pin, body, u, duress=u.duress_set, wipe=False)
 
     def pin_in_use(self, candidate: str) -> bool:
-        """Whether a PIN opens a slot or is the wipe PIN. Doesn't count a try
-        (only the signer calls it, for a PIN you're choosing, after your PIN)."""
+        """Whether a PIN opens a slot or is the wipe or game PIN. Doesn't count
+        a try (only the signer calls it, for a PIN you're choosing, after your PIN)."""
         body = self._read()
         key = self._key(candidate, body)
-        return self._try_key(key, body) is not None or self._is_wipe(key, body)
+        return (self._try_key(key, body) is not None or self._is_wipe(key, body)
+                or bool(self._game_mode(key, body)))
+
+    # ---------------------------------------------------------- game PIN
+    def set_game_pin(self, pin: str, game_pin: str, mode: str) -> None:
+        """A PIN that opens the arcade game instead of the wallet; in
+        game+wipe mode it erases the vault first."""
+        if mode not in GAME_MODES:
+            raise VaultError("unknown game PIN mode")
+        if len(game_pin) < 4 or game_pin == pin:
+            raise VaultError("game PIN must differ from your PIN (4+ characters)")
+        u = self.unlock(pin)
+        body = self._read()
+        gkey = self._key(game_pin, body)
+        if self._try_key(gkey, body) is not None or self._is_wipe(gkey, body):
+            raise VaultError("that PIN is in use")
+        body["g"] = _b64(self._game_tag(gkey, mode))
+        self._reseal(pin, body, u, duress=u.duress_set, game=mode)
+
+    def clear_game_pin(self, pin: str) -> None:
+        u = self.unlock(pin)
+        body = self._read()
+        body["g"] = _b64(secrets.token_bytes(32))
+        self._reseal(pin, body, u, duress=u.duress_set, game=None)
 
     # -------------------------------------------------------- change pin
     def change_pin(self, old_pin: str, new_pin: str) -> None:
@@ -347,7 +424,8 @@ class Vault:
         u = self.unlock(old_pin)
         body = self._read()
         key = self._key(new_pin, body)
-        if self._open(key, body, 1 - u.slot) is not None or self._is_wipe(key, body):
+        if self._open(key, body, 1 - u.slot) is not None or self._is_wipe(key, body) \
+                or self._game_mode(key, body):
             raise VaultError("that PIN is already in use")
         payload = {"m": u.mnemonic, "pp": u.passphrase,
                    "kind": "decoy" if u.decoy else "real"}
@@ -355,6 +433,8 @@ class Vault:
             payload["duress"] = True
         if u.wipe_set:
             payload["wipe"] = True
+        if u.game:
+            payload["game"] = u.game
         body["slots"][u.slot] = self._seal(key, body, u.slot, payload)
         _atomic_write(self.path, json.dumps(body).encode())
 
@@ -374,6 +454,7 @@ class Vault:
         body["se"] = {"slot": slot, "serial": hashlib.sha256(chip.serial()).hexdigest()[:16]}
         body["slots"] = [_random_slot(), _random_slot()]
         body["w"] = _b64(secrets.token_bytes(32))       # set the wipe PIN again afterwards
+        body["g"] = _b64(secrets.token_bytes(32))       # and the game PIN
         body["slots"][u.slot] = self._seal(self._key(pin, body), body, u.slot, {
             "m": u.mnemonic, "pp": u.passphrase, "kind": "real"})
         _atomic_write(self.path, json.dumps(body).encode())
@@ -386,6 +467,7 @@ class Vault:
         body.pop("se", None)
         body["slots"] = [_random_slot(), _random_slot()]
         body["w"] = _b64(secrets.token_bytes(32))
+        body["g"] = _b64(secrets.token_bytes(32))
         body["slots"][u.slot] = self._seal(self._key(pin, body), body, u.slot, {
             "m": u.mnemonic, "pp": u.passphrase, "kind": "real"})
         _atomic_write(self.path, json.dumps(body).encode())

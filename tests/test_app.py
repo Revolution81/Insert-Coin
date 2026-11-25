@@ -181,6 +181,8 @@ def test_spend_cap_via_settings(app, monkeypatch):
     press(app, "KEY_X", "KEY_C", "KEY_C")
     enter(app)                                     # SETUP
     enter(app)                                     # SECURITY
+    app.visible.sel = [it[0] for it in app.visible.items].index("LIMITS")
+    enter(app)                                     # LIMITS
     app.visible.sel = [it[0] for it in app.visible.items].index("ONLINE CAP")
     enter(app)                                     # SPEND CAP
     for _ in range(5):
@@ -190,7 +192,7 @@ def test_spend_cap_via_settings(app, monkeypatch):
     assert isinstance(app.visible, PinScreen) and "25,000" in app.visible.note
     type_text(app, "1234")
     enter(app)
-    assert app.visible.title == "SECURITY"
+    assert app.visible.title == "LIMITS"
     assert app.visible.items[app.visible.sel][0] == "ONLINE CAP"
     assert app.signer.status()["cap"]["cap"] == 25000
 

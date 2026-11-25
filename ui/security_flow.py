@@ -91,6 +91,31 @@ def wipe_pin_menu(app):
     app.push(MenuScreen("WIPE PIN", items, info=info))
 
 
+# ------------------------------------------------------------ game PIN
+def game_pin_menu(app):
+    mode = app.signer.status().get("game_pin")
+
+    def ask(action, m="game"):
+        def go(app):
+            app.prompt("game_pin_prompt", lambda app, _: app.pop(), action=action, mode=m)
+        return go
+    choose = [("GAME ONLY", ask("set", "game"), "WALLET SAFE", "gold"),
+              ("GAME + WIPE", ask("set", "game+wipe"), "ERASES ALL", "red")]
+    if mode:
+        items = choose + [("TURN OFF", ask("clear"))]
+        info = [f"On: {'game + wipe' if mode == 'game+wipe' else 'game only'}.",
+                "Pick one to change it."]
+    else:
+        items = choose + [("HOW IT WORKS", lambda app: app.push(MessageScreen("GAME PIN", [
+            "A PIN that opens COIN", "INVADERS instead of your",
+            "wallet, so the device looks", "like a toy (border checks).", "",
+            "GAME ONLY: the wallet stays", "locked and safe underneath.",
+            "GAME + WIPE: everything is", "erased first; restore from", "your seed words later.", "",
+            "In the game: Z/C move, OK", "fires, hold HOME to leave."])))]
+        info = ["A PIN that opens a game", "instead of the wallet."]
+    app.push(MenuScreen("GAME PIN", items, info=info))
+
+
 # ------------------------------------------------------------ spending policy
 def policy_menu(app):
     def ask(field, value):

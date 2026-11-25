@@ -1,7 +1,7 @@
 """SETUP › ADVANCED: power-user tools hidden by default, shown when on, and
 anything in use shown either way."""
 from test_app import app, create_wallet, enter, settle  # noqa: F401
-from ui.flow import ADVANCED_ITEMS, SETUP_GROUPS, settings_screen
+from ui.flow import ADVANCED_ITEMS, SETUP_GROUPS, SETUP_SUBGROUPS, settings_screen
 
 
 def _labels(menu):
@@ -19,8 +19,24 @@ def _group(app, name):
     return _labels(app.visible)
 
 
+def _sub(app, group, sub):
+    _group(app, group)
+    m = app.visible
+    m.sel = _labels(m).index(sub)
+    enter(app)
+    settle(app)
+    return _labels(app.visible)
+
+
 def _everything(app):
-    return {lb for g, _ in SETUP_GROUPS for lb in _group(app, g)}
+    shown = set()
+    for g, _ in SETUP_GROUPS:
+        labels = _group(app, g)
+        shown |= set(labels)
+        for sub in SETUP_SUBGROUPS:
+            if sub in labels:
+                shown |= set(_sub(app, g, sub))
+    return shown
 
 
 def test_off_by_default_hides_the_tools(app):  # noqa: F811
@@ -28,20 +44,19 @@ def test_off_by_default_hides_the_tools(app):  # noqa: F811
     app.settings.advanced = False
     shown = _everything(app)
     assert not shown & ADVANCED_ITEMS
-    assert {"PINS", "SHOW SEED WORDS", "WI-FI", "WALLETS", "HARDWARE"} <= shown
+    assert {"PINS", "GAME PIN", "ONLINE CAP", "SHOW SEED WORDS", "WI-FI", "HARDWARE"} <= shown
 
 
 def test_on_shows_them_and_the_switch_toggles(app):  # noqa: F811
     create_wallet(app)
     app.settings.advanced = False
-    app.home()
-    settings_screen(app)
-    settle(app)
+    labels = _group(app, "DEVICE")
     m = app.visible
-    m.sel = _labels(m).index("ADVANCED")
+    m.sel = labels.index("ADVANCED")
     assert m.items[m.sel][2] == "OFF"
     enter(app)
-    assert app.settings.advanced is True and app.visible.items[m.sel][2] == "ON"
+    assert app.settings.advanced is True
+    assert m.items[m.sel][0] == "ADVANCED" and m.items[m.sel][2] == "ON"   # cursor stays on it
     assert ADVANCED_ITEMS <= _everything(app)
 
 
@@ -49,7 +64,7 @@ def test_in_use_stays_visible(app):  # noqa: F811
     create_wallet(app)
     app.settings.advanced = False
     app.settings.qr_format = "bbqr"
-    assert "QR FORMAT" in _group(app, "DISPLAY & SOUND")
+    assert "QR FORMAT" in _group(app, "DEVICE")
     assert "TEMPORARY SEED" not in _group(app, "TOOLS")
 
 

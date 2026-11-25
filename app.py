@@ -298,6 +298,34 @@ class App:
         self.balance = None
         self.replace(welcome(self))
 
+    def play_game(self):
+        """The game PIN was entered at unlock: COIN INVADERS, full screen.
+        In game+wipe mode the signer has already erased everything, so the
+        app's data goes too, before the first frame; leaving the game then
+        shows a device like new. Otherwise the wallet stays locked and
+        leaving (hold HOME) goes back to the lock screen."""
+        from ui.arcade import ArcadeScreen
+        wiped = False
+        try:
+            wiped = not self.signer.status().get("has_seed", True)
+        except Exception:  # noqa: BLE001
+            pass
+        if wiped:
+            self.factory_reset(title=False)
+
+        def save_hi(v):
+            self.settings.arcade_hi = int(v)
+            self.settings.save()
+
+        def leave():
+            if game in self.stack:
+                self.stack.remove(game)
+                self.tr.reset()
+                if self.stack:
+                    self._shown()
+        game = ArcadeScreen(leave, hi=self.settings.arcade_hi, save_hi=save_hi)
+        self.push(game)
+
     def factory_reset(self, title: bool = True):
         """After a wipe (WIPE DEVICE, the wipe PIN, ten wrong PINs): the
         app's own data goes too (settings, wallet cache, labels, unsent
@@ -437,6 +465,8 @@ class App:
                 on_cancel(self)
         elif kind == "FreshStart":
             self.factory_reset()                # the wipe PIN: just a first boot, no word of it
+        elif kind == "GameTime":
+            self.play_game()                    # the game PIN: a toy, as far as anyone can see
         elif kind == "Wiped":
             self.factory_reset(title=False)
             self.push(MessageScreen("WIPED", ["Too many wrong PINs.", "The seed was erased.",
@@ -662,6 +692,12 @@ class App:
         self.last_input = time.monotonic()
         if self.console is not None and self.console.feed(name, value):
             return                         # the signer has the keyboard
+        raw = getattr(self.top, "raw_key", None) if self.stack else None
+        if raw is not None:                # a game: every press, repeat and release
+            from ui.input import VOLUME_KEYS
+            if name not in VOLUME_KEYS:            # volume keys still work
+                raw(name, value, self)
+                return
         from ui.input import Kind
         evs = self.tr.feed(name, value)
         if DEBUG_KEYS and self.tr.mode is Mode.MENU:

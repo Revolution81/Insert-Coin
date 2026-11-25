@@ -126,13 +126,15 @@ def test_sharing_keeps_the_wallet_awake(app, monkeypatch):  # noqa: F811
 
 
 def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
-    from ui.flow import SETUP_DIRECT, SETUP_GROUPS, SETUP_SUBGROUPS, settings_screen
+    from ui.flow import SETUP_GROUPS, SETUP_SUBGROUPS, SETUP_TOP, settings_screen
     create_wallet(app)
+    app.settings.finger_unlock = True             # LOCK NOW shows only then
     settings_screen(app)
     settle(app)
     top = [i[0] for i in app.visible.items]
-    assert top == [g for g, _ in SETUP_GROUPS] + SETUP_DIRECT and top[-1] == "WIPE DEVICE"
-    seen = []
+    assert top == SETUP_TOP and top[-1] == "WIPE DEVICE"
+    groups = dict(SETUP_GROUPS)
+    seen = [lb for lb in top if lb not in groups]
     for g, labels in SETUP_GROUPS:
         app.visible.sel = top.index(g)
         enter(app)
@@ -148,7 +150,7 @@ def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
                 app.pop()
         app.pop()
         assert app.visible.title == "SETUP"
-    assert len(seen) == len(set(seen)) == 36
+    assert len(seen) == len(set(seen)) == 42
 
 
 def test_restore_shows_one_moment_not_the_menu_after_the_signer():

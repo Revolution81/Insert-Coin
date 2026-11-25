@@ -47,7 +47,7 @@ any watch-only wallet. Online mode talks to your own Electrum server, through
 Tor by default, and sends straight from the device, limited by a daily
 online cap.
 
-**Simple by default.** SETUP › ADVANCED (off out of the box) shows the
+**Simple by default.** SETUP › DEVICE › ADVANCED (off out of the box) shows the
 power-user tools: Co-Sign, temporary seed, child seeds, Key Teleport,
 address explorer, paper wallets, watch-only and label exports, QR format,
 and the Taproot choice for new multisig. Off, the menus keep to the
@@ -80,6 +80,9 @@ backup of accounts, multisig wallets, labels, notes, the seed vault and settings
 - **Bypass PIN** that locks the policy, so your PIN alone can't loosen it or export the seed
 - **Login countdown**: a wait of 5 minutes to 24 hours after the right PIN
 - **Wipe PIN** (erases everything, device starts like new) and **duress PIN** (opens a decoy wallet)
+- **Game PIN**: opens COIN INVADERS, a little space shooter, instead of the wallet, so the
+  device looks like a toy (say, at a border). GAME ONLY leaves the wallet locked underneath;
+  GAME + WIPE erases everything first. Hold HOME to leave the game
 - **Auto lock** after 2 to 15 minutes, a custom time, or never
 - Ten wrong PINs erase the wallet; every kind of PIN costs the same time to check
 

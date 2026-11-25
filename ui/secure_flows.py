@@ -15,7 +15,7 @@ import time
 
 from core import seed as seedlib
 from core import split as splitlib
-from core.vault import ChipMissing, Wiped, WrongPin
+from core.vault import GAME_MODES, ChipMissing, GamePinUsed, Wiped, WrongPin
 
 from .console import Cancelled
 
@@ -190,8 +190,8 @@ def _pin_job(c, title, label, work, done, note="", prompt="YOUR PIN"):
         if isinstance(err, WrongPin):
             scr.tries = (err.tries_left, scr.tries[1] if scr.tries else err.tries_left)
             scr.error = f"Wrong PIN. {err.tries_left} tries left"
-        elif isinstance(err, Wiped):
-            c.fail(err)
+        elif isinstance(err, (Wiped, GamePinUsed)):
+            c.fail(err)                      # the app takes it from here
         elif isinstance(err, ChipMissing):
             scr.error = "Secure chip not connected"
         else:
@@ -225,8 +225,8 @@ def unlock(c):
         if isinstance(err, WrongPin):
             scr.tries = (err.tries_left, scr.tries[1])
             scr.error = f"Wrong PIN. {err.tries_left} tries left"
-        elif isinstance(err, Wiped):
-            c.fail(err)
+        elif isinstance(err, (Wiped, GamePinUsed)):
+            c.fail(err)                      # the app takes it from here
         elif isinstance(err, ChipMissing):
             scr.error = "Secure chip not connected"
         else:
@@ -332,6 +332,50 @@ def wipe_pin(c, action):
 
     _pin_job(c, "WIPE PIN", "CHECKING PIN...", lambda pin: c.signer.check_pin(pin=pin) and pin,
              got_pin, note="Your PIN first")
+
+
+def game_pin(c, action, mode="game"):
+    """GAME PIN: entered at unlock, it opens the arcade game instead of the
+    wallet (mode "game"), or erases everything first and then shows the game
+    ("game+wipe"). For a border crossing: the device looks like a toy."""
+    if action == "clear":
+        _pin_job(c, "GAME PIN", "SAVING...", lambda pin: c.signer.clear_game_pin(pin=pin),
+                 lambda c, _: _final(c, MessageScreen("GAME PIN OFF", ["No game PIN now."]),
+                                     False), note="Turn the game PIN off")
+        return
+    if action != "set" or mode not in GAME_MODES:
+        raise BadRequest("unknown action")
+
+    def got_pin(c, pin):
+        def first(c, g1):
+            if g1 == pin:
+                return "Must differ from your PIN"
+
+            def again(c, g2):
+                if g2 != g1:
+                    return "PINs don't match"
+                c.pop()
+                c.pop()
+                lines = (["Entering it at unlock opens", "the game. The wallet stays",
+                          "locked and untouched.", "",
+                          "In the game, hold HOME to", "get back to the lock screen."]
+                         if mode == "game" else
+                         ["Entering it at unlock ERASES", "everything here, then opens",
+                          "the game. Afterwards the", "device starts like new. Only",
+                          "your seed words bring it back."])
+                c.job("SAVING...", lambda: c.signer.set_game_pin(pin=pin, game_pin=g1, mode=mode),
+                      lambda c, _: _final(c, MessageScreen(
+                          "GAME PIN ON", lines, border="gold" if mode == "game" else "red"), True),
+                      lambda c, e: c.fail(e))
+                return None
+            c.push(SecurePinScreen("GAME PIN", again, words=c.words, prompt="REPEAT IT"))
+            return None
+        c.push(SecurePinScreen("GAME PIN", first, words=c.words, prompt="NEW GAME PIN",
+                               note=PIN_HINT))
+
+    what = "game only" if mode == "game" else "game + wipe"
+    _pin_job(c, "GAME PIN", "CHECKING PIN...", lambda pin: c.signer.check_pin(pin=pin) and pin,
+             got_pin, note=f"Your PIN first ({what})")
 
 
 def countdown(c, seconds):

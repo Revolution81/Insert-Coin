@@ -31,7 +31,7 @@ import time
 from .config import SIGNER_DIR, SIGNER_SOCKET
 from .signer import Signer
 from .trusted import PROMPTS, SAFE, TrustedSigner
-from .vault import ChipMissing, Wiped, WipePinUsed, WrongPin
+from .vault import ChipMissing, GamePinUsed, Wiped, WipePinUsed, WrongPin
 
 METHODS = SAFE | PROMPTS
 
@@ -56,6 +56,8 @@ def _dispatch(signer: TrustedSigner, req: dict) -> dict:
                 "extra": {"tries_left": e.tries_left}}
     except WipePinUsed:
         return {"ok": False, "error": "wiped", "type": "FreshStart"}
+    except GamePinUsed:
+        return {"ok": False, "error": "game", "type": "GameTime"}
     except Wiped as e:
         return {"ok": False, "error": str(e), "type": "Wiped"}
     except ChipMissing as e:

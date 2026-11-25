@@ -181,6 +181,11 @@ class MenuScreen(Screen):
         it[4](app, step)
         if self.refresh is not None and app.top is self:
             self.items = self.refresh()
+            # the list can change around it (ADVANCED shows or hides rows):
+            # stay on the same row
+            labels = [i[0] for i in self.items]
+            if it[0] in labels:
+                self.sel = labels.index(it[0])
 
     def handle(self, ev, app):
         n = len(self.items)
