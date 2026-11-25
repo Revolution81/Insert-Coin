@@ -154,6 +154,20 @@ class App:
         helper = "/usr/local/sbin/cz-backup"
         if self._addons_on:
             return
+        # the gpio group can switch them itself (M5's tmpfiles rule)
+        if os.path.isdir("/sys/class/leds/grove_5v_out"):
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+            try:
+                import addon_power
+                res = addon_power.switch_on()
+            finally:
+                sys.path.pop(0)
+            for line in res:
+                print(f"add-on power: {line}", file=sys.stderr, flush=True)
+            if all(r.endswith(": on") for r in res):
+                App._addons_on = True
+                time.sleep(1.0)
+                return
         try:
             if pwd.getpwuid(os.getuid()).pw_name != "czapp" or not os.path.exists(helper):
                 return
@@ -163,7 +177,7 @@ class App:
                 print(line[:400], file=sys.stderr, flush=True)
             if r.returncode == 0:
                 App._addons_on = True
-                time.sleep(0.6)
+                time.sleep(1.0)
         except Exception as e:  # noqa: BLE001 - never stop the app over this
             print(f"add-on power: {e}", file=sys.stderr, flush=True)
 

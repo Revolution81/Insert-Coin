@@ -83,11 +83,36 @@ def find_chip() -> str | None:
     return None
 
 
-def request_each() -> list[str]:
-    """Each line on its own, so one the kernel holds (EBUSY) doesn't stop
-    the other. Returns a result line per output."""
-    names = {GROVE_5V: "Grove 5V", EXT_5V: "EXT 5V"}
+# M5Stack's overlay (cardputerzero-v5) hands both switches to the kernel's
+# gpio-leds driver, as "LEDs" named grove_5v_out and ext_5v_out with
+# default-state off, so the lines can't be requested (EBUSY; seen on the
+# device). They're switched through sysfs instead, which M5's own tmpfiles
+# rule makes writable for the gpio group.
+LEDS = {"grove_5v_out": "Grove 5V", "ext_5v_out": "EXT 5V"}
+SYSFS = "/sys/class/leds"
+
+
+def switch_on(root: str = SYSFS) -> list[str]:
+    """Both 5 V outputs on through sysfs. A result line per output."""
     out = []
+    for led, name in LEDS.items():
+        path = os.path.join(root, led, "brightness")
+        try:
+            with open(path, "w") as f:
+                f.write("1")
+            out.append(f"{name} ({led}): on")
+        except OSError as e:
+            out.append(f"{name} ({led}): {e}")
+    return out
+
+
+def request_each() -> list[str]:
+    """sysfs first (the way that works with M5's overlay); the raw line
+    request only where no such LED exists (another overlay)."""
+    out = switch_on()
+    if all(r.endswith(": on") for r in out):
+        return out
+    names = {GROVE_5V: "Grove 5V", EXT_5V: "EXT 5V"}
     for n in LINES:
         try:
             request((n,))

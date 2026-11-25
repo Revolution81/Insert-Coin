@@ -50,3 +50,15 @@ def test_app_only_asks_as_czapp(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: started.append(a))
     appmod.App.system_steps()                          # the test user isn't czapp
     assert started == []
+
+
+def test_addon_power_through_sysfs(tmp_path):
+    import addon_power
+    for led in ("grove_5v_out", "ext_5v_out"):
+        (tmp_path / led).mkdir()
+        (tmp_path / led / "brightness").write_text("0")
+    assert addon_power.switch_on(str(tmp_path)) == ["Grove 5V (grove_5v_out): on",
+                                                    "EXT 5V (ext_5v_out): on"]
+    assert (tmp_path / "grove_5v_out" / "brightness").read_text() == "1"
+    assert (tmp_path / "ext_5v_out" / "brightness").read_text() == "1"
+    assert "grove_fun" not in addon_power.LEDS      # the UART/I2C switch is never touched

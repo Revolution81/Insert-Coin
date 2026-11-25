@@ -6,6 +6,12 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Add-on power, the way M5's system does it.** The boot log showed both
+  5 V outputs off and held by the kernel: M5Stack's overlay makes them
+  gpio-leds named grove_5v_out and ext_5v_out (default off), switched through
+  /sys/class/leds/<name>/brightness. The app now writes 1 there (gpio group,
+  M5's own tmpfiles rule) at start and on RESCAN; the root helper does the
+  same as a fallback.
 - **Add-on diagnostics in the boot log.** The 5 V outputs are switched one
   at a time (0.8.29 asked for both at once and the kernel refused with
   EBUSY, so neither came on), and a read-only report (tools/hwdiag.py)
