@@ -1307,8 +1307,8 @@ def sound_label(settings) -> str:
 
 
 SETUP_GROUPS = [
-    ("SECURITY", ["CHANGE PIN", "AUTO LOCK", "LOGIN COUNTDOWN", "WIPE PIN", "DURESS PIN",
-                  "SPENDING POLICY", "CO-SIGN", "ONLINE CAP", "HARDWARE", "LOCK NOW"]),
+    ("SECURITY", ["PINS", "AUTO LOCK", "SPENDING POLICY", "CO-SIGN", "ONLINE CAP",
+                  "HARDWARE", "LOCK NOW"]),
     ("BACKUP", ["SHOW SEED WORDS", "SEEDQR BACKUP", "SPLIT BACKUP", "CARD BACKUP"]),
     ("NETWORK", ["WI-FI", "LAN", "SERVER", "TOR", "EXPLORER"]),
     ("FILES", ["SHARE FILES", "SAVE TO USB STICK", "EXPORT HISTORY", "EXPORT LABELS",
@@ -1336,7 +1336,17 @@ def _sec():
     return security_flow
 
 
+# Menus inside a group: SECURITY › PINS keeps every PIN together (the brick
+# PIN for the blank secure chip goes here too).
+SETUP_SUBGROUPS = {"PINS": ["CHANGE PIN", "DURESS PIN", "WIPE PIN", "LOGIN COUNTDOWN"]}
+
+
+def setup_subgroup_of(label: str) -> str | None:
+    return next((g for g, labels in SETUP_SUBGROUPS.items() if label in labels), None)
+
+
 def setup_group_of(label: str) -> str | None:
+    label = setup_subgroup_of(label) or label
     return next((g for g, labels in SETUP_GROUPS if label in labels), None)
 
 
@@ -1482,6 +1492,7 @@ def settings_screen(app, at: str | None = None):
             ("DURESS PIN", ask("duress_prompt", back_to("DURESS PIN")),
              "ON" if st.get("duress") else "OFF", "gold" if st.get("duress") else "grey"),
             ("CHANGE PIN", ask("change_pin_prompt")),
+            ("PINS", lambda app: open_group("PINS", SETUP_SUBGROUPS["PINS"])),
             ("HARDWARE", hardware_menu),
             ("UPDATE", update_screen, VERSION, "grey"),
             ("AUTO LOCK", auto_lock, lock_label(s.auto_lock_s), "grey" if s.auto_lock_s else "red"),
@@ -1558,7 +1569,10 @@ def settings_screen(app, at: str | None = None):
         menu.sel = next((i for i, it in enumerate(menu.items) if it[0] == target), 0)
     app.push(menu)
     if group:
-        open_group(group, dict(SETUP_GROUPS)[group], at)
+        sub = setup_subgroup_of(at)
+        open_group(group, dict(SETUP_GROUPS)[group], sub or at)
+        if sub:
+            open_group(sub, SETUP_SUBGROUPS[sub], at)
 
 
 # ================================================================ QR

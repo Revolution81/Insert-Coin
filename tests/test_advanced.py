@@ -28,7 +28,7 @@ def test_off_by_default_hides_the_tools(app):  # noqa: F811
     app.settings.advanced = False
     shown = _everything(app)
     assert not shown & ADVANCED_ITEMS
-    assert {"CHANGE PIN", "SHOW SEED WORDS", "WI-FI", "WALLETS", "HARDWARE"} <= shown
+    assert {"PINS", "SHOW SEED WORDS", "WI-FI", "WALLETS", "HARDWARE"} <= shown
 
 
 def test_on_shows_them_and_the_switch_toggles(app):  # noqa: F811

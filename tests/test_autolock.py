@@ -126,7 +126,7 @@ def test_sharing_keeps_the_wallet_awake(app, monkeypatch):  # noqa: F811
 
 
 def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
-    from ui.flow import SETUP_DIRECT, SETUP_GROUPS, settings_screen
+    from ui.flow import SETUP_DIRECT, SETUP_GROUPS, SETUP_SUBGROUPS, settings_screen
     create_wallet(app)
     settings_screen(app)
     settle(app)
@@ -138,9 +138,17 @@ def test_setup_groups_hold_every_setting_once(app):  # noqa: F811
         enter(app)
         assert app.visible.title == g and [i[0] for i in app.visible.items] == labels
         seen += labels
+        for sub, sub_labels in SETUP_SUBGROUPS.items():
+            if sub in labels:                       # e.g. SECURITY › PINS
+                app.visible.sel = labels.index(sub)
+                enter(app)
+                assert app.visible.title == sub
+                assert [i[0] for i in app.visible.items] == sub_labels
+                seen += sub_labels
+                app.pop()
         app.pop()
         assert app.visible.title == "SETUP"
-    assert len(seen) == len(set(seen)) == 35
+    assert len(seen) == len(set(seen)) == 36
 
 
 def test_restore_shows_one_moment_not_the_menu_after_the_signer():

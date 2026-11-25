@@ -173,6 +173,8 @@ def test_duress_through_the_app(app):  # noqa: F811
     enter(app)
     app.visible.sel = [it[0] for it in app.visible.items].index("SECURITY")
     enter(app)                                           # SECURITY
+    app.visible.sel = [it[0] for it in app.visible.items].index("PINS")
+    enter(app)                                           # PINS
     app.visible.sel = next(i for i, it in enumerate(app.visible.items) if it[0] == "DURESS PIN")
     enter(app)
     enter(app)                                           # SET ONE UP
@@ -183,7 +185,7 @@ def test_duress_through_the_app(app):  # noqa: F811
     enter(app)                                           # OPEN DECOY ONLY
     assert app.visible.title == "DURESS PIN ON"
     enter(app)
-    assert app.visible.title == "SECURITY"
+    assert app.visible.title == "PINS"                   # back where it was set
     duress_row = next(it for it in app.visible.items if it[0] == "DURESS PIN")
     assert duress_row[2] == "ON"
 
@@ -197,6 +199,8 @@ def test_duress_through_the_app(app):  # noqa: F811
     enter(app)
     app.visible.sel = [it[0] for it in app.visible.items].index("SECURITY")
     enter(app)                                           # SECURITY
+    app.visible.sel = [it[0] for it in app.visible.items].index("PINS")
+    enter(app)                                           # PINS
     duress_row = next(it for it in app.visible.items if it[0] == "DURESS PIN")
     assert duress_row[2] == "OFF"                        # the decoy gives nothing away
     app.lock()

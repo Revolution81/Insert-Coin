@@ -6,6 +6,10 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **SECURITY › PINS** (0.8.37): CHANGE PIN, DURESS PIN, WIPE PIN and LOGIN
+  COUNTDOWN in their own menu (the blank chip's brick PIN will join them);
+  SECURITY keeps AUTO LOCK, SPENDING POLICY, CO-SIGN, ONLINE CAP, HARDWARE
+  and LOCK NOW.
 - **SETUP › ADVANCED** (0.8.36), off by default: hides Co-Sign, temporary
   seed, child seeds, Key Teleport, address explorer, paper wallets, the
   watch-only and label exports, QR format, and the SegWit/Taproot choice in
