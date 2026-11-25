@@ -6,7 +6,17 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
-- **Add-on power, the way M5's system does it.** The boot log showed both
+- **Fingerprint count after adding or deleting.** Saving and erasing write
+  the sensor's flash and can take over a second; the old 1-second timeout
+  cut those replies off, and the late reply was then read as the answer to
+  the next command (0 saved after a save; DELETE ALL looked like it did
+  nothing). Longer timeouts for those commands, stale replies dropped
+  before each command, the count re-read once the sensor has settled, the
+  next free slot read from the sensor (a second finger no longer
+  overwrites the first), DELETE ALL says if the sensor didn't clear, and
+  only one handle on the serial port at a time.
+- **Add-on power, the way M5's system does it.** (confirmed: the
+  fingerprint sensor is found.) The boot log showed both
   5 V outputs off and held by the kernel: M5Stack's overlay makes them
   gpio-leds named grove_5v_out and ext_5v_out (default off), switched through
   /sys/class/leds/<name>/brightness. The app now writes 1 there (gpio group,

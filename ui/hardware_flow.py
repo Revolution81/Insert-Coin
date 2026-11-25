@@ -168,10 +168,18 @@ def finger_menu(app):
 
     def delete_all(app):
         def yes(app):
-            app.finger.delete_all()
+            ok = app.finger.delete_all()
+            left = app.finger.settled_count()
+            app.hw["finger"]["saved"] = left if left is not None else (0 if ok else
+                                                                         app.hw["finger"].get("saved", 0))
             app.settings.finger_unlock = False
             app.settings.save()
-            app.refresh_hardware()
+            if not ok or left:
+                app.push(MessageScreen("NOT DELETED", ["The sensor didn't clear.",
+                                                       f"{left if left is not None else '?'} finger(s) still saved.",
+                                                       "Try DELETE ALL again."], border="red",
+                                       then=lambda app: _reopen(app)))
+                return
             _reopen(app)
         app.push(ConfirmScreen("DELETE FINGERS?", ["Remove every saved finger?"], yes, danger=True))
 
@@ -215,10 +223,12 @@ class EnrollScreen(Screen):
         self.lifting = True
         if self.step >= self.PRESSES:
             self.done = True
-            slot = app.hw["finger"].get("saved", 0)
+            before = f.settled_count()
+            slot = before if before is not None else app.hw["finger"].get("saved", 0)
             if f.template() and f.store(slot):
                 f.led(2)
-                app.refresh_hardware()
+                after = f.settled_count()
+                app.hw["finger"]["saved"] = after if after is not None else slot + 1
                 app.pop()
                 app.push(MessageScreen("FINGER SAVED", [
                     f"Saved as finger #{slot + 1}.", "Turn on QUICK UNLOCK to",

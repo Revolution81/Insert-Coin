@@ -46,7 +46,15 @@ class SerialPort:
         self.heard = 0                                  # bytes received, for the HARDWARE screen
 
     def exchange(self, data: bytes, timeout: float = 1.0) -> bytes:
+        # a reply that came in late (after its command gave up) must not be
+        # taken as the answer to this one: drop whatever is already there
         self._termios.tcflush(self.fd, self._termios.TCIFLUSH)
+        end = time.monotonic() + 0.03
+        while time.monotonic() < end:
+            try:
+                os.read(self.fd, 256)
+            except BlockingIOError:
+                time.sleep(0.005)
         os.write(self.fd, data)
         buf, end = b"", time.monotonic() + timeout
         while time.monotonic() < end:
@@ -95,8 +103,10 @@ class Fingerprint:
         self._ok(b"\x3c" + (bytes([4, 0, 0, 0]) if color == 0 else bytes([3, color, color, 0])))
 
     def count(self) -> int:
-        rx = self._cmd(b"\x1d")
-        return int.from_bytes(rx[10:12], "big") if rx[9] == 0 else 0
+        rx = self._cmd(b"\x1d", 2.0)
+        if rx[9] != 0 or len(rx) < 14:
+            raise FingerError("sensor didn't give its finger count")
+        return int.from_bytes(rx[10:12], "big")
 
     def capture(self, enroll: bool = False) -> bool:
         """True if a finger was on the sensor and an image was taken."""
@@ -105,11 +115,14 @@ class Fingerprint:
     def features(self) -> bool:
         return self._ok(b"\x02")
 
+    # building, storing and erasing write the sensor's flash: they can take
+    # well over a second, and a reply cut off by a short timeout used to
+    # arrive as the "answer" to the next command (count read 0 after a save)
     def template(self) -> bool:
-        return self._ok(b"\x05")
+        return self._ok(b"\x05", 3.0)
 
     def store(self, slot: int) -> bool:
-        return self._ok(b"\x06\x01" + slot.to_bytes(2, "big"))
+        return self._ok(b"\x06\x01" + slot.to_bytes(2, "big"), 3.0)
 
     def search(self) -> tuple[int, int] | None:
         rx = self._cmd(b"\x04\x01" + (0).to_bytes(2, "big") + MAX_ID.to_bytes(2, "big"))
@@ -118,7 +131,17 @@ class Fingerprint:
         return None
 
     def delete_all(self) -> bool:
-        return self._ok(b"\x0d")
+        return self._ok(b"\x0d", 5.0)
+
+    def settled_count(self, tries: int = 4) -> int | None:
+        """The count once the sensor has finished writing (None if it won't say)."""
+        for _ in range(tries):
+            time.sleep(0.3)
+            try:
+                return self.count()
+            except FingerError:
+                continue
+        return None
 
     # --------------------------------------------------------- high level
     def verify_once(self) -> int | None:
@@ -223,7 +246,7 @@ def open_sensor() -> tuple[Fingerprint | None, dict]:
         try:
             f.wake()
             if f.connected():
-                return f, {"state": "ready", "saved": f.count(), "port": path}
+                return f, {"state": "ready", "saved": f.settled_count(2) or 0, "port": path}
             heard = getattr(f.port, "heard", 0)
             errors.append(f"{name}: no answer" if not heard else f"{name}: {heard} bytes, garbled")
         except (OSError, FingerError) as e:

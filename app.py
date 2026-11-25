@@ -188,6 +188,12 @@ class App:
             self.hw["chip"] = self.signer.chip_status()
         except Exception as e:  # noqa: BLE001
             self.hw["chip"] = {"state": "error", "error": str(e)}
+        old = getattr(self, "finger", None)
+        if old is not None and hasattr(getattr(old, "port", None), "close"):
+            try:
+                old.port.close()                        # one open handle on the UART at a time
+            except Exception:  # noqa: BLE001
+                pass
         self.finger, self.hw["finger"] = open_sensor()
         from core.hw.nfc import open_reader
         if getattr(self, "nfc", None) is not None:
