@@ -6,7 +6,13 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
-- **Fingerprint sensor missed** (0.8.46, to be confirmed). Plugged in at
+- **Fingerprint diagnostics** (0.8.47). Fresh power didn't help (the
+  0.8.46 log), and neither did removing the config.txt line. When nothing
+  answers, the boot log now shows the UART pins' setup (`pinctrl get
+  4,14,15`) and one try at 57600, 9600, 19200 and 38400 baud. These
+  reads change nothing, and run three times at most per start.
+- **Fingerprint sensor missed** (0.8.46, the fresh-power fix didn't
+  help). Plugged in at
   start or while running, it was never found from 0.8.42 on. The boot
   logs show Unit Fingerprint2 answering within a second of its 5 V coming
   on (when it was found), and not at all later. 0.8.42 asked it about

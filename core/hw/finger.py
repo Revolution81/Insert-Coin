@@ -32,15 +32,16 @@ def frame(payload: bytes, ptype: int = 0x01, address: bytes = b"\xff\xff\xff\xff
 
 
 class SerialPort:
-    """Minimal 115200 8N1 raw serial with termios (no extra packages)."""
+    """Minimal 8N1 raw serial with termios (no extra packages); 115200 baud,
+    the sensor's default."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, baud: int = 115200):
         import termios
         import tty
         self.fd = os.open(path, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
         tty.setraw(self.fd)
         attrs = termios.tcgetattr(self.fd)
-        attrs[4] = attrs[5] = termios.B115200
+        attrs[4] = attrs[5] = getattr(termios, f"B{baud}")
         attrs[2] |= termios.CLOCAL | termios.CREAD
         termios.tcsetattr(self.fd, termios.TCSANOW, attrs)
         self._termios = termios
@@ -289,7 +290,42 @@ def open_sensor() -> tuple[Fingerprint | None, dict]:
         f.port.close()
     if not seen:
         errors.append("No serial port (UART off)")
+    else:
+        diagnose(errors)
     return None, {"state": "absent", "errors": errors}
+
+
+OTHER_BAUDS = (57600, 9600, 19200, 38400)
+_DIAGNOSED = [0]
+
+
+def diagnose(errors: list) -> None:
+    """Nothing answered at 115200: for the boot log, the UART pins' setup
+    and one try at each other common speed (a sensor set to another speed
+    answers there; the wallet never changes its speed). Read-only."""
+    import subprocess
+    import sys
+    if _DIAGNOSED[0] >= 3:                             # enough for the log
+        return
+    _DIAGNOSED[0] += 1
+    try:
+        r = subprocess.run(["pinctrl", "get", "4,14,15"], capture_output=True, text=True, timeout=5)
+        print("finger: pins: " + " | ".join(r.stdout.strip().splitlines()), file=sys.stderr, flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"finger: pins: {e}", file=sys.stderr, flush=True)
+    path = os.path.realpath(PORTS[0]) if os.path.exists(PORTS[0]) else "/dev/ttyS0"
+    for baud in OTHER_BAUDS:
+        try:
+            port = SerialPort(path, baud)
+        except (OSError, AttributeError):
+            continue
+        try:
+            rx = port.exchange(frame(b"\xd4"), 0.5)
+        finally:
+            port.close()
+        print(f"finger: at {baud} baud: {rx.hex() or 'nothing'}", file=sys.stderr, flush=True)
+        if rx:
+            errors.append(f"heard at {baud} baud")
 
 
 def simulator() -> SimulatedSensor | None:
