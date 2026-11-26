@@ -394,3 +394,38 @@ def test_row_colour_is_the_state(app):  # noqa: F811
     hardware_menu(app)
     rows = {it[0]: it[2:4] for it in app.visible.items if len(it) > 2}
     assert rows["M5 SECURE CHIP"] == ("GROVE", "gold") and rows["SECURE CHIP"] == ("GPIO", "cyan")
+
+
+# ------------------------------------------------------------ fingerprint power
+def test_fingerprint_gets_fresh_power_unless_just_powered(app, monkeypatch):  # noqa: F811
+    """Fingerprint2 answered within a second of power-on and then not at all
+    (0.8.45's boot log): unless the 5 V just came on, cycle it first."""
+    import core.hw.finger as fmod
+    calls = []
+    monkeypatch.setattr(grove, "power_cycle", lambda: calls.append("cycle") or True)
+    monkeypatch.setattr(app_module.time, "sleep", lambda s: calls.append(f"wait {s}"))
+    monkeypatch.setattr(fmod, "open_sensor", lambda: calls.append("ask") or (None, {"state": "absent"}))
+    app._probe_finger(True)
+    assert calls == ["ask"]
+    calls.clear()
+    app._probe_finger(False)
+    assert calls == ["cycle", "wait 0.8", "ask"]
+
+
+def test_power_cycle_only_on_uart(tmp_path, monkeypatch):
+    p = tmp_path / "power"
+    p.write_text("1")
+    monkeypatch.setattr(grove, "POWER", str(p))
+    monkeypatch.setattr(grove.time, "sleep", lambda s: None)
+    monkeypatch.setattr(grove, "mode", lambda: "i2c")
+    assert grove.power_cycle() is False and p.read_text() == "1"
+    monkeypatch.setattr(grove, "mode", lambda: "uart")
+    assert grove.power_cycle() is True and p.read_text() == "1" and grove.power() is True
+
+
+def test_title_scan_not_repeated(app, monkeypatch):  # noqa: F811
+    n = []
+    monkeypatch.setattr(app, "refresh_hardware", lambda: n.append(1))
+    app._hw_at = app_module.time.monotonic()
+    app.start()
+    assert n == []

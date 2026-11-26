@@ -6,6 +6,17 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fingerprint sensor missed** (0.8.46, to be confirmed). Plugged in at
+  start or while running, it was never found from 0.8.42 on. The boot
+  logs show Unit Fingerprint2 answering within a second of its 5 V coming
+  on (when it was found), and not at all later. 0.8.42 asked it about
+  3 s after power-on, behind the new GPIO-header scan. The fix:
+  - the side port is asked first;
+  - unless its 5 V just came on, the 5 V is switched off and on before
+    asking (only while the port is on UART);
+  - the hot-swap watch does the same every 8 s.
+- **Title to wallet faster again** (0.8.46): the hardware scan isn't
+  repeated straight after the title screen's.
 - **Hot-swapping the side port** (0.8.44). With M5's chip in and the port
   on I2C, swapping in the fingerprint sensor put its serial line on the
   keyboard's bus: the boot log shows 1,800 failed keyboard reads, and the

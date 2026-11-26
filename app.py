@@ -149,13 +149,16 @@ class App:
     def addon_power(self):
         """Switch on the 5 V of the Grove port and the EXT header (root
         helper; M5's launcher used to do it). Once per run, then a short
-        wait so the fingerprint sensor and the Cap are awake for the probe."""
+        wait so the fingerprint sensor and the Cap are awake for the probe.
+        True if the side port's 5 V was off until now (a fresh power-on)."""
         import pwd
         import subprocess
         import time
+        from core.hw import grove
         helper = "/usr/local/sbin/cz-backup"
         if self._addons_on:
-            return
+            return False
+        was_off = grove.power() is False
         # the gpio group can switch them itself (M5's tmpfiles rule)
         if os.path.isdir("/sys/class/leds/grove_5v_out"):
             sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
@@ -169,10 +172,10 @@ class App:
             if all(r.endswith(": on") for r in res):
                 App._addons_on = True
                 time.sleep(1.0)
-                return
+                return was_off
         try:
             if pwd.getpwuid(os.getuid()).pw_name != "czapp" or not os.path.exists(helper):
-                return
+                return False
             r = subprocess.run(["sudo", "-n", helper, "addons"], stdin=subprocess.DEVNULL,
                                capture_output=True, text=True, timeout=20)
             for line in (r.stdout + r.stderr).strip().splitlines()[:80]:
@@ -180,8 +183,10 @@ class App:
             if r.returncode == 0:
                 App._addons_on = True
                 time.sleep(1.0)
+                return was_off
         except Exception as e:  # noqa: BLE001 - never stop the app over this
             print(f"add-on power: {e}", file=sys.stderr, flush=True)
+        return False
 
     def _root(self, cmd: str) -> tuple[bool, str]:
         """One word to the root helper (tools/copy_backup.py), on the device."""
@@ -242,7 +247,7 @@ class App:
 
     # ------------------------------------------------ side port, while running
     SIDE_WATCH_S = 1.5
-    FINGER_PROBE_S = 5.0                               # asking an empty port takes ~4 s
+    FINGER_PROBE_S = 8.0                               # asking an empty port takes ~5 s
 
     def _start_side_watch(self):
         """On the device: notice a unit leaving the side port (and a
@@ -318,7 +323,7 @@ class App:
                 if now - getattr(self, "_side_probed", 0.0) < self.FINGER_PROBE_S:
                     return
                 self._side_probed = now
-                f, st = open_sensor()
+                f, st = self._probe_finger(False)
                 if f is None:
                     return
                 print(f"hardware: side port: fingerprint plugged in: {st}", file=sys.stderr, flush=True)
@@ -340,30 +345,12 @@ class App:
         from core.hw import grove
         from core.hw.finger import open_sensor
         from core.hw.nfc import open_reader, release_cap
-        self.addon_power()
+        fresh = self.addon_power()                    # True: the 5 V just came on
         self._close_addons()
         nfc_st = {"state": "absent", "errors": []}
         self.hw["ext"] = self.hw["grove"] = None
+        self.hw["finger"] = {"state": "absent"}
 
-        # ---- top: a chip on its bus, else the Cap, else look for a chip
-        if os.path.exists(EXT_BUS):
-            if self._chip_at(self._chips(), "GPIO"):
-                self.hw["ext"] = "chip"
-            else:
-                self._root("ext-off")
-        if self.hw["ext"] is None:
-            self.nfc, nfc_st = open_reader(cap=not os.path.exists(EXT_BUS))
-            if nfc_st.get("state") == "ready":
-                self.hw["ext"] = "cap"
-            else:
-                release_cap()                             # GPIO26 is the chip bus's SCL
-                if self._root("ext-on")[0]:
-                    if self._chip_at(self._chips(), "GPIO"):
-                        self.hw["ext"] = "chip"
-                    else:
-                        self._root("ext-off")
-
-        # ---- side: I2C only while something answers there (it's the keyboard's bus)
         def switch(m: str) -> bool:
             if grove.set_mode(m):
                 return True
@@ -371,6 +358,8 @@ class App:
             return grove.mode() == m
 
         def on_i2c() -> bool:
+            """Side port on I2C, only while something answers there (it's
+            the keyboard's bus)."""
             if not switch("i2c"):
                 print("hardware: side port won't switch to I2C", file=sys.stderr, flush=True)
                 return False
@@ -387,23 +376,63 @@ class App:
                                                         if e.startswith("Unit"))
             return False
 
-        self.hw["finger"] = {"state": "absent"}
-        if not (grove.mode() == "i2c" and on_i2c()):     # still there: no need to switch
+        # ---- side, first: the fingerprint sensor answers only for a few
+        # seconds after its power comes on (seen on the device), so ask it
+        # straight away, giving it fresh power when it wasn't just switched on
+        side_i2c = grove.mode() == "i2c" and on_i2c()  # still there: no need to switch
+        if not side_i2c:
             switch("uart")
-            self.finger, self.hw["finger"] = open_sensor()
+            self.finger, self.hw["finger"] = self._probe_finger(fresh)
             if self.finger is not None:
                 self.hw["grove"] = "finger"
-            elif not on_i2c():
-                switch("uart")
+
+        # ---- top: a chip on its bus, else the Cap, else look for a chip
+        if os.path.exists(EXT_BUS):
+            if self._chip_at(self._chips(), "GPIO"):
+                self.hw["ext"] = "chip"
+            else:
+                self._root("ext-off")
+        if self.hw["ext"] is None:
+            cap_reader, cap_st = open_reader(cap=not os.path.exists(EXT_BUS))
+            if cap_st.get("state") == "ready":
+                self.hw["ext"] = "cap"
+                if self.nfc is None:
+                    self.nfc, nfc_st = cap_reader, cap_st
+                else:                                   # the NFC Unit's already in use
+                    cap_reader.close()
+            else:
+                nfc_st["errors"] = cap_st.get("errors", []) + nfc_st.get("errors", [])
+                release_cap()                             # GPIO26 is the chip bus's SCL
+                if self._root("ext-on")[0]:
+                    if self._chip_at(self._chips(), "GPIO"):
+                        self.hw["ext"] = "chip"
+                    else:
+                        self._root("ext-off")
+
+        # ---- side, last: nothing on UART, so look on I2C
+        if not side_i2c and self.finger is None and not on_i2c():
+            switch("uart")
         if self.hw["grove"] != "nfc":
             self.hw["nfc"] = nfc_st
         self.hw["chip"] = self._chips()
+        self._hw_at = time.monotonic()
         for k in ("chip", "finger", "nfc", "ext", "grove"):  # for the boot log
             print(f"hardware: {k}: {self.hw.get(k)}"[:400], file=sys.stderr, flush=True)
         print(f"hardware: side port mode: {grove.mode()} ({grove.LED}"
               f"{', writable' if os.access(grove.LED, os.W_OK) else ', not writable'})",
               file=sys.stderr, flush=True)
         return self.hw
+
+    def _probe_finger(self, fresh: bool):
+        """Ask the side port for the fingerprint sensor. Unless its power just
+        came on, switch the side port's 5 V off and on first: Unit
+        Fingerprint2 answered within a second of power-on and then, left
+        alone, not at all (plugged in at start, or while running)."""
+        from core.hw import grove
+        from core.hw.finger import open_sensor
+        if not fresh and grove.power_cycle():
+            time.sleep(0.8)
+        return open_sensor()
 
     def _unit_relay(self, msgs):
         return self.signer.nfc_unit_xfer(msgs=msgs)
@@ -417,7 +446,8 @@ class App:
             self.refresh_hardware()
             self.replace(TitleScreen(lambda app: app.start()))
             return
-        self.refresh_hardware()
+        if time.monotonic() - getattr(self, "_hw_at", -1e9) > 30:   # not again right after the title
+            self.refresh_hardware()
         st = self.signer.status()
         if not st["has_seed"]:
             self.replace(welcome(self))
