@@ -198,6 +198,15 @@ def chip_menu(app, m5: bool = True):
                         items or [("BACK", lambda app: app.pop())], info=info))
 
 
+def finger_allowed(app) -> bool:
+    """ADD A FINGER / QUICK UNLOCK are ADVANCED tools (a convenience that
+    keeps the seed unlocked for hours, and the sensor takes the side port
+    the M5 chip could use), unless already in use: saved fingers or quick
+    unlock on stay reachable, so they can be turned off and deleted."""
+    f = app.hw.get("finger", {})
+    return bool(app.settings.advanced or app.settings.finger_unlock or f.get("saved"))
+
+
 def finger_menu(app):
     f = app.hw["finger"]
     if f.get("state") != "ready":
@@ -207,6 +216,13 @@ def finger_menu(app):
                                + list(f.get("errors") or [])))
         return
     on = app.settings.finger_unlock
+    if not finger_allowed(app):
+        app.push(MessageScreen("FINGERPRINT", [
+            "Sensor found. Fingers and", "QUICK UNLOCK are power-user",
+            "tools: turn on SETUP ›", "DEVICE › ADVANCED to use", "them.", "",
+            "Quick unlock keeps your seed", "unlocked for hours; a finger",
+            "only reopens the screen."]))
+        return
 
     def toggle(app):
         if on:

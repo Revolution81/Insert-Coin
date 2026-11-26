@@ -481,3 +481,23 @@ def test_look_menu_warns_and_refuses_with_a_fingerprint(app, monkeypatch, tmp_pa
     m.sel = [i[0] for i in m.items].index("LOOK FOR CHIP / NFC")
     enter(app)
     assert isinstance(app.visible, ConfirmScreen) and "damage" in " ".join(app.visible.lines)
+
+
+# ------------------------------------------------------------ fingerprint is ADVANCED
+def test_fingerprint_tools_behind_advanced(app):  # noqa: F811
+    from core.hw.finger import Fingerprint, SimulatedSensor
+    from ui.hardware_flow import finger_menu
+    app.finger = Fingerprint(SimulatedSensor())
+    app.hw["finger"] = {"state": "ready", "saved": 0}
+    app.settings.advanced = False
+    finger_menu(app)
+    assert app.visible.title == "FINGERPRINT" and "ADVANCED" in " ".join(app.visible.lines)
+    app.pop()
+    app.hw["finger"]["saved"] = 1                  # already in use: still reachable
+    finger_menu(app)
+    assert [i[0] for i in app.visible.items][0] == "ADD A FINGER"
+    app.pop()
+    app.hw["finger"]["saved"] = 0
+    app.settings.advanced = True
+    finger_menu(app)
+    assert [i[0] for i in app.visible.items][0] == "ADD A FINGER"

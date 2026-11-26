@@ -6,6 +6,13 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fingerprint tools are ADVANCED** (0.8.51). ADD A FINGER and QUICK
+  UNLOCK only show with SETUP › DEVICE › ADVANCED on, or once fingers
+  are saved or quick unlock is on, so they can still be turned off and
+  deleted. Quick unlock is a convenience that keeps the seed unlocked for
+  hours, and the sensor takes the side port the M5 chip could use.
+  HARDWARE still shows where the sensor is. Booklet: ★ on the
+  FINGERPRINT power-up.
 - **Hot-swapping can't put a serial unit on the keyboard's bus**
   (0.8.50). A Unit Fingerprint2 stopped answering for good after a
   hot-swap. Its serial output had been on the keyboard's I2C bus for
