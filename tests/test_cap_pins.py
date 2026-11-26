@@ -1,6 +1,6 @@
 """The Cap CC1101 & NFC on the Zero: power on GPIO26, NFC chip select on
 GPIO22 framing every transfer, CC1101 GDO0 tri-stated, and hands off the
-pins when the Unit NFC's I2C bus owns them."""
+pins when a secure chip's I2C bus (EXT pins 3/1) owns them."""
 import sys
 import types
 
@@ -47,7 +47,7 @@ def fakes(monkeypatch):
     from core.hw import gpio
     monkeypatch.setattr(gpio, "OutputPin", FakePin)
     monkeypatch.setattr(nfc, "_CAP", {})
-    monkeypatch.setenv("CZ_NFC_I2C", "/nonexistent/i2c-3:0x50")
+    monkeypatch.setenv("CZ_EXT_BUS", "/nonexistent/i2c-3")
     return FakePin
 
 
@@ -66,11 +66,11 @@ def test_power_once(fakes):
     assert fakes.log == [(26, 1)]
 
 
-def test_unit_bus_keeps_its_pins(fakes, tmp_path, monkeypatch):
+def test_chip_bus_keeps_its_pins(fakes, tmp_path, monkeypatch):
     bus = tmp_path / "i2c-3"
     bus.write_text("")
-    monkeypatch.setenv("CZ_NFC_I2C", f"{bus}:0x50")
-    with pytest.raises(OSError, match="Unit NFC"):
+    monkeypatch.setenv("CZ_EXT_BUS", str(bus))
+    with pytest.raises(OSError, match="chip"):
         nfc._cap_power()
     assert fakes.log == []
 

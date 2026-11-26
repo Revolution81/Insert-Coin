@@ -5,7 +5,6 @@ fingerprint-aware unlock screen.
 """
 from __future__ import annotations
 
-import os
 import threading
 import time
 
@@ -53,107 +52,52 @@ def status_icons(app) -> list:
 
 
 # ------------------------------------------------------------------ menu
+
+
+def found_chip(app, m5: bool) -> dict | None:
+    """M5Stack's chip (Unit ID, a Trust&GO at 0x35) or any other (a blank
+    ATECC608 on the GPIO header), from the last scan."""
+    for c in app.hw["chip"].get("found") or []:
+        if bool(c.get("m5")) == m5:
+            return c
+    return None
+
+
+def _chip_row(app, m5: bool):
+    c = found_chip(app, m5)
+    main = app.hw["chip"]
+    if c is None:
+        if main.get("in_use") and m5:                   # the seed needs it (always a Trust&GO)
+            return "MISSING", "red"
+        return "NONE", "grey"
+    if main.get("in_use") and c.get("serial") == main.get("serial"):
+        return c.get("where", "?"), "gold"
+    return c.get("where", "?"), "cyan" if c.get("state") == "blank" else "light"
+
+
 def hardware_menu(app):
-    cl, cc = CHIP_LABELS.get(chip_state(app), ("?", "grey"))
     fs = finger_state(app)
-    f = app.hw["finger"]
-    fl, fc = {"absent": ("NONE", "grey"), "ready": (f"{f.get('saved', 0)} SAVED", "light"),
-              "on": ("QUICK UNLOCK", "cyan")}[fs]
+    fl, fc = ("NONE", "grey") if fs == "absent" else ("GROVE", "cyan" if fs == "on" else "light")
 
     def rescan(app):
         app.job("SCANNING...", app.refresh_hardware, lambda app, _: (app.pop(), hardware_menu(app)))
 
     app.push(MenuScreen("HARDWARE", [
-        ("SECURE CHIP", chip_menu, cl, cc),
+        ("M5 SECURE CHIP", lambda app: chip_menu(app, m5=True), *_chip_row(app, True)),
+        ("SECURE CHIP", lambda app: chip_menu(app, m5=False), *_chip_row(app, False)),
         ("FINGERPRINT", finger_menu, fl, fc),
         ("NFC", _nfc_info, *nfc_label(app)),
-        ("EXT HEADER", ext_header_menu, *EXT_LABELS.get(ext_mode(app), ("?", "grey"))),
         ("RESCAN", rescan),
-    ], info=["Add-ons on the Grove port", "or the EXT header."]))
-
-
-# ------------------------------------------------------------- EXT header
-# What EXT pins 1 and 3 are for (tools/ext_bus.py, through the root helper).
-EXT_LABELS = {"cap": ("NFC CAP", "light"), "chip": ("SECURE CHIP", "gold"),
-              "nfc": ("NFC UNIT", "light")}
-HELPER = "/usr/local/sbin/cz-backup"
-
-
-def _helper(*args) -> tuple[bool, str]:
-    import subprocess
-    try:
-        r = subprocess.run(["sudo", "-n", HELPER, *args], capture_output=True, text=True,
-                           timeout=60, stdin=subprocess.DEVNULL)
-        return r.returncode == 0, (r.stdout + r.stderr).strip()
-    except Exception as e:  # noqa: BLE001
-        return False, str(e)
-
-
-def ext_mode(app) -> str:
-    """Asked once per run (then kept), or "cap" off the device."""
-    cached = getattr(app, "_ext_mode", None)
-    if cached:
-        return cached
-    mode = "cap"
-    if os.path.exists(HELPER):
-        ok, out = _helper("extbus", "status")
-        if ok and out in EXT_LABELS:
-            mode = out
-    app._ext_mode = mode
-    return mode
-
-
-def ext_header_menu(app):
-    cur = ext_mode(app)
-
-    def choose(mode):
-        def go(app):
-            if mode == cur:
-                app.pop()
-                return
-
-            def done(app, res):
-                ok, out = res
-                app.pop()                        # EXT HEADER
-                if ok:
-                    app._ext_mode = mode
-                app.pop()                        # HARDWARE, shown again with the new value
-                hardware_menu(app)
-                if not ok:
-                    app.push(MessageScreen("NOT CHANGED", ["Couldn't change it:", out[:40]],
-                                           border="red"))
-                    return
-                app.push(MessageScreen("RESTART TO USE", [
-                    f"EXT header: {EXT_LABELS[mode][0]}.", "",
-                    "Switch off, fit or wire", "it, then switch back on.",
-                    "It takes effect then."], border="gold"))
-            app.job("SAVING...", lambda: _helper("extbus", mode), done)
-        return go
-
-    def wiring(app):
-        app.push(MessageScreen("EXT HEADER", [
-            "NFC CAP: the Cap on top.", "",
-            "SECURE CHIP: a chip board", "wired to pin 3 (SDA) and",
-            "pin 1 (SCL), on a bus of its", "own: it can't block the",
-            "keyboard. Power from pin 6,", "GND pin 4.", "",
-            "NFC UNIT: the same pins,", "for the Unit NFC (U216).", "",
-            "One at a time: they share", "the same pins."]))
-    rows = []
-    for mode in ("cap", "chip", "nfc"):
-        label = EXT_LABELS[mode][0]
-        rows.append((label, choose(mode), "IN USE" if mode == cur else "", "gold" if mode == cur else "grey"))
-    rows.append(("HOW TO WIRE", wiring))
-    app.push(MenuScreen("EXT HEADER", rows,
-                        info=["What's on the top header.", "Takes effect at next start."]))
+    ], info=["Found by themselves.", "GROVE = side, GPIO = top."]))
 
 
 def nfc_label(app) -> tuple[str, str]:
-    """Which NFC reader is fitted: the Cap (SPI, with the sub-GHz radio) or
-    the Unit NFC (I2C)."""
+    """Where the NFC reader is (Cap or Unit, it's all NFC): GPIO or GROVE."""
     st = app.hw.get("nfc", {})
     if st.get("state") != "ready":
         return "NONE", "grey"
-    return ("UNIT NFC", "light") if st.get("reader") == "unit" else ("CAP", "light")
+    where = st.get("where") or ("GROVE" if st.get("reader") == "unit" else "GPIO")
+    return where, "light"
 
 
 def _nfc_info(app):
@@ -168,10 +112,25 @@ def _reopen(app):
     hardware_menu(app)
 
 
-def chip_menu(app):
-    c, state = app.hw["chip"], chip_state(app)
-    info = [f"{c.get('kind', 'Secure chip')} at 0x{c.get('address', 0):02x}"
-            if state != "absent" else "No secure chip found."]
+def chip_menu(app, m5: bool = True):
+    main = app.hw["chip"]
+    c = found_chip(app, m5)
+    if c is None:
+        lines = (["No M5 chip found. Plug the", "Unit ID into the side",
+                  "(Grove) port, then RESCAN."] if m5 else
+                 ["No chip found on the GPIO", "header (pins 3 SDA, 1 SCL,", "power pin 6, GND pin 4).",
+                  "Not with the Cap fitted:", "they share those pins."])
+        if m5 and main.get("in_use") and not found_chip(app, True):
+            lines = ["Your seed needs this chip,", "but it isn't connected.", ""] + lines
+        app.push(MessageScreen("M5 SECURE CHIP" if m5 else "SECURE CHIP", lines,
+                               border="red" if main.get("in_use") and m5 else "light"))
+        return
+    c = dict(c)
+    if main.get("in_use") and c.get("serial") == main.get("serial"):
+        c["in_use"] = True
+    state = ("in_use" if c.get("in_use") else c.get("state", "absent"))
+    info = [f"{c.get('kind', 'Secure chip')} at 0x{c.get('address', 0):02x}",
+            f"On the {'side (GROVE)' if c.get('where') == 'GROVE' else 'top (GPIO)'} port."]
     items = []
     if state == "ready":
         info.append("Detected, not in use yet.")
@@ -209,7 +168,8 @@ def chip_menu(app):
             "(M5Stack Unit ID) works now."]))))
     elif state in ("unusable", "error"):
         info.append(str(c.get("error", ""))[:30])
-    app.push(MenuScreen("SECURE CHIP", items or [("BACK", lambda app: app.pop())], info=info))
+    app.push(MenuScreen("M5 SECURE CHIP" if m5 else "SECURE CHIP",
+                        items or [("BACK", lambda app: app.pop())], info=info))
 
 
 def finger_menu(app):
@@ -217,7 +177,7 @@ def finger_menu(app):
     if f.get("state") != "ready":
         app.push(MessageScreen("FINGERPRINT", ["No sensor found. Plug the",
                                                "Unit Fingerprint2 into the",
-                                               "Grove port, then RESCAN.", ""]
+                                               "side (Grove) port, then", "RESCAN.", ""]
                                + list(f.get("errors") or [])))
         return
     on = app.settings.finger_unlock

@@ -20,8 +20,10 @@ pull-ups to 3.3 V + male-to-male jumper wires), then order.
   1 µF in, 1 µF out, 100 nF at the chip.
 - EXT pin 3 (**G23 SDA**) and pin 1 (**G26 SCL**) to the chip, with 4.7 kΩ
   pull-ups to 3.3 V. That's a **bus of its own** (I2C bus 3, software I2C
-  on GPIO23/26), set up from SETUP › DEVICE › HARDWARE › EXT HEADER ›
-  SECURE CHIP (0.8.41+), then a restart.
+  on GPIO23/26). From 0.8.42 the wallet makes that bus by itself while
+  running, when no Cap answers on the header: nothing to set, no restart.
+  (0.8.41's EXT HEADER setting never took effect: the root helper only
+  received the word "extbus".)
 - EXT pin 4 GND. **Pin 2 (5V IN) is not connected**: it powers the device.
 - The chip answers at **0x60**, alone on its bus.
 

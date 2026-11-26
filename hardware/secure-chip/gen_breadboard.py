@@ -143,8 +143,8 @@ for i, (col, tx, ty, t) in enumerate(cab):
 notes = ["Check the regulator's pin order on its datasheet first (usually GND, IN, OUT with the flat side facing you).",
          "R1 and R2 go to the +3.3 V rail, never to 5 V: 5 V on SDA/SCL can damage the Cardputer.",
          "If your breadboard's rails are split in the middle, bridge each with a short jumper.",
-         "First set SETUP › DEVICE › HARDWARE › EXT HEADER › SECURE CHIP (0.8.41+), switch off, wire it, switch on.",
-         "Then SETUP › DEVICE › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked."]
+         "Switch off, wire it, switch on (0.8.42+): the wallet finds it by itself, no setting.",
+         "SETUP › DEVICE › HARDWARE › SECURE CHIP should then say GPIO (blank chip, 0x60). Detecting only reads; nothing gets locked."]
 for i, t in enumerate(notes):
     text(40, 880 + i * 26, f"{i+1}. {t}", 16, "#333")
 add("</svg>")

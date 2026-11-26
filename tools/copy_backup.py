@@ -17,6 +17,7 @@ backup, and keeps the five newest per seed. Reads nothing else.
 import os
 import re
 import stat
+import subprocess
 import sys
 
 SRC = "/var/lib/czwallet/app/backups"
@@ -279,28 +280,38 @@ def addons() -> int:
     return 0 if all(r.endswith(": on") for r in results) else 1
 
 
-def extbus(mode: str) -> int:
-    """EXT header pins 1 and 3: the NFC Cap, a secure chip on its own bus,
-    or the NFC Unit (tools/ext_bus.py). From the next start."""
+def ext(cmd: str) -> int:
+    """EXT pins 3/1 as a secure chip's I2C bus while running (tools/ext_bus.py)."""
     sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
     import ext_bus
-    if mode == "status":
-        try:
-            print(ext_bus.current(open(ext_bus.CONFIG).read()))
-        except OSError as e:
-            print(f"unknown: {e}")
-        return 0
     try:
-        print(ext_bus.apply(mode))
-    except (OSError, ValueError) as e:
+        print({"ext-on": ext_bus.on, "ext-off": ext_bus.off, "ext-status": ext_bus.status}[cmd]())
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"ext bus: {e}", file=sys.stderr)
         return 1
     return 0
 
 
+def grove(cmd: str) -> int:
+    """The side port's switch, if M5's rules don't let the gpio group write
+    it (core/hw/grove.py): grove-i2c / grove-uart."""
+    led = "/sys/class/leds/grove_fun/brightness"
+    try:
+        with open(led, "w") as f:
+            f.write("1" if cmd == "grove-i2c" else "0")
+    except OSError as e:
+        print(f"grove: {e}", file=sys.stderr)
+        return 1
+    print(cmd)
+    return 0
+
+
 def main(argv) -> int:
-    if len(argv) == 3 and argv[1] == "extbus" and argv[2] in ("cap", "chip", "nfc", "status"):
-        return extbus(argv[2])
+    # one word each: deploy/cz-backup passes only the first argument on
+    if len(argv) == 2 and argv[1] in ("ext-on", "ext-off", "ext-status"):
+        return ext(argv[1])
+    if len(argv) == 2 and argv[1] in ("grove-i2c", "grove-uart"):
+        return grove(argv[1])
     if len(argv) == 2 and argv[1] == "addons":
         return addons()
     if len(argv) == 2 and argv[1] == "migrate":

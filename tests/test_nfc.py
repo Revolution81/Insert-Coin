@@ -355,7 +355,7 @@ def test_hardware_screen_and_subghz(app):  # noqa: F811
     hardware_menu(app)
     m = app.visible
     row = [it for it in m.items if it[0] == "NFC"][0]
-    assert row[2] == "CAP"
+    assert row[2] == "GPIO"                         # the Cap, on top
     m.sel = m.items.index(row)
     enter(app)
     assert app.visible.title == "NFC CAP"
@@ -367,11 +367,12 @@ def test_hardware_screen_tells_the_unit_apart(app):  # noqa: F811
     create_wallet(app)
     with_card(app, cktap.SimSatscard())
     app.hw["nfc"] = {"state": "ready", "reader": "unit", "kind": "ST25R3916 rev 2",
-                     "bus": "I2C /dev/i2c-3 0x50", "subghz": {"state": "absent"}}
+                     "where": "GROVE", "bus": "I2C (side port) 0x50",
+                     "subghz": {"state": "absent"}}
     hardware_menu(app)
     m = app.visible
     row = [it for it in m.items if it[0] == "NFC"][0]
-    assert row[2] == "UNIT NFC"
+    assert row[2] == "GROVE"
     m.sel = m.items.index(row)
     enter(app)
     assert app.visible.title == "UNIT NFC"
@@ -428,18 +429,16 @@ def test_reader_found_says_which(monkeypatch):
         def identity(self):
             return 5, 2
 
-    class FakeBus:
-        path, address = "/dev/i2c-3", 0x50
-
-        def close(self):
-            pass
     monkeypatch.setenv("CZ_NFC", "auto")
     monkeypatch.setattr(nfc, "ST25R3916", FakeChip)
     monkeypatch.setattr(nfc, "_spi_from_env", lambda *a, **k: object())
+    monkeypatch.setattr(nfc, "_cap_power", lambda: None)
+    monkeypatch.setattr(nfc, "_cap_nfc_spi", lambda: type("B", (), {"close": lambda self: None})())
     monkeypatch.setattr(nfc, "CC1101", lambda spi: type("C", (), {"sleep": lambda self: {"state": "absent"}})())
-    monkeypatch.setattr(nfc, "_i2c_from_env", lambda: FakeBus())
-    reader, st = nfc.open_reader()
-    assert reader is not None and st["reader"] == "unit" and "i2c-3" in st["bus"]
+    reader, st = nfc.open_reader()                  # side port not in I2C mode: no relay
+    assert reader is None
+    reader, st = nfc.open_reader(cap=False, unit_relay=lambda msgs: "")
+    assert reader is not None and st["reader"] == "unit" and st["where"] == "GROVE"
 
 
 def test_cc1101_put_to_sleep():

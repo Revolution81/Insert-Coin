@@ -11,11 +11,8 @@
 #                                          skip steps that need a running system
 #   ... --full                             redo every step, even ones an earlier
 #                                          run already finished
-#   ... --nfc-unit                         a Unit NFC (U216) wired to EXT pins 1
-#                                          (SCL) and 3 (SDA): give it its own I2C
-#                                          bus, /dev/i2c-3 (needs a reboot). Not
-#                                          with the NFC Cap fitted: it uses the
-#                                          same header.
+#   ... --nfc-unit                         (ignored: the NFC Unit now goes on
+#                                          the side port and needs no setup)
 #
 # Running it again is how you update. Steps that are already done (system
 # packages, Python packages with the same lock file, interface setup) are
@@ -187,10 +184,8 @@ chmod 440 /etc/sudoers.d/czwallet
 install -m 644 "$SRC/deploy/50-czwallet-nm.rules" /etc/polkit-1/rules.d/
 # a fixed name for the built-in keyboard (M5's image has one; ours may not)
 install -m 644 "$SRC/deploy/62-czwallet-keyboard.rules" /etc/udev/rules.d/
-# kept if already there: SETUP › DEVICE › HARDWARE › EXT HEADER rewrites it
-# (group i2c for a secure chip, czapp for the NFC Unit; tools/ext_bus.py)
-[ -e /etc/udev/rules.d/63-czwallet-nfc-unit.rules ] || \
-  install -m 644 "$SRC/deploy/63-czwallet-nfc-unit.rules" /etc/udev/rules.d/
+# EXT pins 3/1 as a secure chip's bus (made while running, tools/ext_bus.py)
+install -m 644 "$SRC/deploy/63-czwallet-nfc-unit.rules" /etc/udev/rules.d/
 if [ "$MODE" = dedicated ]; then
   # only the signer may draw on the panel or set the backlight
   install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/
@@ -220,12 +215,10 @@ else
 fi
 getent group i2c >/dev/null && usermod -aG i2c czsigner
 
-# Unit NFC: a bus of its own (software I2C on GPIO23 = SDA, GPIO26 = SCL,
-# with the Pi's pull-ups, slowed for them). Never I2C1, which the keyboard
-# is on: the app may open this bus, and must not reach the keyboard.
+# The NFC Unit goes on the side (Grove) port now and needs no setup: the
+# signer relays to it (core/hw/unit_relay.py). --nfc-unit is ignored.
 if [ "$NFC_UNIT" = 1 ]; then
-  python3 "$SRC/tools/copy_backup.py" extbus nfc >/dev/null \
-    && echo "== Unit NFC: /dev/i2c-3 set up; reboot to use it"
+  echo "== --nfc-unit: no longer needed (plug the NFC Unit into the side port)"
 fi
 
 echo "== services"

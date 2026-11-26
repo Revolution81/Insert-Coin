@@ -175,9 +175,12 @@ def test_hardware_menu_and_chip_binding_ui(app, monkeypatch):  # noqa: F811
     create_wallet(app, pin="1234")
     from ui.hardware_flow import hardware_menu
     hardware_menu(app)
-    assert app.visible.items[0][2] == "READY" and app.visible.items[1][2] == "NONE"
+    rows = {it[0]: it[2] for it in app.visible.items if len(it) > 2}
+    assert rows["M5 SECURE CHIP"] == "GROVE" and rows["SECURE CHIP"] == "NONE"
+    assert rows["FINGERPRINT"] == "NONE" and rows["NFC"] == "NONE"
+    assert app.hw["grove"] == "chip"                      # side port left in I2C for it
     app.render(0)
-    enter(app)                                            # SECURE CHIP
+    enter(app)                                            # M5 SECURE CHIP
     enter(app)                                            # USE IT
     press(app, "KEY_Z")
     enter(app)                                            # YES
@@ -187,9 +190,14 @@ def test_hardware_menu_and_chip_binding_ui(app, monkeypatch):  # noqa: F811
     assert chip_state(app) == "in_use"
     assert [c for _, c in status_icons(app)] == ["gold"]
     enter(app)
+    assert [it for it in app.visible.items if it[0] == "M5 SECURE CHIP"][0][3] == "gold"
     monkeypatch.setenv("CZ_SE", "none")
     app.refresh_hardware()
     assert chip_state(app) == "missing" and [c for _, c in status_icons(app)] == ["red"]
+    from ui.hardware_flow import hardware_menu as hm
+    hm(app)
+    assert [it for it in app.visible.items if it[0] == "M5 SECURE CHIP"][0][2] == "MISSING"
+    app.pop()
     app.lock(full=True)
     settle(app)
     type_text(app, "1234")
@@ -201,8 +209,11 @@ def test_blank_chip_shows_info(app, monkeypatch):  # noqa: F811
     monkeypatch.setenv("CZ_SE", "sim-blank")
     app.refresh_hardware()
     create_wallet(app)
-    from ui.hardware_flow import chip_menu
-    chip_menu(app)
+    from ui.hardware_flow import chip_menu, hardware_menu
+    hardware_menu(app)
+    rows = {it[0]: it[2] for it in app.visible.items if len(it) > 2}
+    assert rows["SECURE CHIP"] == "GPIO" and rows["M5 SECURE CHIP"] == "NONE"
+    chip_menu(app, m5=False)
     assert isinstance(app.visible, MenuScreen) and app.visible.items[0][0] == "ABOUT BLANK CHIPS"
     with pytest.raises(SignerError):
         app.signer.local.bind_chip(pin="1234")

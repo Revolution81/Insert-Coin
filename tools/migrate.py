@@ -57,7 +57,29 @@ def step_gpio_for_app() -> bool:
     return True
 
 
-STEPS = [step_gpio_for_app]
+EXT_RULE = "/etc/udev/rules.d/63-czwallet-nfc-unit.rules"
+
+
+def step_ext_bus_rule() -> bool:
+    """0.8.42: /dev/i2c-3 (EXT pins 3/1) is now only ever a secure chip's
+    bus, so the signer's (group i2c), never the app's. No restart needed:
+    returns False."""
+    try:
+        text = open(EXT_RULE).read()
+    except OSError:
+        return False
+    if 'GROUP="czapp"' not in text:
+        return False
+    tmp = EXT_RULE + ".new"
+    with open(tmp, "w") as f:
+        f.write(text.replace('GROUP="czapp"', 'GROUP="i2c"'))
+    os.replace(tmp, EXT_RULE)
+    subprocess.run(["udevadm", "control", "--reload-rules"], check=False, timeout=30)
+    print("ext bus rule: group i2c", file=sys.stderr)
+    return False
+
+
+STEPS = [step_gpio_for_app, step_ext_bus_rule]
 
 
 def needed() -> bool:

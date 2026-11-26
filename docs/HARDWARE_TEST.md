@@ -159,16 +159,14 @@ missing, we change the boot config and reboot.
       lists why; try `CZ_NFC_CS=hw CZ_NFC_SPI=0.0` as a last guess.
 - [ ] **Fingerprint with the Cap fitted:** check it works both with and
       without the Cap (the Cap's GDO0 shares the UART TX line).
-- [ ] **Unit NFC (U216) instead of the Cap:** wire it to the EXT header,
-      not the Grove port (that's I2C1, the keyboard's bus, which the app is
-      never given): yellow (SDA) to pin 3, white (SCL) to pin 1, red to
-      pin 6 (5V), black to pin 4 (GND). Not with the Cap fitted (same
-      header). `sudo sh deploy/install.sh --nfc-unit`, or on the wallet
-      image add these two lines to `config.txt` on the boot partition:
-      `gpio=23,26=pu` and
-      `dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=26,i2c_gpio_delay_us=10`.
-      Reboot, then `sudo python3 tools/hwtest.py unit`. HARDWARE › NFC
-      should say UNIT NFC.
+- [ ] **NFC Unit (U216) on the side (Grove) port:** plug it in, RESCAN.
+      HARDWARE › NFC says GROVE. The side port switches to I2C only while
+      something answers there; the signer relays to address 0x50 alone
+      (core/hw/unit_relay.py), the app never opens the keyboard's bus.
+- [ ] **M5 secure chip (Unit ID) on the side port:** HARDWARE › M5 SECURE
+      CHIP says GROVE. **Blank chip on the GPIO header (pins 3/1):** with
+      no Cap fitted, SECURE CHIP says GPIO. The boot log has a line
+      `hardware: ext-on: on` (or why not).
 - [ ] Tap a SATSCARD (T on home): slot and address show; GENUINE check passes.
 - [ ] Tap a TAPSIGNER: its key can be added to a 2-of-2 multisig on signet.
 

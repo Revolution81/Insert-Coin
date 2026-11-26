@@ -297,6 +297,6 @@
 <text x="40" y="880" font-size="16" font-weight="400" fill="#333" text-anchor="start">1. Check the regulator's pin order on its datasheet first (usually GND, IN, OUT with the flat side facing you).</text>
 <text x="40" y="906" font-size="16" font-weight="400" fill="#333" text-anchor="start">2. R1 and R2 go to the +3.3 V rail, never to 5 V: 5 V on SDA/SCL can damage the Cardputer.</text>
 <text x="40" y="932" font-size="16" font-weight="400" fill="#333" text-anchor="start">3. If your breadboard's rails are split in the middle, bridge each with a short jumper.</text>
-<text x="40" y="958" font-size="16" font-weight="400" fill="#333" text-anchor="start">4. First set SETUP › DEVICE › HARDWARE › EXT HEADER › SECURE CHIP (0.8.41+), switch off, wire it, switch on.</text>
-<text x="40" y="984" font-size="16" font-weight="400" fill="#333" text-anchor="start">5. Then SETUP › DEVICE › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked.</text>
+<text x="40" y="958" font-size="16" font-weight="400" fill="#333" text-anchor="start">4. Switch off, wire it, switch on (0.8.42+): the wallet finds it by itself, no setting.</text>
+<text x="40" y="984" font-size="16" font-weight="400" fill="#333" text-anchor="start">5. SETUP › DEVICE › HARDWARE › SECURE CHIP should then say GPIO (blank chip, 0x60). Detecting only reads; nothing gets locked.</text>
 </svg>

@@ -31,6 +31,8 @@ from ui.flow import HomeScreen, LockedScreen, locked_screen, unlock, welcome
 from ui.input import Mode, Translator
 from ui.widgets import BusyScreen, ConfirmScreen, MessageScreen, Screen
 
+EXT_BUS = os.environ.get("CZ_EXT_BUS", "/dev/i2c-3")   # tools/ext_bus.py
+
 # Prompts that end with the app setting up a wallet: "ONE MOMENT..." sits
 # under the signer's screens meanwhile (see App.prompt)
 DEBUG_KEYS = os.path.exists("/boot/firmware/insert-coin-debug.txt")
@@ -181,30 +183,129 @@ class App:
         except Exception as e:  # noqa: BLE001 - never stop the app over this
             print(f"add-on power: {e}", file=sys.stderr, flush=True)
 
-    def refresh_hardware(self):
-        from core.hw.finger import open_sensor
-        self.addon_power()
+    def _root(self, cmd: str) -> tuple[bool, str]:
+        """One word to the root helper (tools/copy_backup.py), on the device."""
+        import pwd
+        import subprocess
+        helper = "/usr/local/sbin/cz-backup"
         try:
-            self.hw["chip"] = self.signer.chip_status()
+            if pwd.getpwuid(os.getuid()).pw_name != "czapp" or not os.path.exists(helper):
+                return False, "no helper"
+            r = subprocess.run(["sudo", "-n", helper, cmd], stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=30)
+            out = (r.stdout + r.stderr).strip()
+            print(f"hardware: {cmd}: {out[:200]}", file=sys.stderr, flush=True)
+            return r.returncode == 0, out
         except Exception as e:  # noqa: BLE001
-            self.hw["chip"] = {"state": "error", "error": str(e)}
+            return False, str(e)
+
+    def _chips(self) -> dict:
+        try:
+            return self.signer.chip_status()
+        except Exception as e:  # noqa: BLE001
+            return {"state": "error", "error": str(e), "found": []}
+
+    @staticmethod
+    def _chip_at(st: dict, where: str) -> bool:
+        return any(c.get("where") == where for c in st.get("found") or [])
+
+    def _close_addons(self):
         old = getattr(self, "finger", None)
         if old is not None and hasattr(getattr(old, "port", None), "close"):
             try:
                 old.port.close()                        # one open handle on the UART at a time
             except Exception:  # noqa: BLE001
                 pass
-        self.finger, self.hw["finger"] = open_sensor()
-        from core.hw.nfc import open_reader
+        self.finger = None
         if getattr(self, "nfc", None) is not None:
             try:
                 self.nfc.close()
             except Exception:  # noqa: BLE001
                 pass
-        self.nfc, self.hw["nfc"] = open_reader()     # also puts the CC1101 to sleep
-        for k in ("chip", "finger", "nfc"):             # for the boot log
+        self.nfc = None
+        try:
+            self.signer.nfc_unit_close()
+        except Exception:  # noqa: BLE001
+            pass
+
+    def refresh_hardware(self):
+        """What's on the two add-on connectors (ui/hardware_flow.py shows it):
+
+        top / GPIO header  the NFC Cap, or a secure chip on pins 3/1 (its
+                           own I2C bus, made while running: tools/ext_bus.py)
+        side / Grove port  the fingerprint sensor (UART), or M5Stack's
+                           secure chip or the NFC Unit (I2C: core/hw/grove.py)
+        """
+        from core.hw import grove
+        from core.hw.finger import open_sensor
+        from core.hw.nfc import open_reader, release_cap
+        self.addon_power()
+        self._close_addons()
+        nfc_st = {"state": "absent", "errors": []}
+        self.hw["ext"] = self.hw["grove"] = None
+
+        # ---- top: a chip on its bus, else the Cap, else look for a chip
+        if os.path.exists(EXT_BUS):
+            if self._chip_at(self._chips(), "GPIO"):
+                self.hw["ext"] = "chip"
+            else:
+                self._root("ext-off")
+        if self.hw["ext"] is None:
+            self.nfc, nfc_st = open_reader(cap=not os.path.exists(EXT_BUS))
+            if nfc_st.get("state") == "ready":
+                self.hw["ext"] = "cap"
+            else:
+                release_cap()                             # GPIO26 is the chip bus's SCL
+                if self._root("ext-on")[0]:
+                    if self._chip_at(self._chips(), "GPIO"):
+                        self.hw["ext"] = "chip"
+                    else:
+                        self._root("ext-off")
+
+        # ---- side: I2C only while something answers there (it's the keyboard's bus)
+        def switch(m: str) -> bool:
+            if grove.set_mode(m):
+                return True
+            self._root(f"grove-{m}")                  # not writable by the app's groups
+            return grove.mode() == m
+
+        def on_i2c() -> bool:
+            if not switch("i2c"):
+                print("hardware: side port won't switch to I2C", file=sys.stderr, flush=True)
+                return False
+            if self._chip_at(self._chips(), "GROVE"):
+                self.hw["grove"] = "chip"
+                return True
+            if self.nfc is None:
+                reader, st = open_reader(cap=False, unit_relay=self._unit_relay)
+                if reader is not None:
+                    self.nfc, self.hw["nfc"] = reader, st
+                    self.hw["grove"] = "nfc"
+                    return True
+                nfc_st.setdefault("errors", []).extend(e for e in st.get("errors", [])
+                                                        if e.startswith("Unit"))
+            return False
+
+        self.hw["finger"] = {"state": "absent"}
+        if not (grove.mode() == "i2c" and on_i2c()):     # still there: no need to switch
+            switch("uart")
+            self.finger, self.hw["finger"] = open_sensor()
+            if self.finger is not None:
+                self.hw["grove"] = "finger"
+            elif not on_i2c():
+                switch("uart")
+        if self.hw["grove"] != "nfc":
+            self.hw["nfc"] = nfc_st
+        self.hw["chip"] = self._chips()
+        for k in ("chip", "finger", "nfc", "ext", "grove"):  # for the boot log
             print(f"hardware: {k}: {self.hw.get(k)}"[:400], file=sys.stderr, flush=True)
+        print(f"hardware: side port mode: {grove.mode()} ({grove.LED}"
+              f"{', writable' if os.access(grove.LED, os.W_OK) else ', not writable'})",
+              file=sys.stderr, flush=True)
         return self.hw
+
+    def _unit_relay(self, msgs):
+        return self.signer.nfc_unit_xfer(msgs=msgs)
 
     def start(self, title: bool = False):
         """title=True (the device and the simulator): the INSERT COIN screen

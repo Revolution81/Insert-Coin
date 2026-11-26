@@ -1,5 +1,4 @@
-# Unit NFC (ST25R3916, I2C 0x50) on its own software I2C bus, /dev/i2c-3
-# (dtoverlay i2c-gpio on GPIO23/GPIO26, EXT header pins 3 and 1; see
-# deploy/install.sh --nfc-unit). Only the wallet app may open it. The app
-# never gets /dev/i2c-1: that bus carries the keyboard controller.
-SUBSYSTEM=="i2c-dev", KERNEL=="i2c-3", GROUP="czapp", MODE="0660"
+# EXT header pins 3 (SDA) and 1 (SCL) as /dev/i2c-3, made while running
+# when a secure chip sits there (tools/ext_bus.py). Only the signer (group
+# i2c) may open it. (The file name is from when this bus was the NFC Unit's.)
+SUBSYSTEM=="i2c-dev", KERNEL=="i2c-3", GROUP="i2c", MODE="0660"

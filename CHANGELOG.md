@@ -6,15 +6,34 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **HARDWARE finds add-ons by itself** (0.8.42). The menu is now M5
+  SECURE CHIP, SECURE CHIP, FINGERPRINT and NFC, each NONE or where it
+  is: GROVE (the side port) or GPIO (the header on top). The Cap and the
+  NFC Unit are both just NFC. EXT HEADER is gone.
+  - **0.8.41's EXT HEADER never did anything:** the root helper passes
+    on only its first word, so `extbus chip` arrived as `extbus` and was
+    refused. Its commands are one word now, and a test checks that.
+  - **Side port:** fingerprint (UART) is asked first. If nothing answers,
+    the port switches to I2C (GPIO4, M5's `grove_fun`) and looks for M5's
+    chip (0x35) or the NFC Unit (0x50). It stays on I2C only while
+    something answers there, since it's then the keyboard's bus.
+  - **NFC Unit on the side port:** the app still never opens the
+    keyboard's bus. The signer relays its transfers to address 0x50
+    only, after an ST25R3916 has answered there, and only while the port
+    is on I2C. Card data is still handled in the app.
+  - **Blank chip on top (pins 3/1):** when no Cap answers, the root
+    helper makes the chip's I2C bus while running (`dtoverlay i2c-gpio`)
+    and hands it to the signer. If no chip is there, it removes the bus
+    again. Nothing is written to config.txt, so nothing can stop the next
+    start.
+  - With both a Trust&GO and a blank chip fitted, the ready one is used.
 - **Fixed: boot loop with a secure chip on the EXT header** (0.8.41).
   Wired to pins 8 and 10, the chip shared I2C1 with the keyboard and the
   IO expander; its power (pin 6) only comes on once the wallet starts, so
   at power-on the unpowered chip held the bus down, the IO expander never
   got its "system up" and restarted the Cardputer (M5 logo, black, M5
-  logo...). New: SETUP › DEVICE › HARDWARE › EXT HEADER chooses what pins 1
-  and 3 are for: NFC CAP (default), SECURE CHIP (its own I2C bus, pin 3 SDA
-  and pin 1 SCL, the signer's only) or NFC UNIT. From the next start. The
-  chip is looked for on that bus first. Breadboard diagram and board notes
+  logo...). The chip goes on a bus of its own, pin 3 SDA and pin 1 SCL
+  (the setting for it, EXT HEADER, didn't work: replaced in 0.8.42). Breadboard diagram and board notes
   updated; the board drawing itself still needs rerouting before ordering.
 - **Unlocking** (0.8.40): while the PIN is checked, one gem slides back and
   forth instead of the row filling up, which on the device read like a

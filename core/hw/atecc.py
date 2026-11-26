@@ -71,6 +71,7 @@ class I2CTransport:
         import fcntl
         self._fcntl = fcntl
         self.address = address
+        self.bus = bus
         self.fd = os.open(bus, os.O_RDWR)
 
     def _select(self, addr):
@@ -285,44 +286,91 @@ def open_chip() -> tuple[ATECC | None, dict]:
         if _OPEN.get("sim") is None or _OPEN["sim"].t is not tr:
             _OPEN["sim"] = ATECC(tr)
         chip = _OPEN["sim"]
-        return chip, describe(chip, 0x35 if sim == "sim" else 0x60)
+        st = describe(chip, 0x35 if sim == "sim" else 0x60)
+        st.update(where="GROVE" if sim == "sim" else "GPIO", m5=sim == "sim")
+        st["found"] = [dict(st)]
+        return chip, st
     if sim == "none":
-        return None, {"state": "absent"}
-    cached = _OPEN.get("hw")
-    if cached is not None:                  # reuse: the config zone is read once
-        try:
-            cached.info()
-            return cached, describe(cached, cached.t.address)
-        except (OSError, ChipError):
-            _OPEN.pop("hw", None)
-    for bus in chip_buses():
-        for addr in ADDRESSES:
-            try:
-                chip = ATECC(I2CTransport(addr, bus))
-                chip.info()
-                _OPEN["hw"] = chip
-                st = describe(chip, addr)
-                st["bus"] = bus
-                return chip, st
-            except (OSError, ChipError, ImportError):
-                continue
-    return None, {"state": "absent"}
+        return None, {"state": "absent", "found": []}
+    found = scan_chips()
+    if not found:
+        return None, {"state": "absent", "found": []}
+    # A ready chip (the one a vault can be bound to) before a blank one.
+    chip, st = sorted(found, key=lambda cs: cs[1]["state"] != "ready")[0]
+    st = dict(st)
+    st["found"] = [dict(s) for _, s in found]
+    return chip, st
 
 
-# EXT header pins 3 (SDA) and 1 (SCL) as a bus of their own, set up from
-# SETUP › DEVICE › HARDWARE › EXT HEADER › SECURE CHIP (tools/copy_backup.py
-# extbus). A chip there can't touch the keyboard's bus: an unpowered or
-# miswired chip on I2C1 held its lines down at power-on, so the keyboard
-# and the power chip never started and the device restarted in a loop.
+# Where a chip can sit:
+#   GROVE  the side port in I2C mode: the keyboard's bus, I2C1 (M5Stack's
+#          Unit ID, a Trust&GO at 0x35).
+#   GPIO   EXT header pins 3 (SDA) and 1 (SCL) as a bus of their own,
+#          /dev/i2c-3, made while running by the root helper when no Cap is
+#          on top (tools/ext_bus.py). Not I2C1 (EXT pins 8/10): an unpowered
+#          chip there held the keyboard's bus down and the device restarted
+#          in a loop.
 EXT_BUS = "/dev/i2c-3"
 SHARED_BUS = "/dev/i2c-1"
+
+
+def where(bus: str) -> str:
+    return "GPIO" if os.path.realpath(bus) == os.path.realpath(EXT_BUS) else "GROVE"
 
 
 def chip_buses() -> list[str]:
     forced = os.environ.get("CZ_ATECC_BUS")
     if forced:
         return [forced]
-    return [b for b in (EXT_BUS, SHARED_BUS) if os.path.exists(b)] or [SHARED_BUS]
+    return [b for b in (SHARED_BUS, EXT_BUS) if os.path.exists(b)]
+
+
+def scan_chips() -> list[tuple[ATECC, dict]]:
+    """Every chip answering, one per (bus, address). Known chips are kept
+    open (their config zone is read once) and checked with a cheap Info."""
+    out, seen = [], set()
+    for key, chip in list(_OPEN.items()):
+        if not key.startswith("hw:"):
+            continue
+        try:
+            chip.info()
+        except (OSError, ChipError):
+            _OPEN.pop(key, None)
+            try:
+                chip.t.close()
+            except Exception:  # noqa: BLE001
+                pass
+            continue
+        seen.add(key)
+        out.append((chip, _status(chip)))
+    for bus in chip_buses():
+        for addr in ADDRESSES:
+            key = f"hw:{bus}:{addr}"
+            if key in seen:
+                continue
+            t = None
+            try:
+                t = I2CTransport(addr, bus)
+                chip = ATECC(t)
+                chip.info()
+            except (OSError, ChipError, ImportError):
+                if t is not None:
+                    try:
+                        os.close(t.fd)
+                    except OSError:
+                        pass
+                continue
+            _OPEN[key] = chip
+            out.append((chip, _status(chip)))
+    return out
+
+
+def _status(chip: ATECC) -> dict:
+    st = describe(chip, chip.t.address)
+    bus = getattr(chip.t, "bus", SHARED_BUS)
+    st["bus"], st["where"] = bus, where(bus)
+    st["m5"] = chip.t.address == 0x35
+    return st
 
 
 _OPEN: dict = {}

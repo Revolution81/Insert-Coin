@@ -3,11 +3,10 @@ Two NFC readers, both built on ST's ST25R3916:
 
   Cap CC1101 & NFC   plugs onto the EXT header; the NFC chip and a CC1101
                      sub-GHz radio share SPI0.
-  Unit NFC (U216)    a small Grove unit on I2C, address 0x50. Wired to its
-                     own I2C bus (EXT pins 1 and 3, /dev/i2c-3, see
-                     deploy/install.sh --nfc-unit), never to I2C1: that bus
-                     carries the keyboard controller, and the app must not
-                     be able to reach it. CZ_NFC_I2C=/dev/i2c-N:0x50.
+  Unit NFC (U216)    a small Grove unit on I2C, address 0x50, on the side
+                     port in I2C mode (core/hw/grove.py). That's I2C1, the
+                     keyboard's bus, which the app must never open, so the
+                     signer relays transfers to 0x50 alone (RelayI2C).
 
 NFC: reader mode only, ISO 14443-A up to ISO-DEP (14443-4), which is what
 Coinkite's SATSCARD and TAPSIGNER speak (core/cktap.py). The field is on
@@ -139,8 +138,8 @@ class I2C:
     write of that header, a repeated start, then the data (as M5Stack's
     library does it). Writes are one message."""
 
-    def __init__(self, path: str, address: int = 0x50):
-        if os.path.realpath(path) == os.path.realpath(SHARED_BUS) and \
+    def __init__(self, path: str, address: int = 0x50, shared_ok: bool = False):
+        if os.path.realpath(path) == os.path.realpath(SHARED_BUS) and not shared_ok and \
                 os.environ.get("CZ_NFC_I2C_SHARED") != "1":
             raise NFCError("not on I2C1: it's the keyboard's bus")
         self.path, self.address = path, address
@@ -193,10 +192,27 @@ class I2C:
         os.close(self.fd)
 
 
-def _i2c_from_env() -> I2C:
-    spec = os.environ.get("CZ_NFC_I2C", "/dev/i2c-3:0x50")
-    path, _, addr = spec.partition(":")
-    return I2C(path, int(addr or "0x50", 16))
+UNIT_ADDRESS = 0x50
+
+
+class RelayI2C(I2C):
+    """The NFC Unit on the side (Grove) port, in I2C mode: that's I2C1, the
+    keyboard's bus, which the app never opens. The signer passes each
+    transfer to address 0x50 only, after checking an ST25R3916 answers
+    there (TrustedSigner.nfc_unit_xfer); every card byte is handled here,
+    in the app, as for the Cap."""
+
+    path = "GROVE"
+
+    def __init__(self, relay, address: int = UNIT_ADDRESS):
+        self.relay, self.address = relay, address
+
+    def _rdwr(self, msgs):
+        wire = [[f, p] if f & I2C_M_RD else [f, bytes(p).hex()] for f, p in msgs]
+        return bytes.fromhex(self.relay(wire))
+
+    def close(self):
+        pass
 
 
 def _spi_from_env(var: str, default: str, mode: int) -> SPI:
@@ -217,18 +233,30 @@ class _Skip(Exception):
     pass
 
 
+EXT_BUS = "/dev/i2c-3"          # EXT pins 3/1 as I2C for a secure chip (tools/ext_bus.py)
+
+
 def _cap_power() -> None:
-    """Switch the Cap on (once per process). Refused if the pin belongs to
-    the Unit NFC's i2c-gpio bus."""
+    """Switch the Cap on (once per process). Refused while GPIO23/26 are a
+    secure chip's I2C bus."""
     if "power" in _CAP:
         return
-    unit_bus = os.environ.get("CZ_NFC_I2C", "/dev/i2c-3:0x50").split(":")[0]
-    if os.path.exists(unit_bus):                         # GPIO23/26 are the Unit's I2C
-        raise OSError("EXT pins set up for Unit NFC")
+    if os.path.exists(os.environ.get("CZ_EXT_BUS", EXT_BUS)):
+        raise OSError("EXT pins are a chip's I2C bus")
     from .gpio import OutputPin
     pin = int(os.environ.get("CZ_CAP_POWER", CAP_POWER))
     _CAP["power"] = OutputPin(pin, 1, "czwallet-cap-power")
     time.sleep(0.05)
+
+
+def release_cap() -> None:
+    """Let go of the Cap's power pin (GPIO26), so the chip bus can have it."""
+    pin = _CAP.pop("power", None)
+    if pin is not None:
+        try:
+            pin.set(0)
+        finally:
+            pin.close()
 
 
 def _cap_nfc_spi() -> SPI:
@@ -620,12 +648,16 @@ def sim_reader() -> SimReader | None:
     return _SIM.get("reader")
 
 
-def open_reader() -> tuple[object | None, dict]:
-    """(reader or None, status for HARDWARE). Also puts the CC1101 to sleep."""
+def open_reader(unit_relay=None, cap: bool = True) -> tuple[object | None, dict]:
+    """(reader or None, status for HARDWARE). Also puts the CC1101 to sleep.
+    cap: look for the Cap on the EXT header (not while a chip has its pins).
+    unit_relay: the signer's relay to the NFC Unit on the side port."""
     mode = os.environ.get("CZ_NFC", "auto")
     if mode == "none":
         return None, {"state": "absent"}
     if mode.startswith("sim"):
+        if os.environ.get("CZ_NFC_SIM_READER") == "unit" and unit_relay is None:
+            return None, {"state": "absent", "errors": ["Grove: not in I2C mode"]}
         if "reader" not in _SIM:
             from core.cktap import SimSatscard, SimTapsigner
             card = SimTapsigner() if mode == "sim-tapsigner" else SimSatscard()
@@ -633,13 +665,20 @@ def open_reader() -> tuple[object | None, dict]:
         unit = os.environ.get("CZ_NFC_SIM_READER") == "unit"
         return _SIM["reader"], {"state": "ready", "kind": "simulated",
                                 "reader": "unit" if unit else "cap",
+                                "where": "GROVE" if unit else "GPIO",
                                 "bus": "I2C (simulated)" if unit else "SPI (simulated)",
                                 "subghz": {"state": "absent" if unit else "asleep"}}
     errors = []
     sub = {"state": "absent"}
+    if not cap:
+        errors.append("Cap: EXT pins hold a chip")
     try:
+        if not cap:
+            raise _Skip
         _cap_power()
-    except Exception as e:  # noqa: BLE001 - no GPIO access, or the Unit's bus owns it
+    except _Skip:
+        pass
+    except Exception as e:  # noqa: BLE001 - no GPIO access, or the chip's bus owns it
         errors.append(f"Cap power: {e}"[:40])
     if not errors:
         try:
@@ -662,13 +701,15 @@ def open_reader() -> tuple[object | None, dict]:
             raise
         kind, rev = chip.identity()
         return Reader(chip), {"state": "ready", "reader": "cap", "kind": f"ST25R3916 rev {rev}",
-                              "bus": "SPI", "subghz": sub}
+                              "where": "GPIO", "bus": "SPI", "subghz": sub}
     except _Skip:
         pass
     except Exception as e:  # noqa: BLE001 - no Cap, no spidev, wrong bus
         errors.append(f"Cap: {e}"[:40])
-    try:                                               # the Unit, on its own I2C bus
-        bus = _i2c_from_env()
+    try:                                               # the Unit, on the side port
+        if unit_relay is None:
+            raise NFCError("side port not in I2C mode")
+        bus = RelayI2C(unit_relay)
         chip = ST25R3916(bus, vdd_5v=os.environ.get("CZ_NFC_5V") == "1", i2c=True)
         try:
             chip.start()
@@ -677,7 +718,8 @@ def open_reader() -> tuple[object | None, dict]:
             raise
         kind, rev = chip.identity()
         return Reader(chip), {"state": "ready", "reader": "unit", "kind": f"ST25R3916 rev {rev}",
-                              "bus": f"I2C {bus.path} 0x{bus.address:02x}", "subghz": sub}
+                              "where": "GROVE", "bus": f"I2C (side port) 0x{bus.address:02x}",
+                              "subghz": sub}
     except Exception as e:  # noqa: BLE001 - no Unit, no bus
         errors.append(f"Unit: {e}"[:40])
     return None, {"state": "absent", "error": errors[0], "errors": errors, "subghz": sub}
