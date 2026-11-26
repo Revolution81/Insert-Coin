@@ -5,6 +5,7 @@ fingerprint-aware unlock screen.
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 
@@ -66,8 +67,84 @@ def hardware_menu(app):
         ("SECURE CHIP", chip_menu, cl, cc),
         ("FINGERPRINT", finger_menu, fl, fc),
         ("NFC", _nfc_info, *nfc_label(app)),
+        ("EXT HEADER", ext_header_menu, *EXT_LABELS.get(ext_mode(app), ("?", "grey"))),
         ("RESCAN", rescan),
     ], info=["Add-ons on the Grove port", "or the EXT header."]))
+
+
+# ------------------------------------------------------------- EXT header
+# What EXT pins 1 and 3 are for (tools/ext_bus.py, through the root helper).
+EXT_LABELS = {"cap": ("NFC CAP", "light"), "chip": ("SECURE CHIP", "gold"),
+              "nfc": ("NFC UNIT", "light")}
+HELPER = "/usr/local/sbin/cz-backup"
+
+
+def _helper(*args) -> tuple[bool, str]:
+    import subprocess
+    try:
+        r = subprocess.run(["sudo", "-n", HELPER, *args], capture_output=True, text=True,
+                           timeout=60, stdin=subprocess.DEVNULL)
+        return r.returncode == 0, (r.stdout + r.stderr).strip()
+    except Exception as e:  # noqa: BLE001
+        return False, str(e)
+
+
+def ext_mode(app) -> str:
+    """Asked once per run (then kept), or "cap" off the device."""
+    cached = getattr(app, "_ext_mode", None)
+    if cached:
+        return cached
+    mode = "cap"
+    if os.path.exists(HELPER):
+        ok, out = _helper("extbus", "status")
+        if ok and out in EXT_LABELS:
+            mode = out
+    app._ext_mode = mode
+    return mode
+
+
+def ext_header_menu(app):
+    cur = ext_mode(app)
+
+    def choose(mode):
+        def go(app):
+            if mode == cur:
+                app.pop()
+                return
+
+            def done(app, res):
+                ok, out = res
+                app.pop()                        # EXT HEADER
+                if ok:
+                    app._ext_mode = mode
+                app.pop()                        # HARDWARE, shown again with the new value
+                hardware_menu(app)
+                if not ok:
+                    app.push(MessageScreen("NOT CHANGED", ["Couldn't change it:", out[:40]],
+                                           border="red"))
+                    return
+                app.push(MessageScreen("RESTART TO USE", [
+                    f"EXT header: {EXT_LABELS[mode][0]}.", "",
+                    "Switch off, fit or wire", "it, then switch back on.",
+                    "It takes effect then."], border="gold"))
+            app.job("SAVING...", lambda: _helper("extbus", mode), done)
+        return go
+
+    def wiring(app):
+        app.push(MessageScreen("EXT HEADER", [
+            "NFC CAP: the Cap on top.", "",
+            "SECURE CHIP: a chip board", "wired to pin 3 (SDA) and",
+            "pin 1 (SCL), on a bus of its", "own: it can't block the",
+            "keyboard. Power from pin 6,", "GND pin 4.", "",
+            "NFC UNIT: the same pins,", "for the Unit NFC (U216).", "",
+            "One at a time: they share", "the same pins."]))
+    rows = []
+    for mode in ("cap", "chip", "nfc"):
+        label = EXT_LABELS[mode][0]
+        rows.append((label, choose(mode), "IN USE" if mode == cur else "", "gold" if mode == cur else "grey"))
+    rows.append(("HOW TO WIRE", wiring))
+    app.push(MenuScreen("EXT HEADER", rows,
+                        info=["What's on the top header.", "Takes effect at next start."]))
 
 
 def nfc_label(app) -> tuple[str, str]:

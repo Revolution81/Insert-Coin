@@ -1,4 +1,4 @@
-W, H = 1500, 1000
+W, H = 1500, 1030
 P = 30
 BX, BY = 560, 430            # breadboard top-left
 NC = 22
@@ -84,17 +84,21 @@ text(cx(SCL), ROWS["e"] + 40, "SCL strip", 14, "#b38600", "middle", "700")
 # Cardputer connector, left
 HX, HY = 60, 300
 add(f'<rect x="{HX}" y="{HY}" width="300" height="400" rx="14" fill="#2b2f36"/>')
-text(HX + 150, HY + 32, "Cardputer top connector", 16, "#fff", "middle", "700")
-text(HX + 150, HY + 52, "odd row = nearest the keyboard", 12, "#bbb", "middle")
+text(HX + 150, HY + 362, "Cardputer top connector", 16, "#fff", "middle", "700")
+text(HX + 150, HY + 382, "odd row = nearest the keyboard", 12, "#bbb", "middle")
 odd = ["G26", "G23", "G22", "CLK", "MOSI", "MISO", "CS1"]
 even = ["5V IN", "GND", "5V OUT", "SDA", "SCL", "RX", "TX"]
-used = {4: (BLK, "GND"), 6: (RED, "5 V"), 8: (BLU, "SDA"), 10: (YEL, "SCL")}
+used = {4: (BLK, "GND"), 6: (RED, "5 V"), 3: (BLU, "SDA"), 1: (YEL, "SCL")}
 pos = {}
 for i in range(7):
-    y = HY + 90 + i * 42
+    y = HY + 40 + i * 42
     xo, xe = HX + 70, HX + 230
-    add(f'<rect x="{xo-10}" y="{y-10}" width="20" height="20" fill="#000" stroke="#666"/>')
-    text(xo - 18, y + 5, f"{2*i+1}", 12, "#888", "end"); text(xo + 18, y + 5, odd[i], 12, "#888")
+    no = 2 * i + 1
+    oc = used.get(no, (None,))[0]
+    add(f'<rect x="{xo-10}" y="{y-10}" width="20" height="20" fill="#000" stroke="{oc or "#666"}" stroke-width="{3 if oc else 1}"/>')
+    text(xo + 18, y + 5, f"{no} " + ((used[no][1] + " " + odd[i]) if oc else odd[i]), 12,
+         "#fff" if oc else "#888", "start", "700" if oc else "400")
+    pos[no] = (xo, y)
     n = 2 * i + 2
     col = used.get(n, (None,))[0]
     add(f'<rect x="{xe-10}" y="{y-10}" width="20" height="20" fill="#000" stroke="{col or "#666"}" stroke-width="{3 if col else 1}"/>')
@@ -102,19 +106,19 @@ for i in range(7):
     pos[n] = (xe, y)
 text(HX + 150, HY + 400 + 26, "Pin 2 (5V IN) stays empty", 14, RED, "middle", "700")
 
-# header wires: out to the right, up into a lane above the board, across, down into the strip
-lanes = {8: (BY - 60, cx(SDA), ROWS["d"]), 10: (BY - 90, cx(SCL), ROWS["d"])}
-xl = {6: 420, 8: 440, 10: 460, 4: 400}
-for n, (ly, tx, ty) in lanes.items():
+# SDA and SCL from pins 3 and 1 (a bus of their own, not the keyboard's):
+# up out of the header, across above everything, down into their strips
+xl = {6: 420, 4: 400}
+for n, ly, jog, tx, ty in ((1, HY - 22, 0, cx(SCL), ROWS["d"]), (3, HY - 44, -28, cx(SDA), ROWS["d"])):
     px, py = pos[n]; col = used[n][0]
-    path(f"M{px},{py} H{xl[n]} V{ly} H{tx} V{ty}", col, 6); pin(px, py, col); pin(tx, ty, col)
+    path(f"M{px},{py} H{px + jog} V{ly} H{tx} V{ty}", col, 6); pin(px, py, col); pin(tx, ty, col)
 px, py = pos[6]
 path(f"M{px},{py} H{xl[6]} V{ROWS['d']} H{cx(I)}", RED, 6); pin(px, py, RED); pin(cx(I), ROWS['d'], RED)
 text(BX - 8, ROWS['d'] - 10, "pin 6 (5 V)", 13, RED, "end", "700")
 px, py = pos[4]
 path(f"M{px},{py} H{xl[4]} V{Y_GND + 85} H{cx(1)} V{Y_GND}", BLK, 6); pin(px, py, BLK); pin(cx(1), Y_GND, BLK)
-text(cx(SDA) + 10, BY - 12, "pin 8 (SDA)", 13, BLU, w="700")
-text(cx(SCL) + 10, BY - 12, "pin 10 (SCL)", 13, "#b38600", w="700")
+text(cx(SDA) + 10, BY - 12, "pin 3 (SDA)", 13, BLU, w="700")
+text(cx(SCL) + 10, BY - 12, "pin 1 (SCL)", 13, "#b38600", w="700")
 text(xl[4] + 12, Y_GND + 104, "pin 4 (GND) → GND rail", 13, BLK, w="700")
 
 # Adafruit breakout, top right, 4209 cable
@@ -139,7 +143,8 @@ for i, (col, tx, ty, t) in enumerate(cab):
 notes = ["Check the regulator's pin order on its datasheet first (usually GND, IN, OUT with the flat side facing you).",
          "R1 and R2 go to the +3.3 V rail, never to 5 V: 5 V on SDA/SCL can damage the Cardputer.",
          "If your breadboard's rails are split in the middle, bridge each with a short jumper.",
-         "Then power on: SETUP › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked."]
+         "First set SETUP › DEVICE › HARDWARE › EXT HEADER › SECURE CHIP (0.8.41+), switch off, wire it, switch on.",
+         "Then SETUP › DEVICE › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked."]
 for i, t in enumerate(notes):
     text(40, 880 + i * 26, f"{i+1}. {t}", 16, "#333")
 add("</svg>")

@@ -374,6 +374,19 @@ stay). Wrong, right, duress and wipe PINs all cost exactly one Argon2 run, and
 the file's shape doesn't change, so neither timing nor the file reveals one.
 The wipe, duress, bypass and main PINs must all differ.
 
+**The secure chip's bus (0.8.41).** A chip on EXT pins 8/10 shared I2C1
+with the keyboard and the IO expander; unpowered at power-on, it held the
+bus down and the device restarted in a loop. SETUP › DEVICE › HARDWARE ›
+EXT HEADER › SECURE CHIP puts it on its own bus instead (pins 3/1,
+/dev/i2c-3, i2c-gpio), owned by group i2c, so only the signer can open it,
+as with I2C1. The same pins as the NFC Unit's bus, which is the app's
+(group czapp): the helper (`cz-backup extbus`, tools/ext_bus.py) writes one
+udev rule or the other, never both. A compromised app could switch the mode
+to NFC UNIT and, after a restart, talk to a chip left on those pins; that
+gives it the chip's ECDH as an oracle, but not the vault file (the signer's
+folder), so no offline PIN guessing. The mode only changes config.txt lines
+between Insert Coin's own markers, after a backup copy.
+
 **Game PIN (0.8.38).** A second header tag, "g", built the same way:
 HMAC(Argon2 key of the game PIN, "game" or "game+wipe"), random bytes when
 none is set, so neither the file nor the timing (one Argon2 run; both tags

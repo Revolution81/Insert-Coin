@@ -279,7 +279,28 @@ def addons() -> int:
     return 0 if all(r.endswith(": on") for r in results) else 1
 
 
+def extbus(mode: str) -> int:
+    """EXT header pins 1 and 3: the NFC Cap, a secure chip on its own bus,
+    or the NFC Unit (tools/ext_bus.py). From the next start."""
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import ext_bus
+    if mode == "status":
+        try:
+            print(ext_bus.current(open(ext_bus.CONFIG).read()))
+        except OSError as e:
+            print(f"unknown: {e}")
+        return 0
+    try:
+        print(ext_bus.apply(mode))
+    except (OSError, ValueError) as e:
+        print(f"ext bus: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv) -> int:
+    if len(argv) == 3 and argv[1] == "extbus" and argv[2] in ("cap", "chip", "nfc", "status"):
+        return extbus(argv[2])
     if len(argv) == 2 and argv[1] == "addons":
         return addons()
     if len(argv) == 2 and argv[1] == "migrate":

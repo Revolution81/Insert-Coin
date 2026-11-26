@@ -295,15 +295,34 @@ def open_chip() -> tuple[ATECC | None, dict]:
             return cached, describe(cached, cached.t.address)
         except (OSError, ChipError):
             _OPEN.pop("hw", None)
-    for addr in ADDRESSES:
-        try:
-            chip = ATECC(I2CTransport(addr))
-            chip.info()
-            _OPEN["hw"] = chip
-            return chip, describe(chip, addr)
-        except (OSError, ChipError, ImportError):
-            continue
+    for bus in chip_buses():
+        for addr in ADDRESSES:
+            try:
+                chip = ATECC(I2CTransport(addr, bus))
+                chip.info()
+                _OPEN["hw"] = chip
+                st = describe(chip, addr)
+                st["bus"] = bus
+                return chip, st
+            except (OSError, ChipError, ImportError):
+                continue
     return None, {"state": "absent"}
+
+
+# EXT header pins 3 (SDA) and 1 (SCL) as a bus of their own, set up from
+# SETUP › DEVICE › HARDWARE › EXT HEADER › SECURE CHIP (tools/copy_backup.py
+# extbus). A chip there can't touch the keyboard's bus: an unpowered or
+# miswired chip on I2C1 held its lines down at power-on, so the keyboard
+# and the power chip never started and the device restarted in a loop.
+EXT_BUS = "/dev/i2c-3"
+SHARED_BUS = "/dev/i2c-1"
+
+
+def chip_buses() -> list[str]:
+    forced = os.environ.get("CZ_ATECC_BUS")
+    if forced:
+        return [forced]
+    return [b for b in (EXT_BUS, SHARED_BUS) if os.path.exists(b)] or [SHARED_BUS]
 
 
 _OPEN: dict = {}

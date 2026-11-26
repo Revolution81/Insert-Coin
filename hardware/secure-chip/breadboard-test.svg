@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1000" viewBox="0 0 1500 1000" font-family="Helvetica,Arial,sans-serif">
-<rect width="1500" height="1000" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1030" viewBox="0 0 1500 1030" font-family="Helvetica,Arial,sans-serif">
+<rect width="1500" height="1030" fill="#fff"/>
 <text x="40" y="55" font-size="32" font-weight="700" fill="#111" text-anchor="start">Insert Coin: blank secure chip, breadboard test</text>
 <text x="40" y="90" font-size="18" font-weight="400" fill="#444" text-anchor="start">Cardputer OFF and NFC Cap removed while wiring. Before fitting the chip: pin 6 ≈ 5 V, red rail ≈ 3.3 V (meter).</text>
 <rect x="560" y="430" width="720" height="335" rx="12" fill="#f5f2e9" stroke="#cbc4ae" stroke-width="2"/>
@@ -226,59 +226,52 @@
 <text x="875" y="685" font-size="14" font-weight="700" fill="#1d4ed8" text-anchor="middle">SDA strip</text>
 <text x="995" y="685" font-size="14" font-weight="700" fill="#b38600" text-anchor="middle">SCL strip</text>
 <rect x="60" y="300" width="300" height="400" rx="14" fill="#2b2f36"/>
-<text x="210" y="332" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">Cardputer top connector</text>
-<text x="210" y="352" font-size="12" font-weight="400" fill="#bbb" text-anchor="middle">odd row = nearest the keyboard</text>
-<rect x="120" y="380" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="395" font-size="12" font-weight="400" fill="#888" text-anchor="end">1</text>
-<text x="148" y="395" font-size="12" font-weight="400" fill="#888" text-anchor="start">G26</text>
-<rect x="280" y="380" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
-<text x="272" y="395" font-size="12" font-weight="400" fill="#888" text-anchor="end">2 5V IN</text>
-<rect x="120" y="422" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="437" font-size="12" font-weight="400" fill="#888" text-anchor="end">3</text>
-<text x="148" y="437" font-size="12" font-weight="400" fill="#888" text-anchor="start">G23</text>
-<rect x="280" y="422" width="20" height="20" fill="#000" stroke="#111111" stroke-width="3"/>
-<text x="272" y="437" font-size="12" font-weight="700" fill="#fff" text-anchor="end">4 GND</text>
-<rect x="120" y="464" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="479" font-size="12" font-weight="400" fill="#888" text-anchor="end">5</text>
-<text x="148" y="479" font-size="12" font-weight="400" fill="#888" text-anchor="start">G22</text>
-<rect x="280" y="464" width="20" height="20" fill="#000" stroke="#d62828" stroke-width="3"/>
-<text x="272" y="479" font-size="12" font-weight="700" fill="#fff" text-anchor="end">6 5V OUT</text>
-<rect x="120" y="506" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="521" font-size="12" font-weight="400" fill="#888" text-anchor="end">7</text>
-<text x="148" y="521" font-size="12" font-weight="400" fill="#888" text-anchor="start">CLK</text>
-<rect x="280" y="506" width="20" height="20" fill="#000" stroke="#1d4ed8" stroke-width="3"/>
-<text x="272" y="521" font-size="12" font-weight="700" fill="#fff" text-anchor="end">8 SDA</text>
-<rect x="120" y="548" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="563" font-size="12" font-weight="400" fill="#888" text-anchor="end">9</text>
-<text x="148" y="563" font-size="12" font-weight="400" fill="#888" text-anchor="start">MOSI</text>
-<rect x="280" y="548" width="20" height="20" fill="#000" stroke="#e0a800" stroke-width="3"/>
-<text x="272" y="563" font-size="12" font-weight="700" fill="#fff" text-anchor="end">10 SCL</text>
-<rect x="120" y="590" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="605" font-size="12" font-weight="400" fill="#888" text-anchor="end">11</text>
-<text x="148" y="605" font-size="12" font-weight="400" fill="#888" text-anchor="start">MISO</text>
-<rect x="280" y="590" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
-<text x="272" y="605" font-size="12" font-weight="400" fill="#888" text-anchor="end">12 RX</text>
-<rect x="120" y="632" width="20" height="20" fill="#000" stroke="#666"/>
-<text x="112" y="647" font-size="12" font-weight="400" fill="#888" text-anchor="end">13</text>
-<text x="148" y="647" font-size="12" font-weight="400" fill="#888" text-anchor="start">CS1</text>
-<rect x="280" y="632" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
-<text x="272" y="647" font-size="12" font-weight="400" fill="#888" text-anchor="end">14 TX</text>
+<text x="210" y="662" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">Cardputer top connector</text>
+<text x="210" y="682" font-size="12" font-weight="400" fill="#bbb" text-anchor="middle">odd row = nearest the keyboard</text>
+<rect x="120" y="330" width="20" height="20" fill="#000" stroke="#e0a800" stroke-width="3"/>
+<text x="148" y="345" font-size="12" font-weight="700" fill="#fff" text-anchor="start">1 SCL G26</text>
+<rect x="280" y="330" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="345" font-size="12" font-weight="400" fill="#888" text-anchor="end">2 5V IN</text>
+<rect x="120" y="372" width="20" height="20" fill="#000" stroke="#1d4ed8" stroke-width="3"/>
+<text x="148" y="387" font-size="12" font-weight="700" fill="#fff" text-anchor="start">3 SDA G23</text>
+<rect x="280" y="372" width="20" height="20" fill="#000" stroke="#111111" stroke-width="3"/>
+<text x="272" y="387" font-size="12" font-weight="700" fill="#fff" text-anchor="end">4 GND</text>
+<rect x="120" y="414" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="148" y="429" font-size="12" font-weight="400" fill="#888" text-anchor="start">5 G22</text>
+<rect x="280" y="414" width="20" height="20" fill="#000" stroke="#d62828" stroke-width="3"/>
+<text x="272" y="429" font-size="12" font-weight="700" fill="#fff" text-anchor="end">6 5V OUT</text>
+<rect x="120" y="456" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="148" y="471" font-size="12" font-weight="400" fill="#888" text-anchor="start">7 CLK</text>
+<rect x="280" y="456" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="471" font-size="12" font-weight="400" fill="#888" text-anchor="end">8 SDA</text>
+<rect x="120" y="498" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="148" y="513" font-size="12" font-weight="400" fill="#888" text-anchor="start">9 MOSI</text>
+<rect x="280" y="498" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="513" font-size="12" font-weight="400" fill="#888" text-anchor="end">10 SCL</text>
+<rect x="120" y="540" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="148" y="555" font-size="12" font-weight="400" fill="#888" text-anchor="start">11 MISO</text>
+<rect x="280" y="540" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="555" font-size="12" font-weight="400" fill="#888" text-anchor="end">12 RX</text>
+<rect x="120" y="582" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="148" y="597" font-size="12" font-weight="400" fill="#888" text-anchor="start">13 CS1</text>
+<rect x="280" y="582" width="20" height="20" fill="#000" stroke="#666" stroke-width="1"/>
+<text x="272" y="597" font-size="12" font-weight="400" fill="#888" text-anchor="end">14 TX</text>
 <text x="210" y="726" font-size="14" font-weight="700" fill="#d62828" text-anchor="middle">Pin 2 (5V IN) stays empty</text>
-<path d="M290,516 H440 V370 H875 V615" stroke="#1d4ed8" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="290" cy="516" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
-<circle cx="875" cy="615" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
-<path d="M290,558 H460 V340 H995 V615" stroke="#e0a800" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="290" cy="558" r="8" fill="#e0a800" stroke="#000" stroke-width="1.5"/>
+<path d="M130,340 H130 V278 H995 V615" stroke="#e0a800" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="130" cy="340" r="8" fill="#e0a800" stroke="#000" stroke-width="1.5"/>
 <circle cx="995" cy="615" r="8" fill="#e0a800" stroke="#000" stroke-width="1.5"/>
-<path d="M290,474 H420 V615 H695" stroke="#d62828" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="290" cy="474" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
+<path d="M130,382 H102 V256 H875 V615" stroke="#1d4ed8" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="130" cy="382" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
+<circle cx="875" cy="615" r="8" fill="#1d4ed8" stroke="#000" stroke-width="1.5"/>
+<path d="M290,424 H420 V615 H695" stroke="#d62828" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="290" cy="424" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
 <circle cx="695" cy="615" r="8" fill="#d62828" stroke="#000" stroke-width="1.5"/>
 <text x="552" y="605" font-size="13" font-weight="700" fill="#d62828" text-anchor="end">pin 6 (5 V)</text>
-<path d="M290,432 H400 V790 H605 V705" stroke="#111111" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<circle cx="290" cy="432" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
+<path d="M290,382 H400 V790 H605 V705" stroke="#111111" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="290" cy="382" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
 <circle cx="605" cy="705" r="8" fill="#111111" stroke="#000" stroke-width="1.5"/>
-<text x="885" y="418" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="start">pin 8 (SDA)</text>
-<text x="1005" y="418" font-size="13" font-weight="700" fill="#b38600" text-anchor="start">pin 10 (SCL)</text>
+<text x="885" y="418" font-size="13" font-weight="700" fill="#1d4ed8" text-anchor="start">pin 3 (SDA)</text>
+<text x="1005" y="418" font-size="13" font-weight="700" fill="#b38600" text-anchor="start">pin 1 (SCL)</text>
 <text x="412" y="809" font-size="13" font-weight="700" fill="#111111" text-anchor="start">pin 4 (GND) → GND rail</text>
 <rect x="1180" y="140" width="230" height="130" rx="12" fill="#1f2a44"/>
 <text x="1295" y="180" font-size="18" font-weight="700" fill="#fff" text-anchor="middle">Adafruit 4314</text>
@@ -304,5 +297,6 @@
 <text x="40" y="880" font-size="16" font-weight="400" fill="#333" text-anchor="start">1. Check the regulator's pin order on its datasheet first (usually GND, IN, OUT with the flat side facing you).</text>
 <text x="40" y="906" font-size="16" font-weight="400" fill="#333" text-anchor="start">2. R1 and R2 go to the +3.3 V rail, never to 5 V: 5 V on SDA/SCL can damage the Cardputer.</text>
 <text x="40" y="932" font-size="16" font-weight="400" fill="#333" text-anchor="start">3. If your breadboard's rails are split in the middle, bridge each with a short jumper.</text>
-<text x="40" y="958" font-size="16" font-weight="400" fill="#333" text-anchor="start">4. Then power on: SETUP › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked.</text>
+<text x="40" y="958" font-size="16" font-weight="400" fill="#333" text-anchor="start">4. First set SETUP › DEVICE › HARDWARE › EXT HEADER › SECURE CHIP (0.8.41+), switch off, wire it, switch on.</text>
+<text x="40" y="984" font-size="16" font-weight="400" fill="#333" text-anchor="start">5. Then SETUP › DEVICE › HARDWARE › SECURE CHIP should say blank chip (0x60). Detecting only reads; nothing gets locked.</text>
 </svg>

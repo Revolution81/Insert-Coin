@@ -18,11 +18,22 @@ pull-ups to 3.3 V + male-to-male jumper wires), then order.
 
 - EXT pin 6 (**5V OUT**) -> MCP1700T-3302E/TT -> **3.3 V** for the chip.
   1 µF in, 1 µF out, 100 nF at the chip.
-- EXT pin 8 (**G2 SDA**) and pin 10 (**G3 SCL**) to the chip, with 4.7 kΩ
-  pull-ups to 3.3 V (the Cardputer's own are 100 kΩ, too weak).
+- EXT pin 3 (**G23 SDA**) and pin 1 (**G26 SCL**) to the chip, with 4.7 kΩ
+  pull-ups to 3.3 V. That's a **bus of its own** (I2C bus 3, software I2C
+  on GPIO23/26), set up from SETUP › DEVICE › HARDWARE › EXT HEADER ›
+  SECURE CHIP (0.8.41+), then a restart.
 - EXT pin 4 GND. **Pin 2 (5V IN) is not connected**: it powers the device.
-- The chip answers at **0x60**. The same I2C bus carries the keyboard (0x34),
-  battery gauge (0x55), audio codec (0x10), IO expander (0x4F) and RTC.
+- The chip answers at **0x60**, alone on its bus.
+
+**Why not pins 8 and 10 (I2C1), as v1 first had it:** that bus carries the
+keyboard (0x34), battery gauge (0x55), audio codec (0x10), the IO expander
+(0x4F) and the RTC. The chip's power on pin 6 only comes on once the wallet
+starts, and until then the unpowered chip and its pull-ups held those wires
+down: the keyboard and the IO expander never started, and the IO expander
+restarted the Cardputer in a loop (M5 logo, black, M5 logo...). Seen on the
+device, 2026-11-26. On its own bus an unpowered or miswired chip can't stop
+anything from starting. **The board drawing below still routes SDA/SCL to
+pins 8 and 10 and needs the same change before it's ordered.**
 
 From M5Stack's schematic (V0.6.1): 5V OUT goes through a load switch
 enabled by the IO expander's **HAT_EN** line. M5Stack's system keeps it off

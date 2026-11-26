@@ -6,6 +6,16 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fixed: boot loop with a secure chip on the EXT header** (0.8.41).
+  Wired to pins 8 and 10, the chip shared I2C1 with the keyboard and the
+  IO expander; its power (pin 6) only comes on once the wallet starts, so
+  at power-on the unpowered chip held the bus down, the IO expander never
+  got its "system up" and restarted the Cardputer (M5 logo, black, M5
+  logo...). New: SETUP › DEVICE › HARDWARE › EXT HEADER chooses what pins 1
+  and 3 are for: NFC CAP (default), SECURE CHIP (its own I2C bus, pin 3 SDA
+  and pin 1 SCL, the signer's only) or NFC UNIT. From the next start. The
+  chip is looked for on that bus first. Breadboard diagram and board notes
+  updated; the board drawing itself still needs rerouting before ordering.
 - **Unlocking** (0.8.40): while the PIN is checked, one gem slides back and
   forth instead of the row filling up, which on the device read like a
   count (2 lit one time, 3 the next) though it only showed how far the

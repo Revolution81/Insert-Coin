@@ -187,7 +187,10 @@ chmod 440 /etc/sudoers.d/czwallet
 install -m 644 "$SRC/deploy/50-czwallet-nm.rules" /etc/polkit-1/rules.d/
 # a fixed name for the built-in keyboard (M5's image has one; ours may not)
 install -m 644 "$SRC/deploy/62-czwallet-keyboard.rules" /etc/udev/rules.d/
-install -m 644 "$SRC/deploy/63-czwallet-nfc-unit.rules" /etc/udev/rules.d/
+# kept if already there: SETUP › DEVICE › HARDWARE › EXT HEADER rewrites it
+# (group i2c for a secure chip, czapp for the NFC Unit; tools/ext_bus.py)
+[ -e /etc/udev/rules.d/63-czwallet-nfc-unit.rules ] || \
+  install -m 644 "$SRC/deploy/63-czwallet-nfc-unit.rules" /etc/udev/rules.d/
 if [ "$MODE" = dedicated ]; then
   # only the signer may draw on the panel or set the backlight
   install -m 644 "$SRC/deploy/60-czwallet-screen.rules" /etc/udev/rules.d/
@@ -221,13 +224,8 @@ getent group i2c >/dev/null && usermod -aG i2c czsigner
 # with the Pi's pull-ups, slowed for them). Never I2C1, which the keyboard
 # is on: the app may open this bus, and must not reach the keyboard.
 if [ "$NFC_UNIT" = 1 ]; then
-  CFG=/boot/firmware/config.txt
-  if ! grep -q "^dtoverlay=i2c-gpio,bus=3" "$CFG"; then
-    printf '\n# Insert Coin: Unit NFC on its own I2C bus (EXT pin 3 SDA, pin 1 SCL)\ngpio=23,26=pu\ndtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=26,i2c_gpio_delay_us=10\n' >> "$CFG"
-    echo "== Unit NFC: /dev/i2c-3 set up; reboot to use it"
-  else
-    echo "== Unit NFC: /dev/i2c-3 already set up"
-  fi
+  python3 "$SRC/tools/copy_backup.py" extbus nfc >/dev/null \
+    && echo "== Unit NFC: /dev/i2c-3 set up; reboot to use it"
 fi
 
 echo "== services"
