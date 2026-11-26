@@ -305,3 +305,21 @@ def test_old_udev_rule_handed_to_the_signer(monkeypatch, tmp_path):
     assert migrate.step_ext_bus_rule() is False     # no restart needed
     assert 'GROUP="i2c"' in rule.read_text()
     assert migrate.step_ext_bus_rule() is False
+
+
+# ------------------------------------------------------------ side port at power-on
+def test_side_port_starts_on_uart(tmp_path, monkeypatch):
+    """M5's Unit ID on the side port stopped the start: GPIO4 floats high
+    (I2C1) until Linux sets it low. The boot firmware now drives it low."""
+    cfg = tmp_path / "config.txt"
+    original = "dtparam=i2c_arm=on\n[cm4]\notg_mode=1\n"
+    cfg.write_text(original)
+    assert migrate.step_grove_uart_at_boot(str(cfg)) is False     # no app restart
+    text = cfg.read_text()
+    assert text.startswith(original)                              # nothing else touched
+    block = text[len(original):]
+    assert "[all]\ngpio=4=op,dl\n" in block and block.count("gpio=") == 1
+    assert (tmp_path / "config.txt.insertcoin-bak").read_text() == original
+    migrate.step_grove_uart_at_boot(str(cfg))                     # twice: still one block
+    assert cfg.read_text() == text
+    assert migrate.step_grove_uart_at_boot(str(tmp_path / "missing.txt")) is False

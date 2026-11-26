@@ -214,6 +214,8 @@ else
   echo "== interfaces for add-ons: left as they are (no live changes)"
 fi
 getent group i2c >/dev/null && usermod -aG i2c czsigner
+# the side port on UART from power-on, not floating into I2C1 (tools/migrate.py)
+python3 -I "$SRC/tools/migrate.py" >/dev/null || true
 
 # The NFC Unit goes on the side (Grove) port now and needs no setup: the
 # signer relays to it (core/hw/unit_relay.py). --nfc-unit is ignored.

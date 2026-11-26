@@ -6,6 +6,16 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **M5's secure chip on the side port stopped the start** (0.8.43, to be
+  confirmed on the device). GPIO4 picks the side port's wires (low =
+  UART, high = I2C1, the keyboard's bus) and floats high on its default
+  pull-up until Linux sets it low about 14 s in, while the side port's
+  5 V is still off. The unpowered Unit ID then sat on the keyboard's bus
+  just as the power chip started, as the breadboard chip on pins 8/10
+  did. The update adds `gpio=4=op,dl` to config.txt, in a marked block
+  with a backup (config.txt.insertcoin-bak): the boot firmware drives it
+  low, to UART, from power-on. That's the level Linux sets anyway, so
+  nothing else changes. It takes effect from the next start.
 - **HARDWARE finds add-ons by itself** (0.8.42). The menu is now M5
   SECURE CHIP, SECURE CHIP, FINGERPRINT and NFC, each NONE or where it
   is: GROVE (the side port) or GPIO (the header on top). The Cap and the

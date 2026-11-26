@@ -79,7 +79,51 @@ def step_ext_bus_rule() -> bool:
     return False
 
 
-STEPS = [step_gpio_for_app, step_ext_bus_rule]
+CONFIG = "/boot/firmware/config.txt"
+GROVE_BEGIN = "# Insert Coin: side port starts on UART (begin)"
+GROVE_END = "# Insert Coin: side port starts on UART (end)"
+GROVE_BLOCK = ("# GPIO4 picks the side (Grove) port's wires: low = UART, high = I2C1, the\n"
+               "# keyboard's bus. Left alone it floats high (its default pull-up) until\n"
+               "# Linux sets it low about 14 s in, so an unpowered unit on the side port\n"
+               "# (M5's Unit ID) sat on the keyboard's bus while the power chip started.\n"
+               "[all]\n"
+               "gpio=4=op,dl")
+
+
+def grove_block(text: str) -> str:
+    """config.txt with our block at the end (replacing an older copy)."""
+    import re
+    text = re.sub(re.escape(GROVE_BEGIN) + r".*?" + re.escape(GROVE_END) + r"\n?", "", text,
+                  flags=re.S)
+    return text.rstrip("\n") + f"\n\n{GROVE_BEGIN}\n{GROVE_BLOCK}\n{GROVE_END}\n"
+
+
+def step_grove_uart_at_boot(config: str | None = None) -> bool:
+    """0.8.43: drive GPIO4 low from the first moment of power-on (the boot
+    firmware's gpio= line), the same level Linux sets later anyway. Only our
+    marked block is written; config.txt is copied to config.txt.insertcoin-bak
+    first. Takes effect at the next start; no restart of the app needed."""
+    config = config or CONFIG
+    try:
+        old = open(config).read()
+    except OSError:
+        return False                                    # not a Raspberry Pi boot partition
+    new = grove_block(old)
+    if new == old:
+        return False
+    with open(config + ".insertcoin-bak", "w") as f:
+        f.write(old)
+    tmp = config + ".insertcoin-new"
+    with open(tmp, "w") as f:
+        f.write(new)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, config)
+    print("config.txt: side port starts on UART (from the next start)", file=sys.stderr)
+    return False
+
+
+STEPS = [step_gpio_for_app, step_ext_bus_rule, step_grove_uart_at_boot]
 
 
 def needed() -> bool:
