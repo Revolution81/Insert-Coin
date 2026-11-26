@@ -386,6 +386,11 @@ def test_watch_waits_for_rescan(app, monkeypatch):  # noqa: F811
     assert st["switched"] == []
 
 
-def test_place_colours(app):  # noqa: F811
-    from ui.hardware_flow import place
-    assert place("GROVE") == ("GROVE", "green") and place("GPIO") == ("GPIO", "cyan")
+def test_row_colour_is_the_state(app):  # noqa: F811
+    from ui.hardware_flow import hardware_menu
+    app.hw["chip"] = {"state": "ready", "serial": "aa", "in_use": True,
+                      "found": [{"state": "ready", "serial": "aa", "m5": True, "where": "GROVE"},
+                                {"state": "blank", "serial": "bb", "m5": False, "where": "GPIO"}]}
+    hardware_menu(app)
+    rows = {it[0]: it[2:4] for it in app.visible.items if len(it) > 2}
+    assert rows["M5 SECURE CHIP"] == ("GROVE", "gold") and rows["SECURE CHIP"] == ("GPIO", "cyan")

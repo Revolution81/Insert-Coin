@@ -190,7 +190,7 @@ def test_hardware_menu_and_chip_binding_ui(app, monkeypatch):  # noqa: F811
     assert chip_state(app) == "in_use"
     assert [c for _, c in status_icons(app)] == ["gold"]
     enter(app)
-    assert [it for it in app.visible.items if it[0] == "M5 SECURE CHIP"][0][3] == "green"
+    assert [it for it in app.visible.items if it[0] == "M5 SECURE CHIP"][0][3] == "gold"
     monkeypatch.setenv("CZ_SE", "none")
     app.refresh_hardware()
     assert chip_state(app) == "missing" and [c for _, c in status_icons(app)] == ["red"]

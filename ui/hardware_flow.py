@@ -63,11 +63,10 @@ def found_chip(app, m5: bool) -> dict | None:
     return None
 
 
-PLACE_COLORS = {"GROVE": "green", "GPIO": "cyan"}     # side port green, top header blue
-
-
-def place(where: str) -> tuple[str, str]:
-    return where, PLACE_COLORS.get(where, "light")
+# The word says where (GROVE side, GPIO top); its colour says the state:
+# white found, gold the seed needs it, blue a blank chip or quick unlock on.
+def place(where: str, color: str = "light") -> tuple[str, str]:
+    return where, color
 
 
 def _chip_row(app, m5: bool):
@@ -77,12 +76,14 @@ def _chip_row(app, m5: bool):
         if main.get("in_use") and m5:                   # the seed needs it (always a Trust&GO)
             return "MISSING", "red"
         return "NONE", "grey"
-    return place(c.get("where", "?"))
+    if main.get("in_use") and c.get("serial") == main.get("serial"):
+        return place(c.get("where", "?"), "gold")
+    return place(c.get("where", "?"), "cyan" if c.get("state") == "blank" else "light")
 
 
 def hardware_menu(app):
     fs = finger_state(app)
-    fl, fc = ("NONE", "grey") if fs == "absent" else place("GROVE")
+    fl, fc = ("NONE", "grey") if fs == "absent" else place("GROVE", "cyan" if fs == "on" else "light")
 
     def rescan(app):
         app.job("SCANNING...", app.refresh_hardware, lambda app, _: (app.pop(), hardware_menu(app)))

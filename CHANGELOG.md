@@ -14,8 +14,9 @@ Not in an image or update yet; the next release carries all of it.
   come back within about 3 s, and a fingerprint sensor plugged in then is
   found without RESCAN. An M5 chip or NFC Unit plugged in still needs
   RESCAN (that switches the port to I2C, which is done only on request).
-- **HARDWARE colours** (0.8.44): GROVE green, GPIO blue on every row.
-  In-use and quick-unlock state are inside each row and in the status bar.
+- **HARDWARE colours** (0.8.45, back as they were): the word says where
+  (GROVE side, GPIO top); its colour says the state: white found, gold
+  the seed needs it, blue a blank chip or quick unlock on, red missing.
 - The boot log confirms the chip bus on the GPIO header can be made and
   removed while running (`i2c-gpio 3.i2c: using lines ...`).
 - **M5's secure chip on the side port stopped the start** (0.8.43, confirmed
