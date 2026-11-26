@@ -6,8 +6,8 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
-- **M5's secure chip on the side port stopped the start** (0.8.43, to be
-  confirmed on the device). GPIO4 picks the side port's wires (low =
+- **M5's secure chip on the side port stopped the start** (0.8.43, confirmed
+  on the device: it starts and HARDWARE finds it). GPIO4 picks the side port's wires (low =
   UART, high = I2C1, the keyboard's bus) and floats high on its default
   pull-up until Linux sets it low about 14 s in, while the side port's
   5 V is still off. The unpowered Unit ID then sat on the keyboard's bus
