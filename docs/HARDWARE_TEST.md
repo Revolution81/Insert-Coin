@@ -159,12 +159,15 @@ missing, we change the boot config and reboot.
       lists why; try `CZ_NFC_CS=hw CZ_NFC_SPI=0.0` as a last guess.
 - [ ] **Fingerprint with the Cap fitted:** check it works both with and
       without the Cap (the Cap's GDO0 shares the UART TX line).
-- [ ] **NFC Unit (U216) on the side (Grove) port:** plug it in, RESCAN.
-      HARDWARE › NFC says GROVE. The side port switches to I2C only while
-      something answers there; the signer relays to address 0x50 alone
+- [ ] **NFC Unit (U216) on the side (Grove) port:** plug it in, then
+      HARDWARE › LOOK FOR CHIP / NFC. HARDWARE › NFC says GROVE. The side
+      port goes to I2C only on that request (or for the unit found there
+      last time, or the chip the seed needs, and only when nothing answers
+      on UART), and back to UART within half a second of the unit leaving; the signer relays to address 0x50 alone
       (core/hw/unit_relay.py), the app never opens the keyboard's bus.
-- [ ] **M5 secure chip (Unit ID) on the side port:** HARDWARE › M5 SECURE
-      CHIP says GROVE. **Blank chip on the GPIO header (pins 3/1):** with
+- [ ] **M5 secure chip (Unit ID) on the side port:** LOOK FOR CHIP / NFC,
+      then HARDWARE › M5 SECURE CHIP says GROVE. Pull it out: the boot log
+      says `side port: chip gone, back to UART` within half a second. **Blank chip on the GPIO header (pins 3/1):** with
       no Cap fitted, SECURE CHIP says GPIO. The boot log has a line
       `hardware: ext-on: on` (or why not).
 - [ ] Tap a SATSCARD (T on home): slot and address show; GENUINE check passes.

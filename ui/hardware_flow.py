@@ -88,13 +88,34 @@ def hardware_menu(app):
     def rescan(app):
         app.job("SCANNING...", app.refresh_hardware, lambda app, _: (app.pop(), hardware_menu(app)))
 
+    def look_i2c(app):
+        def done(app, _):
+            app.pop()
+            hardware_menu(app)
+            if app.hw.get("grove") not in ("chip", "nfc"):
+                app.push(MessageScreen("NOTHING FOUND", [
+                    "No M5 chip or NFC Unit", "answered on the side port.",
+                    "It's back on its fingerprint", "setting."]))
+
+        def go(app):
+            app.job("LOOKING...", lambda: app.refresh_hardware(look_i2c=True), done)
+        if app.hw.get("grove") == "finger":
+            app.push(MessageScreen("FINGERPRINT IN", [
+                "The fingerprint sensor is in", "the side port. Switch off,",
+                "swap it for the M5 chip or", "NFC Unit, switch on, then", "LOOK FOR CHIP / NFC."]))
+            return
+        app.push(ConfirmScreen("LOOK ON SIDE?", [
+            "Only with the M5 chip or the", "NFC Unit in the side port.",
+            "Never the fingerprint sensor:", "this setting can damage it."], go))
+
     app.push(MenuScreen("HARDWARE", [
         ("M5 SECURE CHIP", lambda app: chip_menu(app, m5=True), *_chip_row(app, True)),
         ("SECURE CHIP", lambda app: chip_menu(app, m5=False), *_chip_row(app, False)),
         ("FINGERPRINT", finger_menu, fl, fc),
         ("NFC", _nfc_info, *nfc_label(app)),
         ("RESCAN", rescan),
-    ], info=["Found by themselves.", "GROVE = side, GPIO = top."]))
+        ("LOOK FOR CHIP / NFC", look_i2c),
+    ], info=["GROVE = side, GPIO = top.", "Switch off to swap units."]))
 
 
 def nfc_label(app) -> tuple[str, str]:

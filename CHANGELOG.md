@@ -6,6 +6,22 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Hot-swapping can't put a serial unit on the keyboard's bus**
+  (0.8.50). A Unit Fingerprint2 stopped answering for good after a
+  hot-swap. Its serial output had been on the keyboard's I2C bus for
+  about 3 s, fighting it (a loopback test showed the Cardputer's side
+  still works, and the 0.8.41 code doesn't find it either). Now:
+  - **The side port is never switched to I2C on a guess.** It only
+    switches for HARDWARE › LOOK FOR CHIP / NFC, for the unit found
+    there last time, or for the chip the seed needs. Even then, only
+    when nothing has answered on UART. LOOK FOR CHIP / NFC refuses while
+    a fingerprint sensor is in, and warns before switching.
+  - **A unit pulled out puts the port back on UART within half a
+    second** (checked twice a second, and a miss is re-checked at once),
+    before anything else can be plugged in. It then has to be asked for
+    again.
+  - **Booklet (POWER-UPS):** swap side-port add-ons with the power off;
+    use LOOK FOR CHIP / NFC for the M5 chip or the NFC Unit.
 - **Fingerprint diagnostics** (0.8.47). Fresh power didn't help (the
   0.8.46 log), and neither did removing the config.txt line. When nothing
   answers, the boot log now shows the UART pins' setup (`pinctrl get

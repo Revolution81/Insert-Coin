@@ -239,14 +239,16 @@ class App:
             lock = self.__dict__.setdefault("_hw_lock_obj", threading.RLock())
         return lock
 
-    def refresh_hardware(self):
+    def refresh_hardware(self, look_i2c: bool = False):
+        """look_i2c: HARDWARE › LOOK FOR CHIP / NFC, the only way the side port
+        is switched to I2C for a unit it hasn't held before."""
         with self._hwlock():
-            hw = self._refresh_hardware()
+            hw = self._refresh_hardware(look_i2c)
         self._start_side_watch()
         return hw
 
     # ------------------------------------------------ side port, while running
-    SIDE_WATCH_S = 1.5
+    SIDE_WATCH_S = 0.5                                 # how often an I2C unit is checked
     FINGER_PROBE_S = 8.0                               # asking an empty port takes ~5 s
 
     def _start_side_watch(self):
@@ -289,15 +291,16 @@ class App:
         try:
             what = self.hw.get("grove")
             if what in ("chip", "nfc") and grove.mode() == "i2c":
-                if what == "nfc" and getattr(getattr(self.nfc, "chip", None), "field", False):
-                    return                             # in use on a TAP screen
+                # A unit pulled out must not leave the port on I2C: whatever
+                # goes in next would be wired to the keyboard's bus, and a
+                # fingerprint sensor's serial output fighting that bus is
+                # what broke one (2026-11-26). Checked twice a second; one
+                # miss is re-checked at once, two put the port on UART.
                 if self._side_present(what):
-                    self._side_misses = 0
                     return
-                self._side_misses = getattr(self, "_side_misses", 0) + 1
-                if self._side_misses < 2:              # one bad read isn't a removal
+                time.sleep(0.02)
+                if self._side_present(what):
                     return
-                self._side_misses = 0
                 if not grove.set_mode("uart"):
                     self._root("grove-uart")
                 print(f"hardware: side port: {what} gone, back to UART", file=sys.stderr, flush=True)
@@ -307,6 +310,9 @@ class App:
                 def lost(app):
                     app.hw["grove"] = None
                     app.hw["chip"] = chips
+                    if not chips.get("in_use"):        # next time it's asked for again
+                        app.settings.side_i2c = False
+                        app.settings.save()
                     if what == "nfc":
                         if app.nfc is gone:
                             app.nfc = None
@@ -334,7 +340,7 @@ class App:
         finally:
             lock.release()
 
-    def _refresh_hardware(self):
+    def _refresh_hardware(self, look_i2c: bool = False):
         """What's on the two add-on connectors (ui/hardware_flow.py shows it):
 
         top / GPIO header  the NFC Cap, or a secure chip on pins 3/1 (its
@@ -409,9 +415,21 @@ class App:
                     else:
                         self._root("ext-off")
 
-        # ---- side, last: nothing on UART, so look on I2C
-        if not side_i2c and self.finger is None and not on_i2c():
-            switch("uart")
+        # ---- side, last: I2C only when asked (LOOK FOR CHIP / NFC), or for
+        # the unit found there before (or the chip the seed needs), and only
+        # when nothing answered on UART. The port is never put on I2C on a
+        # guess: a serial unit there fights the keyboard's bus.
+        if not side_i2c and self.finger is None:
+            wanted = look_i2c or self.settings.side_i2c or self._chips().get("in_use")
+            if wanted and on_i2c():
+                if not self.settings.side_i2c:
+                    self.settings.side_i2c = True
+                    self.settings.save()
+            else:
+                switch("uart")
+                if look_i2c and self.settings.side_i2c:
+                    self.settings.side_i2c = False
+                    self.settings.save()
         if self.hw["grove"] != "nfc":
             self.hw["nfc"] = nfc_st
         self.hw["chip"] = self._chips()

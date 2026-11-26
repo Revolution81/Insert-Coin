@@ -122,7 +122,7 @@ def enroll(app, who="me"):
 def test_enroll_quick_unlock_and_soft_lock(app, monkeypatch):  # noqa: F811
     monkeypatch.setenv("CZ_FINGER", "sim")
     monkeypatch.setenv("CZ_SE", "sim")
-    app.refresh_hardware()
+    app.refresh_hardware(look_i2c=True)
     create_wallet(app, pin="1234")
     assert finger_state(app) == "ready" and chip_state(app) == "ready"
 
@@ -171,7 +171,7 @@ def test_enroll_quick_unlock_and_soft_lock(app, monkeypatch):  # noqa: F811
 
 def test_hardware_menu_and_chip_binding_ui(app, monkeypatch):  # noqa: F811
     monkeypatch.setenv("CZ_SE", "sim")
-    app.refresh_hardware()
+    app.refresh_hardware(look_i2c=True)
     create_wallet(app, pin="1234")
     from ui.hardware_flow import hardware_menu
     hardware_menu(app)
