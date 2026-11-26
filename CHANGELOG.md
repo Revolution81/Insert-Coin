@@ -6,6 +6,18 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Hot-swapping the side port** (0.8.44). With M5's chip in and the port
+  on I2C, swapping in the fingerprint sensor put its serial line on the
+  keyboard's bus: the boot log shows 1,800 failed keyboard reads, and the
+  keys were dead until it came out. Now a watcher checks the I2C unit
+  every 1.5 s. Two misses in a row put the port back on UART, so keys
+  come back within about 3 s, and a fingerprint sensor plugged in then is
+  found without RESCAN. An M5 chip or NFC Unit plugged in still needs
+  RESCAN (that switches the port to I2C, which is done only on request).
+- **HARDWARE colours** (0.8.44): GROVE green, GPIO blue on every row.
+  In-use and quick-unlock state are inside each row and in the status bar.
+- The boot log confirms the chip bus on the GPIO header can be made and
+  removed while running (`i2c-gpio 3.i2c: using lines ...`).
 - **M5's secure chip on the side port stopped the start** (0.8.43, confirmed
   on the device: it starts and HARDWARE finds it). GPIO4 picks the side port's wires (low =
   UART, high = I2C1, the keyboard's bus) and floats high on its default

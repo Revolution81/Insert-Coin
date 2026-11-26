@@ -63,6 +63,13 @@ def found_chip(app, m5: bool) -> dict | None:
     return None
 
 
+PLACE_COLORS = {"GROVE": "green", "GPIO": "cyan"}     # side port green, top header blue
+
+
+def place(where: str) -> tuple[str, str]:
+    return where, PLACE_COLORS.get(where, "light")
+
+
 def _chip_row(app, m5: bool):
     c = found_chip(app, m5)
     main = app.hw["chip"]
@@ -70,14 +77,12 @@ def _chip_row(app, m5: bool):
         if main.get("in_use") and m5:                   # the seed needs it (always a Trust&GO)
             return "MISSING", "red"
         return "NONE", "grey"
-    if main.get("in_use") and c.get("serial") == main.get("serial"):
-        return c.get("where", "?"), "gold"
-    return c.get("where", "?"), "cyan" if c.get("state") == "blank" else "light"
+    return place(c.get("where", "?"))
 
 
 def hardware_menu(app):
     fs = finger_state(app)
-    fl, fc = ("NONE", "grey") if fs == "absent" else ("GROVE", "cyan" if fs == "on" else "light")
+    fl, fc = ("NONE", "grey") if fs == "absent" else place("GROVE")
 
     def rescan(app):
         app.job("SCANNING...", app.refresh_hardware, lambda app, _: (app.pop(), hardware_menu(app)))
@@ -96,8 +101,7 @@ def nfc_label(app) -> tuple[str, str]:
     st = app.hw.get("nfc", {})
     if st.get("state") != "ready":
         return "NONE", "grey"
-    where = st.get("where") or ("GROVE" if st.get("reader") == "unit" else "GPIO")
-    return where, "light"
+    return place(st.get("where") or ("GROVE" if st.get("reader") == "unit" else "GPIO"))
 
 
 def _nfc_info(app):

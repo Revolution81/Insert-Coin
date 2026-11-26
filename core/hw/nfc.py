@@ -721,5 +721,6 @@ def open_reader(unit_relay=None, cap: bool = True) -> tuple[object | None, dict]
                               "where": "GROVE", "bus": f"I2C (side port) 0x{bus.address:02x}",
                               "subghz": sub}
     except Exception as e:  # noqa: BLE001 - no Unit, no bus
-        errors.append(f"Unit: {e}"[:40])
+        if unit_relay is not None:                     # else it wasn't looked for
+            errors.append(f"Unit: {e}"[:40])
     return None, {"state": "absent", "error": errors[0], "errors": errors, "subghz": sub}

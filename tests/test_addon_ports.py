@@ -323,3 +323,69 @@ def test_side_port_starts_on_uart(tmp_path, monkeypatch):
     migrate.step_grove_uart_at_boot(str(cfg))                     # twice: still one block
     assert cfg.read_text() == text
     assert migrate.step_grove_uart_at_boot(str(tmp_path / "missing.txt")) is False
+
+
+# ------------------------------------------------------------ hot swaps
+def _watch(app, monkeypatch, mode, present=True):
+    st = {"mode": mode, "present": present, "switched": []}
+    monkeypatch.setattr(grove, "mode", lambda: st["mode"])
+
+    def set_mode(m):
+        st["switched"].append(m)
+        st["mode"] = m
+        return True
+    monkeypatch.setattr(grove, "set_mode", set_mode)
+    monkeypatch.setattr(app, "_side_present", lambda what: st["present"])
+    monkeypatch.setattr(app, "_chips", lambda: {"state": "absent", "found": []})
+    return st
+
+
+def test_unit_pulled_out_puts_the_port_back_on_uart(app, monkeypatch):  # noqa: F811
+    """Seen on the device: chip out, fingerprint in, keys dead until it was
+    unplugged (its UART line was on the keyboard's bus)."""
+    import core.hw.finger as fmod
+    st = _watch(app, monkeypatch, "i2c")
+    app.hw["grove"] = "chip"
+    app._side_check()
+    assert st["switched"] == []                      # still there
+    st["present"] = False
+    app._side_check()
+    assert st["switched"] == []                      # one bad read isn't a removal
+    app._side_check()
+    assert st["switched"] == ["uart"]
+    app.pump()
+    assert app.hw["grove"] is None
+    sensor = types.SimpleNamespace(port=None)
+    monkeypatch.setattr(fmod, "open_sensor", lambda: (sensor, {"state": "ready", "saved": 1}))
+    app.finger = None
+    app._side_probed = 0.0
+    app._side_check()                                # the sensor that went in
+    app.pump()
+    assert app.hw["grove"] == "finger" and app.finger is sensor
+
+
+def test_watch_waits_for_rescan(app, monkeypatch):  # noqa: F811
+    st = _watch(app, monkeypatch, "i2c", present=False)
+    app.hw["grove"] = "chip"
+    lock = app._hwlock()
+    import threading
+    held = threading.Event()
+    done = threading.Event()
+
+    def hold():
+        with lock:
+            held.set()
+            done.wait(2)
+    t = threading.Thread(target=hold)
+    t.start()
+    held.wait(2)
+    for _ in range(3):
+        app._side_check()
+    done.set()
+    t.join()
+    assert st["switched"] == []
+
+
+def test_place_colours(app):  # noqa: F811
+    from ui.hardware_flow import place
+    assert place("GROVE") == ("GROVE", "green") and place("GPIO") == ("GPIO", "cyan")

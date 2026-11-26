@@ -228,7 +228,108 @@ class App:
         except Exception:  # noqa: BLE001
             pass
 
+    def _hwlock(self):
+        lock = self.__dict__.get("_hw_lock_obj")
+        if lock is None:
+            lock = self.__dict__.setdefault("_hw_lock_obj", threading.RLock())
+        return lock
+
     def refresh_hardware(self):
+        with self._hwlock():
+            hw = self._refresh_hardware()
+        self._start_side_watch()
+        return hw
+
+    # ------------------------------------------------ side port, while running
+    SIDE_WATCH_S = 1.5
+    FINGER_PROBE_S = 5.0                               # asking an empty port takes ~4 s
+
+    def _start_side_watch(self):
+        """On the device: notice a unit leaving the side port (and a
+        fingerprint sensor arriving) without RESCAN. Above all, a unit
+        unplugged while the port is on I2C puts it straight back on UART:
+        a fingerprint sensor plugged into the keyboard's bus jams it (the
+        keys stopped until it was unplugged, seen on the device)."""
+        from core.hw import grove
+        if self.sync_jobs or self.__dict__.get("_side_watching") or \
+                not os.path.exists(grove.LED):
+            return
+        self._side_watching = True
+
+        def loop():
+            while not getattr(self, "exit_requested", False):
+                time.sleep(self.SIDE_WATCH_S)
+                try:
+                    self._side_check()
+                except Exception as e:  # noqa: BLE001 - never stop over this
+                    print(f"side port watch: {e}", file=sys.stderr, flush=True)
+        threading.Thread(target=loop, daemon=True, name="side-watch").start()
+
+    def _side_present(self, what: str) -> bool:
+        if what == "chip":
+            return self._chip_at(self._chips(), "GROVE")
+        try:                                           # the NFC Unit's identity register
+            ident = bytes.fromhex(self.signer.nfc_unit_xfer(msgs=[[0, "7f"], [1, 1]]))
+            return bool(ident) and (ident[0] >> 3) & 0x1F == 0x05
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _side_check(self):
+        """One look at the side port (the watch thread, or tests)."""
+        from core.hw import grove
+        from core.hw.finger import open_sensor
+        lock = self._hwlock()
+        if not lock.acquire(blocking=False):            # RESCAN is running
+            return
+        try:
+            what = self.hw.get("grove")
+            if what in ("chip", "nfc") and grove.mode() == "i2c":
+                if what == "nfc" and getattr(getattr(self.nfc, "chip", None), "field", False):
+                    return                             # in use on a TAP screen
+                if self._side_present(what):
+                    self._side_misses = 0
+                    return
+                self._side_misses = getattr(self, "_side_misses", 0) + 1
+                if self._side_misses < 2:              # one bad read isn't a removal
+                    return
+                self._side_misses = 0
+                if not grove.set_mode("uart"):
+                    self._root("grove-uart")
+                print(f"hardware: side port: {what} gone, back to UART", file=sys.stderr, flush=True)
+                gone = self.nfc if what == "nfc" else None
+                chips = self._chips()
+
+                def lost(app):
+                    app.hw["grove"] = None
+                    app.hw["chip"] = chips
+                    if what == "nfc":
+                        if app.nfc is gone:
+                            app.nfc = None
+                        app.hw["nfc"] = {"state": "absent", "errors": ["Unit: unplugged"]}
+                self.post(lost)
+                if gone is not None:
+                    try:
+                        gone.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+                return
+            if what is None and grove.mode() == "uart" and self.finger is None:
+                now = time.monotonic()                 # a fingerprint sensor plugged in?
+                if now - getattr(self, "_side_probed", 0.0) < self.FINGER_PROBE_S:
+                    return
+                self._side_probed = now
+                f, st = open_sensor()
+                if f is None:
+                    return
+                print(f"hardware: side port: fingerprint plugged in: {st}", file=sys.stderr, flush=True)
+
+                def found(app):
+                    app.finger, app.hw["finger"], app.hw["grove"] = f, st, "finger"
+                self.post(found)
+        finally:
+            lock.release()
+
+    def _refresh_hardware(self):
         """What's on the two add-on connectors (ui/hardware_flow.py shows it):
 
         top / GPIO header  the NFC Cap, or a secure chip on pins 3/1 (its
