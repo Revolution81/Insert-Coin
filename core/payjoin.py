@@ -139,9 +139,11 @@ def _unchunk(b: bytes) -> bytes:
 def error_text(body: str) -> str:
     try:
         j = json.loads(body)
-        return str(j.get("errorCode") or j.get("message") or "refused")[:60]
     except ValueError:
         return body.strip()[:60] or "refused"
+    if not isinstance(j, dict):                        # a hostile receiver's "[1]" or "\"x\""
+        return str(j)[:60] or "refused"
+    return str(j.get("errorCode") or j.get("message") or "refused")[:60]
 
 
 # ------------------------------------------------------------ the checks

@@ -223,3 +223,11 @@ def test_unproven_receiver_coin_means_no_contribution(signer):  # noqa: F811
     out, note = pj.run(w2, None, signer, "https://shop.example/pj", signed2, s2["fee_rate"],
                        poster=_poster(take_from_change=0, prove=False))
     assert note == "PAYJOIN", note
+
+
+def test_error_text_survives_any_json():
+    """Fuzzer: a receiver answering with JSON that isn't an object."""
+    from core.payjoin import error_text
+    for body in ('"no"', "[1,2]", "3", "null", '{"errorCode":"unavailable"}', "plain"):
+        assert isinstance(error_text(body), str)
+    assert error_text('{"errorCode":"unavailable"}') == "unavailable"

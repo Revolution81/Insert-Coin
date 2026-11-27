@@ -6,6 +6,10 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **A PayJoin receiver answering with JSON that isn't an object**
+  (`"no"`, `[1]`) crashed the error message; found by the fuzzer's 20,000
+  rounds (0.8.55). The other rounds, the menu crawler and the memory-leak
+  run (no leaks) were clean.
 - **Fuzzing found two bugs** (0.8.54):
   - **The config.txt edit could cut the owner's lines.** If our block's
     end marker had been damaged, the next run's removal stretched to the
