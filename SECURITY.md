@@ -156,13 +156,20 @@ goes through the same checks (a scanned PSBT still needs your YES on the
 signer's screen). It can also see what the camera sees while it's open;
 the camera is opened only while a scan screen is up.
 
-**A malicious NFC card.** Cards talk to the app process (the Cap's reader
-is on its SPI bus; the Unit NFC is on a software I2C bus of its own,
-/dev/i2c-3, which only the app may open), through a strict CBOR parser
-with size and depth limits. The app is never given /dev/i2c-1: the
-keyboard controller sits on it, and an app that could read it could read
-your PIN as you type it. So the Unit NFC is refused there, even if wired
-to it.
+**A malicious NFC card.** Cards talk to the app process through a strict
+CBOR parser with size and depth limits. The Cap's reader is on its SPI
+bus. The NFC Unit sits on the side (Grove) port in I2C mode, which is
+I2C1, the keyboard's bus. The app is never given /dev/i2c-1: an app that
+could read it could read your PIN as you type it. So the signer relays the
+app's NFC transfers itself (core/hw/unit_relay.py), with these limits:
+- address 0x50 only;
+- only while the side port is on I2C;
+- only after an ST25R3916 has answered its identity register there;
+- one write, or a write then a read, of at most 300 bytes.
+
+The signer never parses card bytes. **Residual:** if some other chip
+answered at 0x50 on I2C1 and happened to pass the identity check, the app
+could write to it. The Cardputer Zero's own chips on I2C1 are not at 0x50.
 Every claim a card makes that can be checked is: slot keys by their
 signatures, an unsealed key against the slot's public key, a TAPSIGNER
 signature against the key the PSBT names, genuineness by the certificate
@@ -374,18 +381,33 @@ stay). Wrong, right, duress and wipe PINs all cost exactly one Argon2 run, and
 the file's shape doesn't change, so neither timing nor the file reveals one.
 The wipe, duress, bypass and main PINs must all differ.
 
-**The secure chip's bus (0.8.41).** A chip on EXT pins 8/10 shared I2C1
-with the keyboard and the IO expander; unpowered at power-on, it held the
-bus down and the device restarted in a loop. SETUP › DEVICE › HARDWARE ›
-EXT HEADER › SECURE CHIP puts it on its own bus instead (pins 3/1,
-/dev/i2c-3, i2c-gpio), owned by group i2c, so only the signer can open it,
-as with I2C1. The same pins as the NFC Unit's bus, which is the app's
-(group czapp): the helper (`cz-backup extbus`, tools/ext_bus.py) writes one
-udev rule or the other, never both. A compromised app could switch the mode
-to NFC UNIT and, after a restart, talk to a chip left on those pins; that
-gives it the chip's ECDH as an oracle, but not the vault file (the signer's
-folder), so no offline PIN guessing. The mode only changes config.txt lines
-between Insert Coin's own markers, after a backup copy.
+**Add-on ports (0.8.42 to 0.8.54).**
+
+- **A blank chip on the top header** uses pins 3/1 as a bus of its own,
+  /dev/i2c-3 (i2c-gpio).
+  - It is never on I2C1 (pins 8/10): unpowered at power-on, a chip there
+    held the keyboard's bus down and the device restarted in a loop.
+  - The root helper (`cz-backup ext-on`/`ext-off`, tools/ext_bus.py) makes
+    the bus while running when no Cap answers, and removes it if no chip is
+    there. Nothing is written to config.txt for it.
+  - The bus belongs to group i2c, so only the signer can open it
+    (DeviceAllow added at runtime).
+- **The side port** is switched between UART (fingerprint) and I2C1 (M5
+  chip, NFC Unit) by GPIO4.
+  - config.txt holds it on UART from power-on (`gpio=4=op,dl`), so an
+    unpowered unit can't hold the keyboard's bus while the device starts.
+  - It goes to I2C only at start or RESCAN, only after the fingerprint
+    question (with fresh power) got no answer, and only while an I2C unit
+    answers. Anything unplugged puts it back on UART within about a
+    quarter second.
+  - Why it matters: a fingerprint sensor's serial output on I2C1 fights
+    the bus, and one was damaged that way.
+- **Known gap:** the app is in group gpio (for the Cap's power pin), and
+  M5Stack's rules let that group switch GPIO4 and the 5 V outputs. A
+  compromised app could therefore put the side port on I2C1 by itself.
+  That exposes the keyboard's bus to whatever is plugged into the side
+  port, and could damage a fingerprint sensor there. It still can't open
+  /dev/i2c-1.
 
 **Game PIN (0.8.38).** A second header tag, "g", built the same way:
 HMAC(Argon2 key of the game PIN, "game" or "game+wipe"), random bytes when
