@@ -492,3 +492,15 @@ def test_fingerprint_tools_behind_advanced(app):  # noqa: F811
     app.settings.advanced = True
     finger_menu(app)
     assert [i[0] for i in app.visible.items][0] == "ADD A FINGER"
+
+
+def test_config_block_never_cuts_the_owners_lines():
+    """Found by the fuzzer: with our END marker damaged, the next run's
+    removal spanned to the new block's END, cutting whatever sat between."""
+    block = migrate.grove_block("")
+    damaged = "a=1\n" + block.replace("(end)", "(nd)") + "user_line=1\n"
+    once = migrate.grove_block(damaged)
+    twice = migrate.grove_block(once)
+    assert twice == once and "user_line=1" in twice and "a=1" in twice
+    clean = migrate.grove_block("a=1\n" + block + "b=2\n")
+    assert clean.count("gpio=4=op,dl") == 1 and "b=2" in clean and "a=1" in clean

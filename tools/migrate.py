@@ -91,10 +91,32 @@ GROVE_BLOCK = ("# GPIO4 picks the side (Grove) port's wires: low = UART, high = 
 
 
 def grove_block(text: str) -> str:
-    """config.txt with our block at the end (replacing an older copy)."""
-    import re
-    text = re.sub(re.escape(GROVE_BEGIN) + r".*?" + re.escape(GROVE_END) + r"\n?", "", text,
-                  flags=re.S)
+    """config.txt with our block at the end (replacing an older copy).
+    Only a whole block is removed: a BEGIN line with its END line at most
+    a dozen lines below and no other marker between. A damaged marker
+    leaves that text alone (an extra copy of gpio=4=op,dl is harmless),
+    so nothing of the owner's can ever be cut out."""
+    lines = text.split("\n")
+    out, i = [], 0
+    while i < len(lines):
+        if lines[i].strip() == GROVE_BEGIN:
+            for j in range(i + 1, min(i + 13, len(lines))):
+                if lines[j].strip() == GROVE_BEGIN:
+                    break
+                if lines[j].strip() == GROVE_END:
+                    i = j + 1
+                    break
+            else:
+                out.append(lines[i])
+                i += 1
+                continue
+            if i <= j:                                 # hit another BEGIN: keep this line
+                out.append(lines[i])
+                i += 1
+            continue
+        out.append(lines[i])
+        i += 1
+    text = "\n".join(out)
     return text.rstrip("\n") + f"\n\n{GROVE_BEGIN}\n{GROVE_BLOCK}\n{GROVE_END}\n"
 
 

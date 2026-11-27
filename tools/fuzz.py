@@ -76,6 +76,27 @@ def mutate_text(rnd, s: str) -> str:
     return mutate(rnd, s.encode()).decode("latin-1")
 
 
+def ext_bus_loaded(out: str):
+    import types
+
+    import ext_bus
+    real = ext_bus._run
+    ext_bus._run = lambda cmd, timeout=20: types.SimpleNamespace(returncode=0, stdout=out, stderr="")
+    try:
+        got = ext_bus._loaded()
+    finally:
+        ext_bus._run = real
+    assert all(i.isdigit() for i in got)
+    return got
+
+
+def grove_idem(text: str):
+    import migrate
+    once = migrate.grove_block(text)
+    assert migrate.grove_block(once) == once, "not idempotent"
+    assert "gpio=4=op,dl" in once
+
+
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
     rnd = random.Random(7)
@@ -206,6 +227,10 @@ def main():
     # the toolbox: silent payment addresses, PayJoin URLs and proposals,
     # Key Teleport packages and secrets, notes from a teleport, miniscript
     from core import notes, payjoin, silentpay, teleport
+    from core.hw import nfc, unit_relay
+    sys.path.insert(0, HERE)
+    import migrate
+    import app as app_mod
     from embit.psbt import PSBT
     sp_addr = silentpay.encode(b"\x02" + b"\x11" * 32, b"\x03" + b"\x22" * 32, "signet")
     sp_addr = silentpay.encode(silentpay.ser(silentpay.base(5)), silentpay.ser(silentpay.base(7)),
@@ -262,6 +287,36 @@ def main():
                                            "password": rnd.choice(junk)}, ok=(notes.NoteError,))
         check("multisig.parse_any(miniscript)", lambda d: multisig.parse_any(d, "signet"),
               mutate_text(rnd, mini), ok=(multisig.PolicyError,))
+
+        # ---- 0.8.42+: side port, the signer's NFC relay, the EXT bus helper
+        def junk_msg():
+            pick = rnd.randrange(8)
+            if pick == 0:
+                return [rnd.choice([0, 1, 2, -1, 0x8000, "0", None]), rnd.choice(junk)]
+            if pick == 1:
+                return [0, mutate(rnd, b"c1").hex() if rnd.random() < .5 else mutate_text(rnd, "c1")]
+            if pick == 2:
+                return [1, rnd.choice([0, 1, 300, 301, -5, 2**40, 1.5, "3", None])]
+            if pick == 3:
+                return rnd.choice(junk)
+            return [rnd.choice([0, 1]), rnd.choice([rnd.randrange(400), "ab" * rnd.randrange(320)])]
+        msgs = [junk_msg() for _ in range(rnd.randrange(4))] if rnd.random() < .9 else rnd.choice(junk)
+        check("unit_relay._check", unit_relay.UnitRelay._check, msgs, ok=(unit_relay.RelayError,))
+
+        reply = mutate_text(rnd, "0a0b0c") if rnd.random() < .5 else mutate(rnd, b"\x0a\x0b").hex()
+        check("nfc.RelayI2C.xfer", lambda r: nfc.RelayI2C(lambda wire: r).xfer([0x40 | 0x3F, 0, 0]),
+              reply, ok=(ValueError,))
+
+        listing = mutate_text(rnd, "Overlays (in load order):\n0:  i2c-gpio  bus=3 i2c_gpio_sda=23\n"
+                                   "1:  spi1-1cs\n")
+        check("ext_bus._loaded", lambda out: ext_bus_loaded(out), listing)
+
+        cfg = mutate_text(rnd, "dtparam=i2c_arm=on\n[cm4]\notg_mode=1\n" + migrate.grove_block(""))
+        check("migrate.grove_block (once, same twice)", grove_idem, cfg)
+
+        st = {"found": [rnd.choice([{"where": rnd.choice(["GROVE", "GPIO", 3, None])}, junk[0], {}])
+                        for _ in range(rnd.randrange(3))]}
+        check("App._chip_at", lambda d: app_mod.App._chip_at(d, "GROVE"), st)
 
     print(f"{len(FOUND)} distinct problems")
     for (name, et, line), (data, tb) in FOUND.items():

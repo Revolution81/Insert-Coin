@@ -6,6 +6,16 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Fuzzing found two bugs** (0.8.54):
+  - **The config.txt edit could cut the owner's lines.** If our block's
+    end marker had been damaged, the next run's removal stretched to the
+    new block's end, taking whatever sat between. Now only a whole,
+    intact block is ever removed; damaged text is left alone (an extra
+    `gpio=4=op,dl` is harmless).
+  - **A malformed chip list crashed the hardware scan.** It's now ignored.
+  - New fuzz targets: the signer's NFC relay checks, its byte replies,
+    the EXT bus helper's overlay listing, the config.txt block and the
+    chip list.
 - **Side-port units checked 4 times a second** (0.8.53, was 2): after
   an M5 chip or NFC Unit is pulled, the port is back on UART within
   about a quarter second, before the next plug can go in.

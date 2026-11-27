@@ -212,7 +212,9 @@ class App:
 
     @staticmethod
     def _chip_at(st: dict, where: str) -> bool:
-        return any(c.get("where") == where for c in st.get("found") or [])
+        found = st.get("found") if isinstance(st, dict) else None
+        return any(isinstance(c, dict) and c.get("where") == where
+                   for c in (found if isinstance(found, list) else []))
 
     def _close_addons(self):
         old = getattr(self, "finger", None)

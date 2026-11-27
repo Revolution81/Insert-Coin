@@ -58,7 +58,7 @@ def found_chip(app, m5: bool) -> dict | None:
     """M5Stack's chip (Unit ID, a Trust&GO at 0x35) or any other (a blank
     ATECC608 on the GPIO header), from the last scan."""
     for c in app.hw["chip"].get("found") or []:
-        if bool(c.get("m5")) == m5:
+        if isinstance(c, dict) and bool(c.get("m5")) == m5:
             return c
     return None
 
