@@ -202,10 +202,8 @@ def test_fingerprint_keeps_the_side_port_on_uart(app, monkeypatch, tmp_path):  #
 
 def test_m5_chip_on_the_side(app, monkeypatch, tmp_path):  # noqa: F811
     s = Scan(app, monkeypatch, tmp_path, grove_chip=True, has_cap=True)
-    hw = app.refresh_hardware()                     # a plain scan never switches to I2C
-    assert hw["grove"] is None and s.mode == "uart" and "grove i2c" not in s.calls
-    hw = app.refresh_hardware(look_i2c=True)        # LOOK FOR CHIP / NFC
-    assert hw["grove"] == "chip" and s.mode == "i2c" and app.settings.side_i2c
+    hw = app.refresh_hardware()
+    assert hw["grove"] == "chip" and s.mode == "i2c"
     assert s.calls.index("finger?") < s.calls.index("grove i2c")    # fingerprint asked first
     s.calls.clear()
     app.refresh_hardware()                          # RESCAN: still there, the port stays I2C
@@ -214,7 +212,7 @@ def test_m5_chip_on_the_side(app, monkeypatch, tmp_path):  # noqa: F811
 
 def test_nfc_unit_on_the_side(app, monkeypatch, tmp_path):  # noqa: F811
     s = Scan(app, monkeypatch, tmp_path, unit=True)
-    hw = app.refresh_hardware(look_i2c=True)
+    hw = app.refresh_hardware()
     assert hw["grove"] == "nfc" and hw["nfc"]["where"] == "GROVE" and s.mode == "i2c"
 
 
@@ -348,7 +346,6 @@ def test_unit_pulled_out_puts_the_port_back_on_uart(app, monkeypatch):  # noqa: 
     import core.hw.finger as fmod
     st = _watch(app, monkeypatch, "i2c")
     app.hw["grove"] = "chip"
-    app.settings.side_i2c = True
     app._side_check()
     assert st["switched"] == []                      # still there
     st["present"] = False
@@ -357,7 +354,6 @@ def test_unit_pulled_out_puts_the_port_back_on_uart(app, monkeypatch):  # noqa: 
     assert app.SIDE_WATCH_S <= 0.5                   # within half a second of pulling it
     app.pump()
     assert app.hw["grove"] is None
-    assert app.settings.side_i2c is False            # not put back on I2C by itself
     sensor = types.SimpleNamespace(port=None)
     monkeypatch.setattr(fmod, "open_sensor", lambda: (sensor, {"state": "ready", "saved": 1}))
     app.finger = None
@@ -434,53 +430,48 @@ def test_title_scan_not_repeated(app, monkeypatch):  # noqa: F811
     assert n == []
 
 
-# ------------------------------------------------------------ never I2C on a guess
-def test_plain_scan_never_switches_to_i2c(app, monkeypatch, tmp_path):  # noqa: F811
-    """A silent serial unit (or nothing) on the side port: RESCAN and start
-    leave it on UART unless an I2C unit was asked for or found before."""
-    s = Scan(app, monkeypatch, tmp_path)
-    for _ in range(3):
-        app.refresh_hardware()
-    assert "grove i2c" not in s.calls and s.mode == "uart"
-
-
-def test_unit_found_before_is_looked_for_again(app, monkeypatch, tmp_path):  # noqa: F811
-    s = Scan(app, monkeypatch, tmp_path, grove_chip=True)
-    app.settings.side_i2c = True                    # found there last time
-    assert app.refresh_hardware()["grove"] == "chip" and s.mode == "i2c"
-
-
-def test_a_working_fingerprint_wins_over_the_memory(app, monkeypatch, tmp_path):  # noqa: F811
-    """Swapped while off: the sensor answers on UART, so I2C isn't tried."""
+# ------------------------------------------------------------ I2C only on a scan, after serial
+def test_fingerprint_answers_so_i2c_is_never_tried(app, monkeypatch, tmp_path):  # noqa: F811
     s = Scan(app, monkeypatch, tmp_path, finger=True)
-    app.settings.side_i2c = True
-    assert app.refresh_hardware()["grove"] == "finger" and "grove i2c" not in s.calls
+    for _ in range(3):
+        assert app.refresh_hardware()["grove"] == "finger"
+    assert "grove i2c" not in s.calls
 
 
-def test_look_finds_nothing_forgets(app, monkeypatch, tmp_path):  # noqa: F811
+def test_empty_port_tried_briefly_then_back_to_uart(app, monkeypatch, tmp_path):  # noqa: F811
     s = Scan(app, monkeypatch, tmp_path)
-    app.settings.side_i2c = True
-    app.refresh_hardware(look_i2c=True)
-    assert s.mode == "uart" and app.settings.side_i2c is False
+    app.refresh_hardware()
+    assert s.calls.index("finger?") < s.calls.index("grove i2c") < s.calls.index("unit?")
+    assert s.mode == "uart" and app.hw["grove"] is None
 
 
-def test_look_menu_warns_and_refuses_with_a_fingerprint(app, monkeypatch, tmp_path):  # noqa: F811
-    from ui.hardware_flow import hardware_menu
-    from ui.widgets import ConfirmScreen
-    from test_app import enter
-    app.hw["grove"] = "finger"
-    hardware_menu(app)
-    m = app.visible
-    m.sel = [i[0] for i in m.items].index("LOOK FOR CHIP / NFC")
-    enter(app)
-    assert app.visible.title == "FINGERPRINT IN"
-    app.pop()
-    app.hw["grove"] = None
-    hardware_menu(app)
-    m = app.visible
-    m.sel = [i[0] for i in m.items].index("LOOK FOR CHIP / NFC")
-    enter(app)
-    assert isinstance(app.visible, ConfirmScreen) and "damage" in " ".join(app.visible.lines)
+def test_chip_and_nfc_unit_on_a_hub(app, monkeypatch, tmp_path):  # noqa: F811
+    s = Scan(app, monkeypatch, tmp_path, grove_chip=True, unit=True)
+    hw = app.refresh_hardware()
+    assert hw["grove_units"] == ["chip", "nfc"] and hw["nfc"]["where"] == "GROVE"
+    assert s.mode == "i2c"
+
+
+def test_watch_never_switches_to_i2c(app, monkeypatch):  # noqa: F811
+    import core.hw.finger as fmod
+    st = _watch(app, monkeypatch, "uart")
+    monkeypatch.setattr(fmod, "open_sensor", lambda: (None, {"state": "absent"}))
+    monkeypatch.setattr(grove, "power_cycle", lambda: False)
+    app.hw["grove"], app.hw["grove_units"], app.finger = None, [], None
+    for _ in range(3):
+        app._side_probed = 0.0
+        app._side_check()
+    assert "i2c" not in st["switched"]
+
+
+def test_one_of_two_hub_units_pulled_resets_the_port(app, monkeypatch):  # noqa: F811
+    st = _watch(app, monkeypatch, "i2c")
+    app.hw["grove"], app.hw["grove_units"] = "chip", ["chip", "nfc"]
+    monkeypatch.setattr(app, "_side_present", lambda what: what == "chip")
+    app._side_check()
+    assert st["switched"] == ["uart"]
+    app.pump()
+    assert app.hw["grove_units"] == []
 
 
 # ------------------------------------------------------------ fingerprint is ADVANCED

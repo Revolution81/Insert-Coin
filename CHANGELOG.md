@@ -6,6 +6,18 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **RESCAN finds whatever's on the side port** (0.8.52), and LOOK FOR
+  CHIP / NFC is gone.
+  - Start and RESCAN ask for the fingerprint on serial first, giving the
+    port fresh power. Only if nothing answers does the port go to I2C,
+    and only while an M5 chip or NFC Unit answers there.
+  - A healthy fingerprint sensor always answers first, so it's never put
+    on the keyboard's bus. The background watch never switches to I2C.
+  - **Anything unplugged** from the port while it's on I2C puts the whole
+    port back on UART within half a second.
+  - The M5 chip and the NFC Unit on a Grove hub are both found.
+  - Booklet: power off to swap, then RESCAN; never put the fingerprint on
+    a hub.
 - **Fingerprint tools are ADVANCED** (0.8.51). ADD A FINGER and QUICK
   UNLOCK only show with SETUP › DEVICE › ADVANCED on, or once fingers
   are saved or quick unlock is on, so they can still be turned off and
