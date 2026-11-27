@@ -351,7 +351,7 @@ def test_unit_pulled_out_puts_the_port_back_on_uart(app, monkeypatch):  # noqa: 
     st["present"] = False
     app._side_check()                                # gone (checked twice, 20 ms apart)
     assert st["switched"] == ["uart"]
-    assert app.SIDE_WATCH_S <= 0.5                   # within half a second of pulling it
+    assert app.SIDE_WATCH_S <= 0.25                  # within a quarter second of pulling it
     app.pump()
     assert app.hw["grove"] is None
     sensor = types.SimpleNamespace(port=None)

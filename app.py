@@ -246,7 +246,7 @@ class App:
         return hw
 
     # ------------------------------------------------ side port, while running
-    SIDE_WATCH_S = 0.5                                 # how often an I2C unit is checked
+    SIDE_WATCH_S = 0.25                                # how often an I2C unit is checked
     FINGER_PROBE_S = 8.0                               # asking an empty port takes ~5 s
 
     def _start_side_watch(self):
@@ -292,7 +292,7 @@ class App:
                 # A unit pulled out must not leave the port on I2C: whatever
                 # goes in next would be wired to the keyboard's bus, and a
                 # fingerprint sensor's serial output fighting that bus is
-                # what broke one (2026-11-26). Checked twice a second; one
+                # what broke one (2026-11-26). Checked 4 times a second; one
                 # miss is re-checked at once, two put the port on UART.
                 if all(self._side_present(u) for u in units):
                     return

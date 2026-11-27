@@ -6,6 +6,9 @@ Newest first. Version numbers follow `core/version.py`; every release is signed 
 
 Not in an image or update yet; the next release carries all of it.
 
+- **Side-port units checked 4 times a second** (0.8.53, was 2): after
+  an M5 chip or NFC Unit is pulled, the port is back on UART within
+  about a quarter second, before the next plug can go in.
 - **RESCAN finds whatever's on the side port** (0.8.52), and LOOK FOR
   CHIP / NFC is gone.
   - Start and RESCAN ask for the fingerprint on serial first, giving the
