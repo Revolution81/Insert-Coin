@@ -96,6 +96,10 @@ mkdir -p "$ROOT/opt/insert-coin-src"
 (cd "$SRC" && tar --exclude=./work --exclude=./out --exclude=./.git -cf - .) | tar -xf - -C "$ROOT/opt/insert-coin-src"
 in_root sh /opt/insert-coin-src/deploy/install.sh --dedicated --image
 
+# the side port must start on UART, or a unit on it can stop the boot (0.8.43)
+grep -q '^gpio=4=op,dl' "$ROOT/boot/firmware/config.txt" \
+  || { echo "config.txt is missing gpio=4=op,dl"; exit 1; }
+
 echo "== switch off M5Stack's launcher, wizard and auto-updaters"
 for u in $(in_root systemctl list-unit-files --no-legend 2>/dev/null | awk '{print $1}' \
            | grep -iE '^(applaunch|launchwizard|launch-wizard|.*wizard|userconfig)' || true); do
